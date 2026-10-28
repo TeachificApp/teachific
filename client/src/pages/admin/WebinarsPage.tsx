@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import { getOrgWebinarUrl } from "@/lib/orgUrl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,7 +58,7 @@ function slugify(str: string) {
 }
 
 export default function WebinarsPage() {
-  const { orgId, ready } = useOrgScope();
+  const { orgId, orgs, ready } = useOrgScope();
   const [, navigate] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -87,6 +88,11 @@ export default function WebinarsPage() {
     onSuccess: () => { refetch(); toast.success("Updated"); },
     onError: (e) => toast.error(e.message),
   });
+  const activeOrg = orgs.find((candidate: any) => candidate.id === orgId);
+  const activeOrgDomain = activeOrg as { customDomain?: string | null; domainVerificationStatus?: string | null } | undefined;
+  const getRegistrationUrl = (slug: string) => activeOrg
+    ? getOrgWebinarUrl(activeOrg.slug, slug, activeOrgDomain?.customDomain, activeOrgDomain?.domainVerificationStatus)
+    : `/webinar/${slug}/register`;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -165,7 +171,7 @@ export default function WebinarsPage() {
                             {w.isPublished ? <><EyeOff className="w-4 h-4 mr-2" />Unpublish</> : <><Globe className="w-4 h-4 mr-2" />Publish</>}
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <a href={`/webinar/${w.slug}/register`} target="_blank" rel="noopener noreferrer">
+                            <a href={getRegistrationUrl(w.slug)} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="w-4 h-4 mr-2" />View Page
                             </a>
                           </DropdownMenuItem>
@@ -239,7 +245,7 @@ export default function WebinarsPage() {
                               {w.isPublished ? <><EyeOff className="w-4 h-4 mr-2" />Unpublish</> : <><Globe className="w-4 h-4 mr-2" />Publish</>}
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <a href={`/webinar/${w.slug}/register`} target="_blank" rel="noopener noreferrer">
+                            <a href={getRegistrationUrl(w.slug)} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="w-4 h-4 mr-2" />View Registration Page
                               </a>
                             </DropdownMenuItem>

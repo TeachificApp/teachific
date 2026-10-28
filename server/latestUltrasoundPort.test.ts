@@ -470,8 +470,9 @@ describe("latest Ultrasound-App learning feature port", () => {
     const routerSource = readFileSync(new URL("./lmsRouter.ts", import.meta.url), "utf8");
     const editorSource = readFileSync(new URL("../client/src/pages/admin/WebinarEditorPage.tsx", import.meta.url), "utf8");
     expect(schemaSource).toContain('linkedCourseId: int("linked_course_id")');
-    expect(routerSource).toContain("async function requireWebinarAccess");
-    expect(routerSource).toContain("The linked course must belong to the webinar organization.");
+    expect(routerSource).toContain("async function requireActiveLegacyWebinarOrg");
+    expect(routerSource).toContain("async function requireLegacyWebinarInActiveOrg");
+    expect(routerSource).toContain("The linked course must belong to the active organization.");
     expect(editorSource).toContain('label: "Curriculum"');
     expect(editorSource).toContain("Open Course Builder");
   });
@@ -1729,9 +1730,12 @@ describe("latest Ultrasound-App learning feature port", () => {
       routerSource.indexOf("webinars: router({"),
       routerSource.indexOf("// ── Members")
     );
-    expect(webinarSource).toContain("Webinar does not belong to the requested organization");
-    expect((webinarSource.match(/await requireWebinarAccess\(ctx, input\.webinarId\);/g) ?? []).length).toBeGreaterThanOrEqual(7);
-    expect((webinarSource.match(/await requireOrgAdmin\(ctx\.user\.id, ctx\.user\.role, orgId\);/g) ?? []).length).toBe(2);
+    expect(routerSource).toContain("async function requireActiveLegacyWebinarOrg");
+    expect(routerSource).toContain("async function requireLegacyWebinarInActiveOrg");
+    expect(webinarSource).toContain("requireActiveLegacyWebinarOrg(ctx, input?.orgId)");
+    expect((webinarSource.match(/requireLegacyWebinarInActiveOrg\(ctx, input\.webinarId\)/g) ?? []).length).toBeGreaterThanOrEqual(7);
+    expect(webinarSource).toContain("legacyWebinarUpdateInputSchema");
+    expect(webinarSource).not.toContain("z.record(z.string(), z.unknown())");
   });
 
   it("requires organization-admin ownership for legacy LMS member management", () => {
@@ -2215,10 +2219,11 @@ describe("latest Ultrasound-App learning feature port", () => {
 
   it("authorizes optional webinar organization inputs against the active organization", () => {
     const webinarAdminSource = readFileSync(new URL("../server/routers/webinarAdminRouter.ts", import.meta.url), "utf8");
-    expect(webinarAdminSource).toContain("const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, input?.orgId)");
-    expect(webinarAdminSource).toContain("const orgId = await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId)");
-    expect(webinarAdminSource).not.toContain("input?.orgId ?? await getOrgIdForUserWithFallback");
-    expect(webinarAdminSource).not.toContain("input.orgId ?? await getOrgIdForUserWithFallback");
+    expect(webinarAdminSource).toContain("async function requireActiveWebinarOrg");
+    expect(webinarAdminSource).toContain("getOrgIdForUserWithFallback(userId, role)");
+    expect(webinarAdminSource).toContain("requireActiveWebinarOrg(ctx.user.id, ctx.user.role, input?.orgId)");
+    expect(webinarAdminSource).toContain("requireActiveWebinarOrg(ctx.user.id, ctx.user.role, input.orgId)");
+    expect(webinarAdminSource).toContain("requestedOrgId !== undefined && requestedOrgId !== activeOrgId");
   });
 
   it("requires active-organization ownership when reading individual order bumps", () => {

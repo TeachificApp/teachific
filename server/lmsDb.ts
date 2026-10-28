@@ -1252,6 +1252,14 @@ export async function getWebinarById(id: number) {
   return rows[0] ?? null;
 }
 
+export async function getWebinarByIdForOrg(id: number, orgId: number) {
+  const rows = await db.select().from(webinars).where(and(
+    eq(webinars.id, id),
+    eq(webinars.orgId, orgId),
+  ));
+  return rows[0] ?? null;
+}
+
 export async function getWebinarBySlug(orgId: number, slug: string) {
   const rows = await db
     .select()
@@ -1260,11 +1268,15 @@ export async function getWebinarBySlug(orgId: number, slug: string) {
   return rows[0] ?? null;
 }
 
-export async function getPublishedWebinarBySlug(slug: string) {
+export async function getPublishedWebinarBySlugForOrg(orgId: number, slug: string) {
   const rows = await db
     .select()
     .from(webinars)
-    .where(and(eq(webinars.slug, slug), eq(webinars.isPublished, true)));
+    .where(and(
+      eq(webinars.orgId, orgId),
+      eq(webinars.slug, slug),
+      eq(webinars.isPublished, true),
+    ));
   return rows[0] ?? null;
 }
 
@@ -1274,26 +1286,63 @@ export async function createWebinar(data: typeof webinars.$inferInsert) {
   return getWebinarById(Number(id));
 }
 
-export async function updateWebinar(id: number, data: Partial<typeof webinars.$inferInsert>) {
-  await db.update(webinars).set(data).where(eq(webinars.id, id));
-  return getWebinarById(id);
+export async function updateWebinar(id: number, orgId: number, data: Partial<typeof webinars.$inferInsert>) {
+  await db.update(webinars).set(data).where(and(
+    eq(webinars.id, id),
+    eq(webinars.orgId, orgId),
+  ));
+  return getWebinarByIdForOrg(id, orgId);
 }
 
-export async function deleteWebinar(id: number) {
-  await db.delete(webinarSessions).where(eq(webinarSessions.webinarId, id));
-  await db.delete(webinarRegistrations).where(eq(webinarRegistrations.webinarId, id));
-  await db.delete(webinarFunnelSteps).where(eq(webinarFunnelSteps.webinarId, id));
-  await db.delete(webinars).where(eq(webinars.id, id));
+export async function deleteWebinar(id: number, orgId: number) {
+  // Sessions and funnel steps inherit tenant ownership from their Webinar.
+  // Scope child cleanup through the organization-owned parent before a raw ID
+  // can affect another school's delivery records.
+  const webinarParentExists = (childWebinarId: any) => sql`EXISTS (
+    SELECT 1 FROM ${webinars}
+    WHERE ${webinars.id} = ${childWebinarId}
+      AND ${webinars.orgId} = ${orgId}
+  )`;
+  await db.delete(webinarSessions).where(and(
+    eq(webinarSessions.webinarId, id),
+    webinarParentExists(webinarSessions.webinarId),
+  ));
+  await db.delete(webinarRegistrations).where(and(
+    eq(webinarRegistrations.webinarId, id),
+    eq(webinarRegistrations.orgId, orgId),
+    webinarParentExists(webinarRegistrations.webinarId),
+  ));
+  await db.delete(webinarFunnelSteps).where(and(
+    eq(webinarFunnelSteps.webinarId, id),
+    webinarParentExists(webinarFunnelSteps.webinarId),
+  ));
+  await db.delete(webinars).where(and(eq(webinars.id, id), eq(webinars.orgId, orgId)));
 }
 
 // ─── Webinar Registrations ───────────────────────────────────────────────────
 
-export async function getWebinarRegistrations(webinarId: number) {
+export async function getWebinarRegistrations(webinarId: number, orgId: number) {
   return db
     .select()
     .from(webinarRegistrations)
-    .where(eq(webinarRegistrations.webinarId, webinarId))
+    .where(and(
+      eq(webinarRegistrations.webinarId, webinarId),
+      eq(webinarRegistrations.orgId, orgId),
+    ))
     .orderBy(desc(webinarRegistrations.registeredAt));
+}
+
+export async function getWebinarRegistrationByIdForWebinar(
+  id: number,
+  webinarId: number,
+  orgId: number,
+) {
+  const rows = await db.select().from(webinarRegistrations).where(and(
+    eq(webinarRegistrations.id, id),
+    eq(webinarRegistrations.webinarId, webinarId),
+    eq(webinarRegistrations.orgId, orgId),
+  )).limit(1);
+  return rows[0] ?? null;
 }
 
 export async function getWebinarRegistrationByEmail(webinarId: number, email: string) {
@@ -1329,30 +1378,54 @@ export async function getWebinarSessionByToken(token: string) {
   return rows[0] ?? null;
 }
 
-export async function updateWebinarSession(id: number, data: Partial<typeof webinarSessions.$inferInsert>) {
-  await db.update(webinarSessions).set(data).where(eq(webinarSessions.id, id));
+export async function updateWebinarSession(
+  id: number,
+  webinarId: number,
+  orgId: number,
+  data: Partial<typeof webinarSessions.$inferInsert>,
+) {
+  await db.update(webinarSessions).set(data).where(and(
+    eq(webinarSessions.id, id),
+    eq(webinarSessions.webinarId, webinarId),
+    sql`EXISTS (SELECT 1 FROM ${webinars} WHERE ${webinars.id} = ${webinarSessions.webinarId} AND ${webinars.orgId} = ${orgId})`,
+  ));
 }
 
-export async function getWebinarSessions(webinarId: number) {
+export async function getWebinarSessions(webinarId: number, orgId: number) {
   return db
     .select()
     .from(webinarSessions)
-    .where(eq(webinarSessions.webinarId, webinarId))
+    .where(and(
+      eq(webinarSessions.webinarId, webinarId),
+      sql`EXISTS (SELECT 1 FROM ${webinars} WHERE ${webinars.id} = ${webinarSessions.webinarId} AND ${webinars.orgId} = ${orgId})`,
+    ))
     .orderBy(desc(webinarSessions.startedAt));
 }
 
 // ─── Webinar Funnel Steps ────────────────────────────────────────────────────
 
-export async function getWebinarFunnelSteps(webinarId: number) {
+export async function getWebinarFunnelSteps(webinarId: number, orgId: number) {
   return db
     .select()
     .from(webinarFunnelSteps)
-    .where(eq(webinarFunnelSteps.webinarId, webinarId))
+    .where(and(
+      eq(webinarFunnelSteps.webinarId, webinarId),
+      sql`EXISTS (SELECT 1 FROM ${webinars} WHERE ${webinars.id} = ${webinarFunnelSteps.webinarId} AND ${webinars.orgId} = ${orgId})`,
+    ))
     .orderBy(asc(webinarFunnelSteps.stepOrder));
 }
 
-export async function upsertWebinarFunnelSteps(webinarId: number, steps: typeof webinarFunnelSteps.$inferInsert[]) {
-  await db.delete(webinarFunnelSteps).where(eq(webinarFunnelSteps.webinarId, webinarId));
+export async function upsertWebinarFunnelSteps(
+  webinarId: number,
+  orgId: number,
+  steps: typeof webinarFunnelSteps.$inferInsert[],
+) {
+  const webinar = await getWebinarByIdForOrg(webinarId, orgId);
+  if (!webinar) throw new Error("Webinar not found in the requested organization");
+  await db.delete(webinarFunnelSteps).where(and(
+    eq(webinarFunnelSteps.webinarId, webinarId),
+    sql`EXISTS (SELECT 1 FROM ${webinars} WHERE ${webinars.id} = ${webinarFunnelSteps.webinarId} AND ${webinars.orgId} = ${orgId})`,
+  ));
   if (steps.length > 0) {
     await db.insert(webinarFunnelSteps).values(steps.map((s, i) => ({ ...s, webinarId, stepOrder: i })));
   }
@@ -1360,9 +1433,9 @@ export async function upsertWebinarFunnelSteps(webinarId: number, steps: typeof 
 
 // ─── Webinar Analytics ───────────────────────────────────────────────────────
 
-export async function getWebinarStats(webinarId: number) {
-  const registrations = await getWebinarRegistrations(webinarId);
-  const sessions = await getWebinarSessions(webinarId);
+export async function getWebinarStats(webinarId: number, orgId: number) {
+  const registrations = await getWebinarRegistrations(webinarId, orgId);
+  const sessions = await getWebinarSessions(webinarId, orgId);
   const attended = registrations.filter((r) => r.attended).length;
   const converted = registrations.filter((r) => r.convertedAt).length;
   const totalWatchSeconds = sessions.reduce((sum, s) => sum + (s.watchedSeconds ?? 0), 0);

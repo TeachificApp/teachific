@@ -7,7 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { getDb, getOrgBySlug, getOrgIdForUserWithFallback, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById, getUserByEmail, getOrgMember, updateOrgMemberRole } from "./db";
-import { groupMembers, groups, lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
+import { digitalProducts, groupMembers, groups, lmsCourses, lmsLessons, lmsQuizzes, lmsSections } from "../drizzle/schema";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { sendEmailViaOrg } from "./_core/email";
 import { getOrgBaseUrl } from "./lib/orgUrl";
@@ -83,10 +83,12 @@ import {
   getWebinarsByOrg,
   getWebinarById,
   getWebinarBySlug,
+  getPublishedWebinarBySlugForOrg,
   createWebinar,
   updateWebinar,
   deleteWebinar,
   getWebinarRegistrations,
+  getWebinarRegistrationByIdForWebinar,
   createWebinarRegistration,
   updateWebinarRegistration,
   createWebinarSession,
@@ -222,7 +224,6 @@ import {
   createWorkshopRegistration,
   updateWorkshopRegistration,
 } from "./lmsDb";
-import { resolvePublicOrganizationScope } from "./lib/publicOrgRequestScope";
 import { getEffectiveSubscriptionPlan } from "../shared/subscriptionEntitlement";
 import { downloadsAdminRouter } from "./routers/downloadsRouter";
 import { orderBumpsAdminRouter } from "./routers/orderBumpsRouter";
@@ -671,11 +672,171 @@ async function requireLegacyMediaClipInActiveOrg(
   return { db, clip, orgId };
 }
 
-async function requireWebinarAccess(ctx: { user: { id: number; role: string } }, webinarId: number) {
+/** Webinar administration is always bound to the caller's selected school. */
+async function requireActiveLegacyWebinarOrg(
+  ctx: { user: { id: number; role: string } },
+  requestedOrgId?: number,
+): Promise<number> {
+  const activeOrgId = await requireOrgId(ctx.user.id);
+  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Switch to the webinar's organization before managing webinars.",
+    });
+  }
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
+  return activeOrgId;
+}
+
+async function requireLegacyWebinarInActiveOrg(
+  ctx: { user: { id: number; role: string } },
+  webinarId: number,
+) {
+  const orgId = await requireActiveLegacyWebinarOrg(ctx);
   const webinar = await getWebinarById(webinarId);
   if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, webinar.orgId);
-  return webinar;
+  if (webinar.orgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This webinar belongs to another organization." });
+  }
+  return { orgId, webinar };
+}
+
+const legacyWebinarScheduledAtSchema = z.union([
+  z.date(),
+  z.number().int().nonnegative(),
+  z.string().trim()
+    .refine((value) => value === "" || !Number.isNaN(Date.parse(value)), "A valid Webinar date is required.")
+    .transform((value) => value === "" ? null : new Date(value)),
+]).transform((value) => value instanceof Date || value === null ? value : new Date(value));
+
+const legacyWebinarUpdateDataSchema = z.object({
+  title: z.string().trim().min(1).max(255).optional(),
+  slug: z.string().trim().min(1).max(255).optional(),
+  description: z.string().nullable().optional(),
+  type: z.enum(["live", "evergreen"]).optional(),
+  videoSource: z.enum(["upload", "youtube", "vimeo", "zoom", "teams", "embed"]).nullable().optional(),
+  videoUrl: z.string().max(4096).nullable().optional(),
+  videoFileUrl: z.string().max(4096).nullable().optional(),
+  videoFileKey: z.string().max(1024).nullable().optional(),
+  meetingUrl: z.string().max(4096).nullable().optional(),
+  meetingId: z.string().max(128).nullable().optional(),
+  scheduledAt: legacyWebinarScheduledAtSchema.nullable().optional(),
+  durationMinutes: z.number().int().min(0).max(100_000).optional(),
+  timezone: z.string().max(64).nullable().optional(),
+  replayDelayMinutes: z.number().int().min(0).max(86_400).optional(),
+  aiViewersEnabled: z.boolean().optional(),
+  aiViewersMin: z.number().int().min(0).max(1_000_000).optional(),
+  aiViewersMax: z.number().int().min(0).max(1_000_000).optional(),
+  aiViewersPeakAt: z.number().int().min(0).max(86_400).optional(),
+  salesPageBlocksJson: z.unknown().optional(),
+  thumbnailUrl: z.string().max(4096).nullable().optional(),
+  requireRegistration: z.boolean().optional(),
+  registrationFormFields: z.unknown().nullable().optional(),
+  postWebinarAction: z.enum(["product", "url", "thankyou", "none"]).optional(),
+  postWebinarProductId: z.number().int().positive().nullable().optional(),
+  postWebinarUrl: z.string().max(4096).nullable().optional(),
+  postWebinarMessage: z.string().nullable().optional(),
+  postWebinarDelaySeconds: z.number().int().min(0).max(86_400).optional(),
+  linkedCourseId: z.number().int().positive().nullable().optional(),
+  // Dollar amounts stay decimal dollars at the application and storage boundary.
+  price: z.number().finite().min(0).max(10_000_000).optional(),
+  currency: z.string().trim().min(3).max(8).optional(),
+  pricingType: z.enum(["free", "one_time", "subscription"]).optional(),
+  stripePriceId: z.string().max(255).nullable().optional(),
+  stripeProductId: z.string().max(255).nullable().optional(),
+  stripePaymentLinkUrl: z.string().max(2048).nullable().optional(),
+  isPublished: z.boolean().optional(),
+  purchaseTermsAgreement: z.string().max(2048).nullable().optional(),
+  purchaseTermsLink1Label: z.string().max(255).nullable().optional(),
+  purchaseTermsLink1Url: z.string().max(1024).nullable().optional(),
+  purchaseTermsLink2Label: z.string().max(255).nullable().optional(),
+  purchaseTermsLink2Url: z.string().max(1024).nullable().optional(),
+  enrollmentClosed: z.boolean().optional(),
+}).strict();
+
+async function assertLegacyWebinarReferencesBelongToOrg(
+  orgId: number,
+  data: z.infer<typeof legacyWebinarUpdateDataSchema>,
+) {
+  if (data.linkedCourseId !== undefined && data.linkedCourseId !== null) {
+    const course = await getCourseById(data.linkedCourseId);
+    if (!course || course.orgId !== orgId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "The linked course must belong to the active organization." });
+    }
+  }
+  if (data.postWebinarProductId !== undefined && data.postWebinarProductId !== null) {
+    const course = await getCourseById(data.postWebinarProductId);
+    if (course?.orgId === orgId) return;
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    const [product] = await db.select({ id: digitalProducts.id }).from(digitalProducts).where(and(
+      eq(digitalProducts.id, data.postWebinarProductId),
+      eq(digitalProducts.orgId, orgId),
+    )).limit(1);
+    if (!product) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "The post-webinar product must belong to the active organization." });
+    }
+  }
+}
+
+const legacyWebinarUpdateInputSchema = z.union([
+  z.object({
+    webinarId: z.number().int().positive(),
+    data: legacyWebinarUpdateDataSchema,
+  }).strict(),
+  legacyWebinarUpdateDataSchema.extend({ id: z.number().int().positive() }).strict(),
+]).transform((input) => "data" in input
+  ? { webinarId: input.webinarId, data: input.data }
+  : (() => {
+    const { id, ...data } = input;
+    return { webinarId: id, data };
+  })());
+
+const legacyWebinarDeleteInputSchema = z.union([
+  z.object({ webinarId: z.number().int().positive() }).strict(),
+  z.object({ id: z.number().int().positive() }).strict(),
+]).transform((input) => ({ webinarId: "webinarId" in input ? input.webinarId : input.id }));
+
+const legacyWebinarFunnelStepSchema = z.object({
+  stepType: z.enum(["registration", "confirmation", "reminder", "watch", "offer", "thankyou"]),
+  title: z.string().max(255).nullable().optional(),
+  pageBlocksJson: z.unknown().nullable().optional(),
+  emailSubject: z.string().max(255).nullable().optional(),
+  emailBody: z.string().nullable().optional(),
+  triggerType: z.enum(["immediate", "delay", "scheduled"]).optional(),
+  triggerDelayMinutes: z.number().int().min(0).max(525_600).optional(),
+  isActive: z.boolean().optional(),
+}).strict();
+
+async function requirePublicPublishedLegacyWebinar(
+  ctx: { req: any },
+  slug: string,
+  legacyOrgSlug?: string,
+  requestedOrgId?: number,
+) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, legacyOrgSlug);
+  if (!publicScope) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
+  if (requestedOrgId !== undefined && requestedOrgId !== publicScope.id) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "This webinar must be opened on its organization's website." });
+  }
+  const webinar = await getPublishedWebinarBySlugForOrg(publicScope.id, slug);
+  if (!webinar || webinar.orgId !== publicScope.id) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
+  }
+  return { orgId: publicScope.id, webinar };
+}
+
+function toPublicLegacyWebinar<T extends Record<string, unknown>>(webinar: T) {
+  const {
+    videoFileKey: _videoFileKey,
+    stripePriceId: _stripePriceId,
+    stripeProductId: _stripeProductId,
+    stripePaymentLinkUrl: _stripePaymentLinkUrl,
+    ...publicWebinar
+  } = webinar;
+  return publicWebinar;
 }
 
 async function requireLegacyMembershipAccess(ctx: { user: { id: number; role: string } }, membershipId: number) {
@@ -1806,95 +1967,169 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyWebinarOrg(ctx, input?.orgId);
         return getWebinarsByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
       .query(async ({ ctx, input }) => {
-        return requireWebinarAccess(ctx, input.webinarId);
+        return (await requireLegacyWebinarInActiveOrg(ctx, input.webinarId)).webinar;
       }),
     getBySlug: publicProcedure
-      .input(z.object({ orgId: z.number(), slug: z.string() }))
-      .query(async ({ input }) => {
-        return getWebinarBySlug(input.orgId, input.slug);
+      .input(z.object({
+        slug: z.string().trim().min(1).max(255),
+        orgId: z.number().optional(),
+        orgSlug: z.string().trim().min(1).max(100).optional(),
+      }))
+      .query(async ({ ctx, input }) => {
+        const { webinar } = await requirePublicPublishedLegacyWebinar(ctx, input.slug, input.orgSlug, input.orgId);
+        return toPublicLegacyWebinar(webinar as any);
       }),
     create: protectedProcedure
-      .input(z.object({ orgId: z.number().optional(), title: z.string(), slug: z.string().optional(), scheduledAt: z.date().optional() }))
+      .input(z.object({
+        orgId: z.number().optional(),
+        title: z.string().trim().min(1).max(255),
+        slug: z.string().trim().min(1).max(255).optional(),
+        scheduledAt: z.date().optional(),
+        type: z.enum(["live", "evergreen"]).optional(),
+      }).strict())
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
-        await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+        const orgId = await requireActiveLegacyWebinarOrg(ctx, input.orgId);
         const slug = input.slug ?? input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
-        return createWebinar({ orgId, title: input.title, slug, scheduledAt: input.scheduledAt ?? null });
+        return createWebinar({
+          orgId,
+          title: input.title,
+          slug,
+          type: input.type ?? "evergreen",
+          scheduledAt: input.scheduledAt ?? null,
+        });
       }),
     update: protectedProcedure
-      .input(z.object({ webinarId: z.number(), data: z.record(z.string(), z.unknown()) }))
+      .input(legacyWebinarUpdateInputSchema)
       .mutation(async ({ ctx, input }) => {
-        const webinar = await requireWebinarAccess(ctx, input.webinarId);
-        const linkedCourseId = input.data.linkedCourseId;
-        if (typeof linkedCourseId === "number") {
-          const course = await getCourseById(linkedCourseId);
-          if (!course || course.orgId !== webinar.orgId) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "The linked course must belong to the webinar organization." });
-          }
-        }
-        return updateWebinar(input.webinarId, input.data as any);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        await assertLegacyWebinarReferencesBelongToOrg(orgId, input.data);
+        return updateWebinar(input.webinarId, orgId, input.data as any);
       }),
     delete: protectedProcedure
-      .input(z.object({ webinarId: z.number() }))
+      .input(legacyWebinarDeleteInputSchema)
       .mutation(async ({ ctx, input }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
-        await deleteWebinar(input.webinarId);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        await deleteWebinar(input.webinarId, orgId);
         return { ok: true };
       }),
     register: publicProcedure
-      .input(z.object({ webinarId: z.number(), orgId: z.number(), firstName: z.string().optional(), lastName: z.string().optional(), email: z.string().email(), userId: z.number().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({
+        webinarId: z.number().int().positive(),
+        orgId: z.number().optional(),
+        orgSlug: z.string().trim().min(1).max(100).optional(),
+        firstName: z.string().trim().max(128).optional(),
+        lastName: z.string().trim().max(128).optional(),
+        phone: z.string().trim().max(32).optional(),
+        email: z.string().trim().email().max(320),
+      }).strict())
+      .mutation(async ({ ctx, input }) => {
         const webinar = await getWebinarById(input.webinarId);
         if (!webinar) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
-        if (webinar.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Webinar does not belong to the requested organization" });
-        return createWebinarRegistration({ webinarId: input.webinarId, orgId: input.orgId, firstName: input.firstName ?? null, lastName: input.lastName ?? null, email: input.email, userId: input.userId ?? null } as any);
+        if (!webinar.isPublished || webinar.enrollmentClosed) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar registration is unavailable" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+        if (!publicScope || webinar.orgId !== publicScope.id || (input.orgId !== undefined && input.orgId !== publicScope.id)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This webinar must be opened on its organization's website." });
+        }
+        const registration = await createWebinarRegistration({
+          webinarId: webinar.id,
+          orgId: publicScope.id,
+          firstName: input.firstName ?? null,
+          lastName: input.lastName ?? null,
+          phone: input.phone ?? null,
+          email: input.email.toLowerCase(),
+        } as any);
+        return { ...registration, registration };
       }),
     getRegistrations: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
       .query(async ({ input, ctx }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
-        return getWebinarRegistrations(input.webinarId);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        return getWebinarRegistrations(input.webinarId, orgId);
       }),
-    startSession: protectedProcedure
-      .input(z.object({ webinarId: z.number() }))
+    startSession: publicProcedure
+      .input(z.object({
+        webinarId: z.number().int().positive(),
+        registrationId: z.number().int().positive().optional(),
+        orgSlug: z.string().trim().min(1).max(100).optional(),
+      }).strict())
       .mutation(async ({ input, ctx }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
+        const webinar = await getWebinarById(input.webinarId);
+        if (!webinar || !webinar.isPublished) throw new TRPCError({ code: "NOT_FOUND", message: "Webinar not found" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+        if (!publicScope || webinar.orgId !== publicScope.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This webinar must be opened on its organization's website." });
+        }
+        if (webinar.requireRegistration && !input.registrationId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Registration is required to watch this webinar." });
+        }
+        if (input.registrationId) {
+          const registration = await getWebinarRegistrationByIdForWebinar(input.registrationId, webinar.id, publicScope.id);
+          if (!registration) throw new TRPCError({ code: "FORBIDDEN", message: "This registration does not belong to the webinar." });
+        }
         const token = nanoid(32);
-        return createWebinarSession({ webinarId: input.webinarId, sessionToken: token, startedAt: new Date() });
+        return createWebinarSession({
+          webinarId: webinar.id,
+          registrationId: input.registrationId ?? null,
+          sessionToken: token,
+          startedAt: new Date(),
+        });
       }),
     heartbeat: publicProcedure
-      .input(z.object({ token: z.string(), watchedSeconds: z.number().optional() }))
-      .mutation(async ({ input }) => {
-        const session = await getWebinarSessionByToken(input.token);
+      .input(z.object({
+        token: z.string().min(1).max(128).optional(),
+        sessionToken: z.string().min(1).max(128).optional(),
+        watchedSeconds: z.number().int().min(0).max(86_400).optional(),
+        currentViewerCount: z.number().int().min(0).max(1_000_000).optional(),
+        orgSlug: z.string().trim().min(1).max(100).optional(),
+      }).strict().refine((input) => Boolean(input.token || input.sessionToken), {
+        message: "A webinar session token is required.",
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getWebinarSessionByToken(input.token ?? input.sessionToken!);
         if (!session) throw new TRPCError({ code: "NOT_FOUND" });
-        await updateWebinarSession(session.id, { watchedSeconds: input.watchedSeconds ?? 0 });
+        const webinar = await getWebinarById(session.webinarId);
+        if (!webinar || !webinar.isPublished) throw new TRPCError({ code: "NOT_FOUND" });
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const publicScope = await resolvePublicOrganizationScope(db as any, ctx.req, input.orgSlug);
+        if (!publicScope || webinar.orgId !== publicScope.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This webinar session belongs to another organization." });
+        }
+        await updateWebinarSession(session.id, webinar.id, publicScope.id, {
+          watchedSeconds: input.watchedSeconds ?? 0,
+          peakViewerCount: input.currentViewerCount,
+          lastHeartbeatAt: new Date(),
+        });
         return { ok: true };
       }),
     getFunnelSteps: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
       .query(async ({ input, ctx }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
-        return getWebinarFunnelSteps(input.webinarId);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        return getWebinarFunnelSteps(input.webinarId, orgId);
       }),
     saveFunnelSteps: protectedProcedure
-      .input(z.object({ webinarId: z.number(), steps: z.array(z.any()) }))
+      .input(z.object({ webinarId: z.number().int().positive(), steps: z.array(legacyWebinarFunnelStepSchema).max(100) }).strict())
       .mutation(async ({ input, ctx }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
-        await upsertWebinarFunnelSteps(input.webinarId, input.steps);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        await upsertWebinarFunnelSteps(input.webinarId, orgId, input.steps as any);
         return { ok: true };
       }),
     getStats: protectedProcedure
       .input(z.object({ webinarId: z.number() }))
       .query(async ({ input, ctx }) => {
-        await requireWebinarAccess(ctx, input.webinarId);
-        return getWebinarStats(input.webinarId);
+        const { orgId } = await requireLegacyWebinarInActiveOrg(ctx, input.webinarId);
+        return getWebinarStats(input.webinarId, orgId);
       }),
   }),
 
