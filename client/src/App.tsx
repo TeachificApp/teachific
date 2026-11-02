@@ -33,6 +33,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import PlatformAdminPage from "./pages/admin/PlatformAdminPage";
+import BlueprintsPage from "./pages/BlueprintsPage";
 
 import CoursesPage from "./pages/lms/CoursesPage";
 import CourseBuilderPage from "./pages/lms/CourseBuilderPage";
@@ -357,6 +358,13 @@ function AdminRouter() {
           <Route path="/sales/order-bumps" component={OrderBumpsPage} />
           <Route path="/sales/order-bumps/:id" component={OrderBumpEditorPage} />
 
+          {/* ── Blueprints ── */}
+          <Route path="/blueprints/marketplace" component={BlueprintsPage} />
+          <Route path="/blueprints/installed" component={BlueprintsPage} />
+          <Route path="/blueprints/manage" component={BlueprintsPage} />
+          <Route path="/blueprints" component={BlueprintsPage} />
+          <Route path="/blueprint">{() => { window.location.replace("/blueprints"); return null; }}</Route>
+
           {/* ── Analytics ── */}
           <Route path="/analytics/revenue" component={RevenueAnalyticsPage} />
           <Route path="/analytics/engagement" component={EngagementAnalyticsPage} />
@@ -373,6 +381,9 @@ function AdminRouter() {
           <Route path="/integrations" component={IntegrationsPage} />
           <Route path="/integrations/api" component={ApiPage} />
           <Route path="/integrations/webhooks" component={WebhooksPage} />
+          <Route path="/integrations/thinkific" component={ThinkificImportPage} />
+          <Route path="/integrations/teachable" component={TeachableImportPage} />
+          <Route path="/integrations/kajabi" component={KajabiImportPage} />
 
           {/* ── Profile ── */}
           <Route path="/profile" component={ProfilePage} />
@@ -403,6 +414,8 @@ function AdminRouter() {
           <Route path="/quizzes/:id/analytics" component={QuizResultsPage} />
           <Route path="/lms/my-courses" component={MyCoursesPage} />
           <Route path="/lms/my-certificates" component={MyCertificatesPage} />
+          <Route path="/settings/:tab" component={OrgSettingsPage} />
+          <Route path="/lms/settings/:tab" component={OrgSettingsPage} />
           <Route path="/lms/branding" component={BrandingPage} />
           <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
@@ -534,6 +547,11 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/sales/coupons">{() => <DashboardLayout><CouponsPage /></DashboardLayout>}</Route>
         <Route path="/sales/invoices">{() => <DashboardLayout><InvoicesPage /></DashboardLayout>}</Route>
         <Route path="/sales">{() => { window.location.replace("/sales/orders"); return null; }}</Route>
+        <Route path="/blueprints/marketplace">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints/installed">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints/manage">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprint">{() => { window.location.replace("/blueprints"); return null; }}</Route>
         <Route path="/analytics/revenue">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics/engagement">{() => <DashboardLayout><EngagementAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
@@ -549,6 +567,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
         <Route path="/support">{() => <DashboardLayout><SupportPage /></DashboardLayout>}</Route>
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
+        <Route path="/settings/:tab">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
+        <Route path="/lms/settings/:tab">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/settings">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-courses">{() => <DashboardLayout><MyCoursesPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>

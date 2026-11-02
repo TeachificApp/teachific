@@ -32,6 +32,33 @@ import { CertificateSettingsTab } from "./lms/CertificateSettingsTab";
 import { EmbedSnippetPanel } from "@/components/EmbedSnippetPanel";
 import { UserDetailPanel, type UserRow as DetailUserRow } from "@/components/UserDetailPanel";
 
+const SETTINGS_TABS = [
+  "general",
+  "branding",
+  "domain",
+  "notifications",
+  "subscription",
+  "instructors",
+  "policies",
+  "payment",
+  "homepage",
+  "landing",
+  "members",
+  "certificates",
+  "email",
+  "embed",
+] as const;
+
+type SettingsTab = typeof SETTINGS_TABS[number];
+
+function getSettingsTabFromLocation(): SettingsTab {
+  const tabFromPath = window.location.pathname.match(/^\/(?:lms\/)?settings\/([^/?#]+)/)?.[1];
+  const tabFromQuery = new URLSearchParams(window.location.search).get("tab") ?? undefined;
+  const tabFromHash = window.location.hash.replace("#", "") || undefined;
+  const tab = tabFromPath ?? tabFromQuery ?? tabFromHash;
+  return SETTINGS_TABS.includes(tab as SettingsTab) ? (tab as SettingsTab) : "general";
+}
+
 export default function OrgSettingsPage() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -58,6 +85,7 @@ export default function OrgSettingsPage() {
   const [siteLogoUploading, setSiteLogoUploading] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
   const [initialized, setInitialized] = useState(false);
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => getSettingsTabFromLocation());
 
   // Branding / theme state
   const [primaryColor, setPrimaryColor] = useState("#24abbc");
@@ -120,6 +148,26 @@ export default function OrgSettingsPage() {
       setInitialized(true);
     }
   }, [orgCtx, initialized]);
+
+  useEffect(() => {
+    const syncTab = () => setActiveTab(getSettingsTabFromLocation());
+    window.addEventListener("popstate", syncTab);
+    window.addEventListener("hashchange", syncTab);
+    return () => {
+      window.removeEventListener("popstate", syncTab);
+      window.removeEventListener("hashchange", syncTab);
+    };
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    const nextTab = SETTINGS_TABS.includes(value as SettingsTab) ? (value as SettingsTab) : "general";
+    setActiveTab(nextTab);
+    const url = new URL(window.location.href);
+    url.pathname = nextTab === "general" ? "/lms/settings" : `/lms/settings/${nextTab}`;
+    url.searchParams.delete("tab");
+    url.hash = "";
+    window.history.replaceState({}, "", url.toString());
+  };
 
   // Debounce slug input for availability check
   useEffect(() => {
@@ -424,7 +472,7 @@ export default function OrgSettingsPage() {
         <p className="text-muted-foreground mt-0.5">{org.name}</p>
       </div>
 
-      <Tabs defaultValue="general" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="h-auto flex flex-wrap gap-1 p-1">
             <TabsTrigger value="general" className="gap-1.5 whitespace-nowrap">
               <Building2 className="h-4 w-4" /> General
@@ -1939,8 +1987,8 @@ function Course360PayConnectSection({ orgId }: { orgId?: number }) {
               orgId &&
               connectMutation.mutate({
                 orgId,
-                returnUrl: `${window.location.origin}/settings/payment?connect=success`,
-                refreshUrl: `${window.location.origin}/settings/payment?connect=refresh`,
+                returnUrl: `${window.location.origin}/lms/settings/payment?connect=success`,
+                refreshUrl: `${window.location.origin}/lms/settings/payment?connect=refresh`,
               })
             }
           >
