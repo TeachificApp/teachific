@@ -336,7 +336,7 @@ export default function PlayerPage() {
             <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
               <BookOpen className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:block" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Teachific&#8482; LMS</span>
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider hidden sm:block" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Course360&#8482; LMS</span>
           </div>
           <div className="h-5 w-px bg-gray-700 hidden sm:block" />
           <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
 /**
- * Custom Teachific Authentication Router
+ * Custom Course360 Authentication Router
  * Handles email/password registration, login, logout, email verification,
  * and password reset — completely independent of Manus OAuth.
  */
@@ -20,7 +20,7 @@ import { signSessionToken } from "./_core/context";
 const COOKIE_NAME = "teachific_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const BCRYPT_ROUNDS = 12;
-const SITE_URL = process.env.VITE_SITE_URL || "https://teachific.app";
+const SITE_URL = process.env.VITE_SITE_URL || "https://course360.app";
 
 function generateToken(bytes = 32): string {
   return crypto.randomBytes(bytes).toString("hex");
@@ -33,11 +33,11 @@ function generateOpenId(): string {
 function serializeCookie(name: string, value: string, maxAge: number): string {
   const isProduction = process.env.NODE_ENV === "production";
   // Use SameSite=None + Secure in production so the cookie is sent cross-subdomain
-  // (e.g. from teachific.app to myorg.teachific.app).
-  // Domain=.teachific.app ensures all subdomains share the same session.
+  // (e.g. from course360.app to myorg.course360.app).
+  // Domain=.course360.app ensures all subdomains share the same session.
   let str = `${name}=${encodeURIComponent(value)}; HttpOnly; Path=/; Max-Age=${maxAge}`;
   if (isProduction) {
-    str += "; Secure; SameSite=None; Domain=.teachific.app";
+    str += "; Secure; SameSite=None; Domain=.course360.app";
   } else {
     str += "; SameSite=Lax";
   }
@@ -104,7 +104,7 @@ export const customAuthRouter = router({
         const verifyUrl = `${SITE_URL}/verify-email?token=${verificationToken}`;
         await sendEmail({
           to: input.email,
-          subject: "Verify your Teachific email address",
+          subject: "Verify your Course360 email address",
           html: verifyEmailHtml(input.name, verifyUrl),
         });
       }
@@ -231,7 +231,7 @@ export const customAuthRouter = router({
       await db.update(users).set({ emailVerificationToken: verificationToken, emailVerificationExpiry: verificationExpiry }).where(eq(users.id, user.id));
 
       const verifyUrl = `${SITE_URL}/verify-email?token=${verificationToken}`;
-      await sendEmail({ to: input.email, subject: "Verify your Teachific email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
+      await sendEmail({ to: input.email, subject: "Verify your Course360 email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
       return { success: true };
     }),
 
@@ -253,7 +253,7 @@ export const customAuthRouter = router({
       await db.update(users).set({ resetToken, resetTokenExpiry: resetExpiry }).where(eq(users.id, user.id));
 
       const resetUrl = `${SITE_URL}/reset-password?token=${resetToken}`;
-      await sendEmail({ to: input.email, subject: "Reset your Teachific password", html: resetPasswordHtml(user.name || "", resetUrl) });
+      await sendEmail({ to: input.email, subject: "Reset your Course360 password", html: resetPasswordHtml(user.name || "", resetUrl) });
       return { success: true };
     }),
 
@@ -297,7 +297,7 @@ export const customAuthRouter = router({
       const magicUrl = `${SITE_URL}/magic-link/verify?token=${token}`;
       await sendEmail({
         to: input.email,
-        subject: "Your Teachific sign-in link",
+        subject: "Your Course360 sign-in link",
         html: magicLinkEmailHtml(user?.name ?? "", magicUrl, 15),
       });
       return { success: true, message: "Check your email for a sign-in link." };

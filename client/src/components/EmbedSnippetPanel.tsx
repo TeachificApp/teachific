@@ -145,7 +145,7 @@ export function EmbedSnippetPanel({
   const embedUrl = buildEmbedUrl(true);
   const iframeSnippet = `<iframe\n  src="${embedUrl}"\n  width="${iframeWidth}"\n  height="${iframeHeight}"\n  frameborder="0"\n  allowfullscreen\n  loading="lazy"\n  title="${title.replace(/"/g, "&quot;")}"\n></iframe>`;
 
-  const jsSnippet = `<!-- Teachific Embed Loader -->
+  const jsSnippet = `<!-- Course360 Embed Loader -->
 <div id="teachific-embed-${Math.abs(fullUrl.split("").reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0))}"></div>
 <script>
 (function() {

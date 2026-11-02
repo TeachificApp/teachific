@@ -32,19 +32,19 @@ export function getSessionCookieOptions(
   //   hostname !== "127.0.0.1" &&
   //   hostname !== "::1";
 
-  // In production, set Domain=.teachific.app so the Manus OAuth session cookie
-  // is also shared across all subdomains (myorg.teachific.app, etc.)
+  // In production, set Domain=.course360.app so the Manus OAuth session cookie
+  // is also shared across all subdomains (myorg.course360.app, etc.)
   const hostname = req.hostname ?? "";
-  const isTeachificProd =
-    hostname === "teachific.app" ||
-    hostname === "www.teachific.app" ||
-    hostname.endsWith(".teachific.app");
+  const isCourse360Prod =
+    hostname === "course360.app" ||
+    hostname === "www.course360.app" ||
+    hostname.endsWith(".course360.app");
 
   return {
     httpOnly: true,
     path: "/",
     sameSite: "none",
     secure: isSecureRequest(req),
-    ...(isTeachificProd ? { domain: ".teachific.app" } : {}),
+    ...(isCourse360Prod ? { domain: ".course360.app" } : {}),
   };
 }

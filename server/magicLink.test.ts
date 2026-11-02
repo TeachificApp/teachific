@@ -44,32 +44,32 @@ describe("Magic link expiry", () => {
 describe("Magic link email template", () => {
   it("includes the magic URL in the email body", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
-    const html = magicLinkEmailHtml("Alice", "https://teachific.app/magic-link/verify?token=abc123", 15);
-    expect(html).toContain("https://teachific.app/magic-link/verify?token=abc123");
+    const html = magicLinkEmailHtml("Alice", "https://course360.app/magic-link/verify?token=abc123", 15);
+    expect(html).toContain("https://course360.app/magic-link/verify?token=abc123");
   });
 
   it("includes the expiry time in the email body", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
-    const html = magicLinkEmailHtml("Bob", "https://teachific.app/magic-link/verify?token=xyz", 15);
+    const html = magicLinkEmailHtml("Bob", "https://course360.app/magic-link/verify?token=xyz", 15);
     expect(html).toContain("15");
   });
 
   it("shows 'there' when name is empty", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
-    const html = magicLinkEmailHtml("", "https://teachific.app/magic-link/verify?token=xyz", 15);
+    const html = magicLinkEmailHtml("", "https://course360.app/magic-link/verify?token=xyz", 15);
     expect(html).toContain("there");
   });
 
   it("shows the user's name when provided", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
-    const html = magicLinkEmailHtml("Charlie", "https://teachific.app/magic-link/verify?token=xyz", 15);
+    const html = magicLinkEmailHtml("Charlie", "https://course360.app/magic-link/verify?token=xyz", 15);
     expect(html).toContain("Charlie");
   });
 
   it("includes a sign-in CTA button", async () => {
     const { magicLinkEmailHtml } = await import("./emailTemplates");
-    const html = magicLinkEmailHtml("Dave", "https://teachific.app/magic-link/verify?token=xyz", 15);
-    expect(html).toContain("Sign in to Teachific");
+    const html = magicLinkEmailHtml("Dave", "https://course360.app/magic-link/verify?token=xyz", 15);
+    expect(html).toContain("Sign in to Course360");
   });
 });
 

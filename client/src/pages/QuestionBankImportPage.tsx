@@ -322,7 +322,7 @@ export default function QuestionBankImportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
-                <p>Upload a Teachific-format Excel file (.xlsx or .xls). Use the template for best results. You can also bundle media files in a ZIP.</p>
+                <p>Upload a Course360-format Excel file (.xlsx or .xls). Use the template for best results. You can also bundle media files in a ZIP.</p>
                 <Button variant="outline" size="sm" asChild className="gap-1.5 w-full mt-1">
                   <a href="/api/quiz/template/xlsx" download>
                     <Download className="h-3.5 w-3.5" />

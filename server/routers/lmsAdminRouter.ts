@@ -2,11 +2,11 @@ import { z } from "zod";
 import { eq, asc, like, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb, getOrgIdForUser, requireOrgAdmin } from "../db";
+import { getDb, requireOrgAdmin } from "../db";
 import { lmsCourseBuilderRouter } from "./lmsCourseBuilderRouter";
 import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
-import { assertCourseOwnership } from "./lmsHelpers";
+import { assertCourseOwnership, getLmsAdminOrgId, hasPlatformWideLmsAccess } from "./lmsHelpers";
 import {
   lmsCourses,
   lmsLandingPages,
@@ -28,9 +28,8 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return [];
       const courses = await db
         .select({ id: lmsCourses.id, title: lmsCourses.title, type: lmsCourses.type })
         .from(lmsCourses)
@@ -56,9 +55,8 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return [];
       const products = await db
         .select({ id: digitalProducts.id, title: digitalProducts.title, landingBlocks: digitalProducts.salesPageBlocksJson })
         .from(digitalProducts)
@@ -76,9 +74,8 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      if (!isPlatformAdmin && orgId === null) return [];
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return [];
       const products = await db
         .select({ id: physicalProducts.id, title: physicalProducts.title, landingBlocks: physicalProducts.landingBlocks })
         .from(physicalProducts)
@@ -167,6 +164,7 @@ const _lmsAdminBaseRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lp] = await db
@@ -275,11 +273,8 @@ const _lmsAdminBaseRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      // Safety: if not a platform admin and no org found, return empty to prevent data leak
-      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return { courses: [], total: 0 };
       const conditions: any[] = [];
       if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as any));
@@ -300,6 +295,7 @@ const _lmsAdminBaseRouter = router({
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select()

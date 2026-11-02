@@ -285,9 +285,9 @@ export default function WebhooksPage() {
           <div>
             <h4 className="font-medium text-foreground mb-1">Payload Format</h4>
             <p className="text-xs">
-              Teachific sends a <code className="bg-muted px-1 rounded">POST</code> request with a JSON payload containing
+              Course360 sends a <code className="bg-muted px-1 rounded">POST</code> request with a JSON payload containing
               the event type, timestamp, and relevant data. Verify authenticity using the{" "}
-              <code className="bg-muted px-1 rounded">X-Teachific-Signature</code> header (HMAC-SHA256 of the raw body using your webhook secret).
+              <code className="bg-muted px-1 rounded">X-Course360-Signature</code> header (HMAC-SHA256 of the raw body using your webhook secret).
             </p>
           </div>
           <div>

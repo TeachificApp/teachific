@@ -2,8 +2,8 @@ import sgMail from "@sendgrid/mail";
 import { createCipheriv, createDecipheriv, scryptSync, randomBytes } from "crypto";
 
 const PLATFORM_SENDGRID_KEY = process.env.SENDGRID_API_KEY ?? "";
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? "hello@teachific.net";
-const FROM_NAME = process.env.SENDGRID_FROM_NAME ?? "Teachific";
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? "hello@course360.app";
+const FROM_NAME = process.env.SENDGRID_FROM_NAME ?? "Course360";
 
 if (PLATFORM_SENDGRID_KEY) {
   sgMail.setApiKey(PLATFORM_SENDGRID_KEY);

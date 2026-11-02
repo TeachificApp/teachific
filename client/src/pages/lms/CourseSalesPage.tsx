@@ -476,7 +476,7 @@ export default function CourseSalesPage() {
     if (!course) return;
     if (price && price > 0) {
       // Route paid enrollments through the hosted checkout (Stripe gateway)
-      // TeachificPay is in internal test mode — set TEACHIFIC_PAY_ENABLED in stripePlans.ts when ready
+      // Course360Pay is in internal test mode — set TEACHIFIC_PAY_ENABLED in stripePlans.ts when ready
       const slug = (course as any).slug;
       if (slug) {
         setLocation(`/checkout/course/${slug}${pricingId ? `?pricing_option_id=${pricingId}` : ""}`);

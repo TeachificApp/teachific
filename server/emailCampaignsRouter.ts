@@ -372,7 +372,7 @@ export const emailCampaignsRouter = router({
           let errorMsg: string | null = null;
           try {
             const unsubscribeToken = await ensureUnsubscribeToken(db, recipient.id);
-            const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken, "https://teachific.app");
+            const unsubscribeUrl = buildUnsubscribeUrl(unsubscribeToken, "https://course360.app");
             const htmlWithFooter = injectUnsubscribeFooter(
               campaign[0].htmlBody,
               unsubscribeUrl,

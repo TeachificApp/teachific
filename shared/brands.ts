@@ -1,6 +1,6 @@
 /**
  * Shared brand definitions used by both server and client.
- * Teachific platform — single-brand, org-scoped.
+ * Course360 platform — single-brand, org-scoped.
  */
 
 export type Brand = "teachific";
@@ -38,14 +38,14 @@ export interface BrandDisplayConfig {
 export function getBrandDisplayConfig(_mode?: BrandMode): BrandDisplayConfig {
   return {
     brandMode: "teachific",
-    displayName: "Teachific™",
-    shortName: "Teachific",
+    displayName: "Course360™",
+    shortName: "Course360",
     tagline: "Online Learning & Coaching Platform",
-    senderEmail: process.env.SENDGRID_FROM_EMAIL || "noreply@teachific.com",
-    senderName: process.env.SENDGRID_FROM_NAME || "Teachific™",
-    supportEmail: "support@teachific.com",
-    websiteUrl: "https://www.teachific.com",
-    appUrl: process.env.VITE_OAUTH_PORTAL_URL || "https://app.teachific.com",
+    senderEmail: process.env.SENDGRID_FROM_EMAIL || "noreply@course360.app",
+    senderName: process.env.SENDGRID_FROM_NAME || "Course360™",
+    supportEmail: "support@course360.app",
+    websiteUrl: "https://www.course360.app",
+    appUrl: process.env.VITE_OAUTH_PORTAL_URL || "https://app.course360.app",
     logoUrl: "",
     primaryColor: "#189aa1",
     darkColor: "#0e1e2e",

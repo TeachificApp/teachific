@@ -9,7 +9,7 @@ interface SubdomainThemeProviderProps {
 
 /**
  * Fetches the org's studentTheme preference and applies it to all learner-facing pages.
- * Defaults to "light" (Teachific teal) if no theme is set.
+ * Defaults to "light" (Course360 teal) if no theme is set.
  */
 export function SubdomainThemeProvider({ subdomain, children }: SubdomainThemeProviderProps) {
   const { data: theme } = trpc.lms.publicSchool.themeBySlug.useQuery(

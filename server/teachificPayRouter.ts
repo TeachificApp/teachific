@@ -1,14 +1,14 @@
 /**
- * TeachificPay Router
+ * Course360Pay Router
  *
  * Handles Stripe Connect Express onboarding, platform-fee checkout,
  * gateway enforcement, and payout data for school owners/admins.
  *
  * Rules:
- *  - Free: MUST use TeachificPay (2% platform fee)
- *  - Starter: MUST use TeachificPay (1% platform fee)
- *  - Builder: MUST use TeachificPay (0.5% platform fee)
- *  - Pro / Enterprise: can choose TeachificPay (0% fee) or own gateway
+ *  - Free: MUST use Course360Pay (2% platform fee)
+ *  - Starter: MUST use Course360Pay (1% platform fee)
+ *  - Builder: MUST use Course360Pay (0.5% platform fee)
+ *  - Pro / Enterprise: can choose Course360Pay (0% fee) or own gateway
  *  - Group registrations: follow the org's gateway setting
  */
 import { TRPCError } from "@trpc/server";
@@ -54,7 +54,7 @@ async function requireOrgAccess(
 
 export const teachificPayRouter = router({
   /**
-   * Get TeachificPay status for an org (gateway, connect status, fees).
+   * Get Course360Pay status for an org (gateway, connect status, fees).
    * Accessible by org owner, org admins, and site admins.
    */
   getStatus: protectedProcedure
@@ -213,9 +213,9 @@ export const teachificPayRouter = router({
     }),
 
   /**
-   * Create a TeachificPay checkout session for a course purchase.
-   * Enforces gateway rules: Free/Starter/Builder must use TeachificPay.
-   * Pro/Enterprise can use their own gateway or TeachificPay.
+   * Create a Course360Pay checkout session for a course purchase.
+   * Enforces gateway rules: Free/Starter/Builder must use Course360Pay.
+   * Pro/Enterprise can use their own gateway or Course360Pay.
    */
   createCheckout: protectedProcedure
     .input(
@@ -234,11 +234,11 @@ export const teachificPayRouter = router({
       const { org, tier, limits } = await getOrgWithPlan(input.orgId);
 
       const stripe = getStripe();
-      const useTeachificPay =
-        !limits.customGateway || // Free/Starter/Builder must use TeachificPay
-        org.paymentGateway === "teachific_pay"; // Pro/Enterprise opted into TeachificPay
+      const useCourse360Pay =
+        !limits.customGateway || // Free/Starter/Builder must use Course360Pay
+        org.paymentGateway === "teachific_pay"; // Pro/Enterprise opted into Course360Pay
 
-      if (!useTeachificPay && !org.stripeConnectAccountId) {
+      if (!useCourse360Pay && !org.stripeConnectAccountId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Own gateway selected but Stripe Connect account not configured.",
@@ -246,7 +246,7 @@ export const teachificPayRouter = router({
       }
 
       const feePercent = limits.teachificPayFeePercent;
-      const platformFeeAmount = useTeachificPay
+      const platformFeeAmount = useCourse360Pay
         ? Math.round(input.priceInCents * (feePercent / 100))
         : 0;
 
@@ -277,15 +277,15 @@ export const teachificPayRouter = router({
           course_id: String(input.courseId),
           is_group_registration: String(input.isGroupRegistration),
           group_size: String(input.groupSize),
-          gateway: useTeachificPay ? "teachific_pay" : "own_gateway",
+          gateway: useCourse360Pay ? "teachific_pay" : "own_gateway",
           platform_fee_percent: String(feePercent),
         },
       };
 
-      // Add platform fee and transfer for TeachificPay.
+      // Add platform fee and transfer for Course360Pay.
       // transfer_data MUST always be set so funds route to the connected account.
       // application_fee_amount is only set when there is actually a fee to collect.
-      if (useTeachificPay && org.stripeConnectAccountId) {
+      if (useCourse360Pay && org.stripeConnectAccountId) {
         sessionParams.payment_intent_data = {
           ...(platformFeeAmount > 0 ? { application_fee_amount: platformFeeAmount } : {}),
           transfer_data: {
@@ -295,7 +295,7 @@ export const teachificPayRouter = router({
       }
 
       const session = await stripe.checkout.sessions.create(sessionParams);
-      return { checkoutUrl: session.url, sessionId: session.id, platformFeeAmount, useTeachificPay };
+      return { checkoutUrl: session.url, sessionId: session.id, platformFeeAmount, useCourse360Pay };
     }),
 
   /**
@@ -352,7 +352,7 @@ export const teachificPayRouter = router({
   // ─── Platform Admin Procedures ─────────────────────────────────────────────
 
   /**
-   * [Platform Admin] List all orgs with their TeachificPay status.
+   * [Platform Admin] List all orgs with their Course360Pay status.
    */
   adminListAccounts: protectedProcedure.query(async ({ ctx }) => {
     if (ctx.user.role !== "site_owner" && ctx.user.role !== "site_admin") {

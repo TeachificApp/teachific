@@ -1,12 +1,12 @@
 /**
  * lmsCohortAdminRouter.ts
- * Teachific™ LMS — Cohort Sessions, Assignments, Recordings (admin)
+ * Course360™ LMS — Cohort Sessions, Assignments, Recordings (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * Teachific™ LMS — LMS Management
+ * Course360™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -166,8 +166,8 @@ export const lmsCohortAdminRouter = router({
                   ${input.meetingUrl ? `<tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Join Link</td><td style="padding:8px 12px;border:1px solid #d1fae5;"><a href="${input.meetingUrl}" style="color:#0d9488;">Click to join</a></td></tr>` : ""}
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>
-                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
+                <p><a href="https://members.course360.app/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Your Schedule</a></p>
+                <p style="color:#94a3b8;font-size:12px;">Course360™</p>
               </div>`,
             });
           }
@@ -293,8 +293,8 @@ export const lmsCohortAdminRouter = router({
                   <tr><td style="padding:8px 12px;background:#f0fafa;font-weight:600;border:1px solid #d1fae5;">Submission</td><td style="padding:8px 12px;border:1px solid #d1fae5;">${input.submissionType}</td></tr>
                 </table>
                 ${input.description ? `<p style="color:#475569;">${input.description}</p>` : ""}
-                <p><a href="https://members.teachific.com/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>
-                <p style="color:#94a3b8;font-size:12px;">Teachific™</p>
+                <p><a href="https://members.course360.app/cohort/${input.courseId}" style="display:inline-block;padding:10px 20px;background:#0d9488;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">View Assignments</a></p>
+                <p style="color:#94a3b8;font-size:12px;">Course360™</p>
               </div>`,
             });
           }
@@ -620,7 +620,7 @@ export const lmsCohortAdminRouter = router({
         const end = new Date(start.getTime() + (s.durationMinutes ?? 60) * 60 * 1000);
         lines.push(
           "BEGIN:VEVENT",
-          `UID:cohort-session-${s.id}@teachific.com`,
+          `UID:cohort-session-${s.id}@course360.app`,
           `DTSTAMP:${formatIcsDate(new Date())}`,
           `DTSTART:${formatIcsDate(start)}`,
           `DTEND:${formatIcsDate(end)}`,

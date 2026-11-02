@@ -1,4 +1,4 @@
-# Teachific Replication & Failover Setup
+# Course360 Replication & Failover Setup
 
 This document outlines the real-time replication system that keeps your Railway backup in sync with your primary Manus deployment.
 
@@ -140,7 +140,7 @@ This monitors Manus S3 and syncs new/updated files to Cloudflare R2 every 5 minu
 Or run as a systemd service:
 ```ini
 [Unit]
-Description=Teachific Database Replication
+Description=Course360 Database Replication
 After=network.target
 
 [Service]
@@ -231,8 +231,8 @@ mysqldump -h roundhouse.proxy.rlwy.net -u root -p railway > railway-backup.sql
 
 **Step 3: Update DNS back to Manus**
 ```
-CNAME www → teachific.app
-CNAME * → teachific.app
+CNAME www → course360.app
+CNAME * → course360.app
 ```
 
 **Step 4: Verify Manus is serving traffic**
@@ -291,7 +291,7 @@ If Cloudflare DNS doesn't update:
 1. Clear Cloudflare cache
 2. Wait for TTL (usually 5 minutes)
 3. Verify CNAME records are correct
-4. Check DNS propagation: `nslookup teachific.app`
+4. Check DNS propagation: `nslookup course360.app`
 
 ## Best Practices
 

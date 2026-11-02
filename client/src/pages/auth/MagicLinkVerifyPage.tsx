@@ -94,7 +94,7 @@ export default function MagicLinkVerifyPage() {
             </p>
           </div>
         </div>
-        <p className="relative z-10 text-white/25 text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved.</p>
+        <p className="relative z-10 text-white/25 text-xs">© {new Date().getFullYear()} Course360™. All rights reserved.</p>
       </div>
 
       {/* Right panel */}

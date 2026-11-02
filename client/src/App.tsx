@@ -33,6 +33,7 @@ import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminPermissionsPage from "./pages/admin/AdminPermissionsPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import PlatformAdminPage from "./pages/admin/PlatformAdminPage";
+import BlueprintsPage from "./pages/BlueprintsPage";
 
 import CoursesPage from "./pages/lms/CoursesPage";
 import CourseBuilderPage from "./pages/lms/CourseBuilderPage";
@@ -167,6 +168,20 @@ import JoinGroupPage from "./pages/JoinGroupPage";
 
 
 const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/magic-link"];
+const GAMES_ALIAS_PATHS = ["/games", "/teach-games", "/teachific-games"];
+
+function getRootAppPath(path: string) {
+  const { hostname, protocol } = window.location;
+  if (hostname.endsWith(".course360.app") && hostname !== "course360.app" && hostname !== "www.course360.app") {
+    return `${protocol}//course360.app${path}`;
+  }
+  return path;
+}
+
+function RedirectTo({ path }: { path: string }) {
+  window.location.replace(getRootAppPath(path));
+  return null;
+}
 
 // Bare routes — no admin sidebar (share links, embeds, auth pages, student player)
 function BareRouter() {
@@ -223,16 +238,20 @@ function BareRouter() {
         <Route path="/quiz-creator-app" component={QuizCreatorDashboard} />
         {/* QuizMaker sales/marketing page */}
         <Route path="/quiz-creator-pro" component={QuizCreatorLandingPage} />
-        {/* Teachific Studio standalone dashboard */}
+        {/* Course360 Studio standalone dashboard */}
         <Route path="/studio/download">{() => <DesktopDownloadPage app="studio" />}</Route>
         <Route path="/studio" component={StudioDashboard} />
-        {/* Teachific Studio sales/marketing page */}
+        {/* Course360 Studio sales/marketing page */}
         <Route path="/studio-pro" component={StudioLandingPage} />
-        {/* TeachificCreator™ — eLearning authoring tool */}
+        {/* Course360Creator™ — eLearning authoring tool */}
         <Route path="/creator-pro" component={CreatorLandingPage} />
         <Route path="/creator/download">{() => <DesktopDownloadPage app="creator" />}</Route>
         <Route path="/creator" component={CreatorDashboardPage} />
         <Route path="/creator/:projectId" component={CreatorEditorPage} />
+        {/* Legacy Teach Games URLs now live under the Course360 Creator toolset. */}
+        <Route path="/games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
         {/* Public quiz player — no auth required */}
         <Route path="/school/:orgSlug/quiz/:shareToken" component={PublicQuizPlayerPage} />
         <Route path="/quiz/:shareToken" component={PublicQuizPlayerPage} />
@@ -304,6 +323,8 @@ function AdminRouter() {
           <Route path="/media-library" component={MediaLibraryPage} />
           <Route path="/question-bank" component={QuestionBankPage} />
           <Route path="/question-bank/import" component={QuestionBankImportPage} />
+          <Route path="/lms/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+          <Route path="/lms/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
           <Route path="/record">{() => { window.location.replace("/media-library#record-edit"); return null; }}</Route>
 
           {/* ── Marketing ── */}
@@ -337,6 +358,13 @@ function AdminRouter() {
           <Route path="/sales/order-bumps" component={OrderBumpsPage} />
           <Route path="/sales/order-bumps/:id" component={OrderBumpEditorPage} />
 
+          {/* ── Blueprints ── */}
+          <Route path="/blueprints/marketplace" component={BlueprintsPage} />
+          <Route path="/blueprints/installed" component={BlueprintsPage} />
+          <Route path="/blueprints/manage" component={BlueprintsPage} />
+          <Route path="/blueprints" component={BlueprintsPage} />
+          <Route path="/blueprint">{() => { window.location.replace("/blueprints"); return null; }}</Route>
+
           {/* ── Analytics ── */}
           <Route path="/analytics/revenue" component={RevenueAnalyticsPage} />
           <Route path="/analytics/engagement" component={EngagementAnalyticsPage} />
@@ -353,6 +381,9 @@ function AdminRouter() {
           <Route path="/integrations" component={IntegrationsPage} />
           <Route path="/integrations/api" component={ApiPage} />
           <Route path="/integrations/webhooks" component={WebhooksPage} />
+          <Route path="/integrations/thinkific" component={ThinkificImportPage} />
+          <Route path="/integrations/teachable" component={TeachableImportPage} />
+          <Route path="/integrations/kajabi" component={KajabiImportPage} />
 
           {/* ── Profile ── */}
           <Route path="/profile" component={ProfilePage} />
@@ -383,6 +414,8 @@ function AdminRouter() {
           <Route path="/quizzes/:id/analytics" component={QuizResultsPage} />
           <Route path="/lms/my-courses" component={MyCoursesPage} />
           <Route path="/lms/my-certificates" component={MyCertificatesPage} />
+          <Route path="/settings/:tab" component={OrgSettingsPage} />
+          <Route path="/lms/settings/:tab" component={OrgSettingsPage} />
           <Route path="/lms/branding" component={BrandingPage} />
           <Route path="/lms/page-builder/:pageId" component={PageBuilderPage} />
           <Route path="/lms/courses/:courseId/page-builder" component={PageBuilderPage} />
@@ -408,36 +441,36 @@ function AdminRouter() {
 
 /**
  * SubdomainSchoolRouter
- * When the app is accessed via an org subdomain (e.g. myorg.teachific.app),
+ * When the app is accessed via an org subdomain (e.g. myorg.course360.app),
  * serve both the learner portal AND the admin dashboard for org admins.
  */
 function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
-  const isTeachificLearn = subdomain === "learn";
-  const schoolSubdomain = isTeachificLearn ? "teach" : subdomain;
+  const isCourse360Learn = subdomain === "learn";
+  const schoolSubdomain = isCourse360Learn ? "teach" : subdomain;
   const { user, loading } = useAuth();
   const { data: orgs, isLoading: orgsLoading } = trpc.orgs.myOrgs.useQuery(undefined, {
-    enabled: isTeachificLearn && !!user,
+    enabled: isCourse360Learn && !!user,
   });
-  const canAccessTeachificLearn = !isTeachificLearn ||
+  const canAccessCourse360Learn = !isCourse360Learn ||
     user?.role === "site_owner" ||
     user?.role === "site_admin" ||
     (orgs ?? []).some((org: any) => org.role === "org_admin" || org.role === "org_super_admin");
 
-  if (isTeachificLearn && (loading || (!!user && orgsLoading))) {
+  if (isCourse360Learn && (loading || (!!user && orgsLoading))) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading...</div>;
   }
 
-  if (isTeachificLearn && !user) {
+  if (isCourse360Learn && !user) {
     return <LoginPage />;
   }
 
-  if (isTeachificLearn && !canAccessTeachificLearn) {
+  if (isCourse360Learn && !canAccessCourse360Learn) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900">Teachific Learn is for org admins</h1>
+          <h1 className="text-xl font-bold text-slate-900">Course360 Learn is for org admins</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Sign in with an organization admin account to access Teachific platform tutorials and FAQs.
+            Sign in with an organization admin account to access Course360 platform tutorials and FAQs.
           </p>
           <button
             className="mt-5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"
@@ -459,6 +492,12 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
         <Route path="/magic-link/verify" component={MagicLinkVerifyPage} />
+        <Route path="/studio/download">{() => <RedirectTo path="/studio/download" />}</Route>
+        <Route path="/studio-pro">{() => <RedirectTo path="/studio-pro" />}</Route>
+        <Route path="/studio">{() => <RedirectTo path="/studio" />}</Route>
+        <Route path="/games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
 
         {/* ── Admin dashboard routes (org_admin / org_super_admin) ── */}
         {/* These are served inside DashboardLayout on the subdomain */}
@@ -495,6 +534,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/products/community/:hubId/manage">{() => <DashboardLayout><CommunityManagePage /></DashboardLayout>}</Route>
         <Route path="/products/categories">{() => <DashboardLayout><CategoriesPage /></DashboardLayout>}</Route>
         <Route path="/media-library">{() => <DashboardLayout><MediaLibraryPage /></DashboardLayout>}</Route>
+        <Route path="/lms/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/lms/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
         <Route path="/marketing/website">{() => <DashboardLayout><WebsitePage /></DashboardLayout>}</Route>
         <Route path="/marketing/email">{() => <DashboardLayout><EmailCampaignsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
@@ -506,6 +547,11 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/sales/coupons">{() => <DashboardLayout><CouponsPage /></DashboardLayout>}</Route>
         <Route path="/sales/invoices">{() => <DashboardLayout><InvoicesPage /></DashboardLayout>}</Route>
         <Route path="/sales">{() => { window.location.replace("/sales/orders"); return null; }}</Route>
+        <Route path="/blueprints/marketplace">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints/installed">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints/manage">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprints">{() => <DashboardLayout><BlueprintsPage /></DashboardLayout>}</Route>
+        <Route path="/blueprint">{() => { window.location.replace("/blueprints"); return null; }}</Route>
         <Route path="/analytics/revenue">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics/engagement">{() => <DashboardLayout><EngagementAnalyticsPage /></DashboardLayout>}</Route>
         <Route path="/analytics">{() => <DashboardLayout><RevenueAnalyticsPage /></DashboardLayout>}</Route>
@@ -521,6 +567,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/billing">{() => <DashboardLayout><BillingPage /></DashboardLayout>}</Route>
         <Route path="/support">{() => <DashboardLayout><SupportPage /></DashboardLayout>}</Route>
         <Route path="/lms/branding">{() => <DashboardLayout><BrandingPage /></DashboardLayout>}</Route>
+        <Route path="/settings/:tab">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
+        <Route path="/lms/settings/:tab">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/settings">{() => <DashboardLayout><OrgSettingsPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-courses">{() => <DashboardLayout><MyCoursesPage /></DashboardLayout>}</Route>
         <Route path="/lms/my-certificates">{() => <DashboardLayout><MyCertificatesPage /></DashboardLayout>}</Route>
@@ -622,6 +670,7 @@ function Router() {
     path.startsWith("/studio") ||
     path.startsWith("/studio-pro") ||
     path.startsWith("/creator") ||
+    GAMES_ALIAS_PATHS.includes(path) ||
     path.startsWith("/policies") ||
     path === "/terms" ||
     path === "/privacy" ||

@@ -1254,8 +1254,8 @@ export default function CourseLanding() {
 
   // Set page title
   useEffect(() => {
-    if (course?.title) document.title = `${course.title} | Education Library | Teachific™`;
-    return () => { document.title = "UltrasoundAssist™ | Teachific™"; };
+    if (course?.title) document.title = `${course.title} | Education Library | Course360™`;
+    return () => { document.title = "UltrasoundAssist™ | Course360™"; };
   }, [course?.title]);
 
   return (
@@ -1279,7 +1279,7 @@ export default function CourseLanding() {
                 {TYPE_ICONS[course.type]} {course.type === "download" ? "Digital Download" : course.type.charAt(0).toUpperCase() + course.type.slice(1)}
               </Badge>
               <Badge variant="outline" className="border-teal-400 text-teal-200">
-                {course.brand === "teachific" ? "Teachific™" : "Teachific™"}
+                {course.brand === "teachific" ? "Course360™" : "Course360™"}
               </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold leading-tight">{lp?.heroTitle ?? course.title}</h1>

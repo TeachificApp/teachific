@@ -1,4 +1,4 @@
-# Teachific Build Workflow Rules
+# Course360 Build Workflow Rules
 
 ## Request Handling — STRICT ORDER
 

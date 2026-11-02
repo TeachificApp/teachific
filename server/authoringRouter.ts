@@ -1,5 +1,5 @@
 /**
- * TeachificCreator™ — Authoring Router
+ * Course360Creator™ — Authoring Router
  * Handles project CRUD, slide management, and SCORM/HTML5 export generation.
  */
 import { z } from "zod";
@@ -124,7 +124,7 @@ function escapeXml(str: string) {
 
 // ─── SCORM 1.2 API Wrapper ────────────────────────────────────────────────────
 const SCORM12_API_JS = `
-// TeachificCreator™ SCORM 1.2 API Wrapper
+// Course360Creator™ SCORM 1.2 API Wrapper
 var API = null;
 function findAPI(win) {
   var attempts = 0;
@@ -182,7 +182,7 @@ window.ScormAPI = ScormAPI;
 
 // ─── SCORM 2004 API Wrapper ───────────────────────────────────────────────────
 const SCORM2004_API_JS = `
-// TeachificCreator™ SCORM 2004 API Wrapper
+// Course360Creator™ SCORM 2004 API Wrapper
 var API_1484_11 = null;
 function findAPI(win) {
   var attempts = 0;
@@ -386,7 +386,7 @@ function buildCourseHtml(
     updateNav();
   });
 </script>
-${showWatermark ? `<div id="teachific-watermark" style="position:fixed;bottom:0;left:0;right:0;z-index:999999;pointer-events:none;display:flex;align-items:center;justify-content:center;padding:6px 16px;background:rgba(24,154,161,0.93);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;font-weight:600;color:#fff;letter-spacing:0.02em;user-select:none;-webkit-user-select:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="margin-right:6px;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Created with Teachific™ — <a href="https://teachific.com" target="_blank" rel="noopener" style="color:#4ad9e0;text-decoration:none;margin-left:4px;pointer-events:all;">Upgrade to remove watermark</a></div>` : ''}
+${showWatermark ? `<div id="teachific-watermark" style="position:fixed;bottom:0;left:0;right:0;z-index:999999;pointer-events:none;display:flex;align-items:center;justify-content:center;padding:6px 16px;background:rgba(24,154,161,0.93);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;font-weight:600;color:#fff;letter-spacing:0.02em;user-select:none;-webkit-user-select:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="margin-right:6px;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Created with Course360™ — <a href="https://course360.app" target="_blank" rel="noopener" style="color:#4ad9e0;text-decoration:none;margin-left:4px;pointer-events:all;">Upgrade to remove watermark</a></div>` : ''}
 </body>
 </html>`;
 }
@@ -747,7 +747,7 @@ export const authoringRouter = router({
       // Add course data JS
       zip.file(
         "course.js",
-        `// TeachificCreator™ Course Data\nvar COURSE_TITLE = ${JSON.stringify(project.title)};\nvar SLIDE_COUNT = ${slides.length};\n`
+        `// Course360Creator™ Course Data\nvar COURSE_TITLE = ${JSON.stringify(project.title)};\nvar SLIDE_COUNT = ${slides.length};\n`
       );
 
       if (input.format === "scorm12") {

@@ -5,8 +5,8 @@
  * (login, register, forgot-password, reset-password, verify-email)
  * can be white-labeled per school.
  *
- * Returns null branding when on the root domain (teachific.app),
- * so pages fall back to the default Teachific look.
+ * Returns null branding when on the root domain (course360.app),
+ * so pages fall back to the default Course360 look.
  */
 import { useMemo } from "react";
 import { trpc } from "@/lib/trpc";
@@ -29,13 +29,13 @@ export interface OrgAuthBranding {
 export interface UseOrgAuthBrandingResult {
   branding: OrgAuthBranding | null;
   isLoading: boolean;
-  /** Resolved primary color — falls back to Teachific teal */
+  /** Resolved primary color — falls back to Course360 teal */
   primary: string;
   /** Resolved button text color — falls back to white */
   buttonText: string;
   /** Resolved page background — falls back to white */
   pageBg: string;
-  /** Resolved org name — falls back to "Teachific" */
+  /** Resolved org name — falls back to "Course360" */
   displayName: string;
 }
 
@@ -77,6 +77,6 @@ export function useOrgAuthBranding(): UseOrgAuthBrandingResult {
     primary: branding?.primaryColor ?? DEFAULT_PRIMARY,
     buttonText: branding?.buttonTextColor ?? DEFAULT_BUTTON_TEXT,
     pageBg: branding?.pageBgColor ?? DEFAULT_PAGE_BG,
-    displayName: branding?.orgName ?? "Teachific",
+    displayName: branding?.orgName ?? "Course360",
   };
 }

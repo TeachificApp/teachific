@@ -1,4 +1,4 @@
-# Teachific Product Requirements Reference
+# Course360 Product Requirements Reference
 
 ## Screenshots Analysis (iSpring QuizMaker reference)
 
@@ -21,7 +21,7 @@
 - **Preview** button
 - **Publish** button
 
-### iSpring Suite (TeachificCreator reference) Features:
+### iSpring Suite (Course360Creator reference) Features:
 - PowerPoint ribbon add-in tab
 - Record Audio, Record Video, Edit Narration
 - Quiz (QuizMaker built-in)
@@ -34,21 +34,21 @@
 
 ## Confirmed Product Structure
 
-### TeachificCreator™ Desktop App - $117/mo
+### Course360Creator™ Desktop App - $117/mo
 - Standalone Electron app (Windows + Mac)
 - Full slide-based course authoring (purpose-built for eLearning)
 - Import .pptx files, export to SCORM/HTML5/.pptx
 - **Built-in QuizMaker** (full feature set as shown in screenshots)
-- **Built-in TeachificStudio** (screen recording + video editing)
+- **Built-in Course360Studio** (screen recording + video editing)
 - Content Library: Characters, Backgrounds, Objects, Icons
 - AI Image Generation
 - Role-Play / Dialogue builder
 - Interactions (Steps, Timeline, Process, Cyclic, Catalog)
-- Login-based activation (email/password through Teachific)
+- Login-based activation (email/password through Course360)
 - 14-day free trial
 - Watermark on exports for free/trial users
 
-### Teachific QuizCreator™ Desktop App - $47/mo
+### Course360 QuizCreator™ Desktop App - $47/mo
 - Standalone Electron app (Windows + Mac)
 - Full QuizMaker as shown in screenshots:
   - Form View + Slide View
@@ -64,7 +64,7 @@
 - 14-day free trial
 - Watermark on exports for free/trial users
 
-### Teachific Studio™ Desktop App - $47/mo
+### Course360 Studio™ Desktop App - $47/mo
 - Standalone Electron app (Windows + Mac)
 - Screen recording: Screen only, Camera only, Screen + Camera
 - Transcription generation from recordings
@@ -76,11 +76,11 @@
 - 14-day free trial
 - Watermark on exports for free/trial users
 
-### Teachific Studio™ Lite (Web, in LMS)
+### Course360 Studio™ Lite (Web, in LMS)
 - Included with LMS Builder plan and above
 - Record only: camera, screen, or both
 - NO editing capability
-- Upgrade prompts to TeachificStudio desktop app
+- Upgrade prompts to Course360Studio desktop app
 - Saves to LMS media library
 
 ## LMS Plan Tiers (existing)
@@ -101,9 +101,9 @@
 ## Pricing Summary
 | Product | Price | Billing |
 |---|---|---|
-| TeachificCreator™ | $117/mo | Monthly subscription |
-| Teachific Studio™ | $47/mo | Monthly subscription |
-| Teachific QuizCreator™ | $47/mo | Monthly subscription |
+| Course360Creator™ | $117/mo | Monthly subscription |
+| Course360 Studio™ | $47/mo | Monthly subscription |
+| Course360 QuizCreator™ | $47/mo | Monthly subscription |
 | LMS Free | $0 | Free |
 | LMS Starter | TBD | Monthly |
 | LMS Builder | TBD | Monthly |

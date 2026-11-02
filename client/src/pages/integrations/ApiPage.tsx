@@ -31,7 +31,7 @@ export default function ApiPage() {
         <div><h1 className="text-2xl font-bold flex items-center gap-2"><Key className="h-6 w-6 text-primary" />API Keys</h1><p className="text-muted-foreground mt-0.5">Manage API keys for programmatic access to your school data</p></div>
         <Button className="gap-2" onClick={() => setShow(true)}><Plus className="h-4 w-4" />New API Key</Button>
       </div>
-      <Card><CardHeader><CardTitle className="text-base">API Documentation</CardTitle><CardDescription>Base URL: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">https://teachific.app/api/v1</code></CardDescription></CardHeader>
+      <Card><CardHeader><CardTitle className="text-base">API Documentation</CardTitle><CardDescription>Base URL: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">https://course360.app/api/v1</code></CardDescription></CardHeader>
         <CardContent><Button variant="outline" size="sm" onClick={() => toast.info("API docs coming soon")}>View Documentation</Button></CardContent>
       </Card>
       <div className="grid gap-4">

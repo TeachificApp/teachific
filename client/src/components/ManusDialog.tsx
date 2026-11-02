@@ -53,7 +53,7 @@ export function ManusDialog({
     >
       <DialogContent className="py-5 bg-[#f8f8f7] rounded-[20px] w-[400px] shadow-[0px_4px_11px_0px_rgba(0,0,0,0.08)] border border-[rgba(0,0,0,0.08)] backdrop-blur-2xl p-0 gap-0 text-center">
         <div className="flex flex-col items-center gap-2 p-5 pt-12">
-          {/* Teachific™ logo */}
+          {/* Course360™ logo */}
           <div className="mb-2">
             <span className="text-2xl font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '-0.02em' }}>
               <span style={{ color: '#1a1a19' }}>teach</span><span style={{ color: '#24abbc' }}>ific</span><span style={{ color: '#1a1a19', fontSize: '0.5em', verticalAlign: 'super', marginLeft: '1px' }}>&#8482;</span>

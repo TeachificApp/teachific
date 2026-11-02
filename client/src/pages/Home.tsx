@@ -487,7 +487,7 @@ export default function Home() {
   });
 
   // Root-domain fallbacks. Org users land on their own org subdomain dashboard;
-  // Teachific Learn remains a separate explicit menu link.
+  // Course360 Learn remains a separate explicit menu link.
   useEffect(() => {
     if (!user || orgLoading || orgsLoading) return;
     const role = orgCtx?.role;

@@ -24,7 +24,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["site_owner", "site_admin", "org_super_admin", "org_admin", "instructor", "affiliate", "member", "user"]).default("member").notNull(),
-  // Custom Teachific auth fields
+  // Custom Course360 auth fields
   passwordHash: varchar("passwordHash", { length: 255 }),
   emailVerified: boolean("emailVerified").default(false).notNull(),
   emailVerificationToken: varchar("emailVerificationToken", { length: 128 }),
@@ -38,11 +38,11 @@ export const users = mysqlTable("users", {
   quizCreatorAccess: mysqlEnum("quizCreatorAccess", ["none", "web", "desktop", "bundle"]).default("none").notNull(),
   // QuizCreator 14-day trial end date (null = no trial started, past date = trial expired)
   quizCreatorTrialEndsAt: timestamp("quizCreatorTrialEndsAt"),
-  // Teachific Studio standalone product access (none=no access, web=web app, desktop=desktop app, bundle=web+desktop)
+  // Course360 Studio standalone product access (none=no access, web=web app, desktop=desktop app, bundle=web+desktop)
   studioAccess: mysqlEnum("studioAccess", ["none", "web", "desktop", "bundle"]).default("none").notNull(),
   // Studio 14-day trial end date (null = no trial started, past date = trial expired)
   studioTrialEndsAt: timestamp("studioTrialEndsAt"),
-  // TeachificCreator™ standalone product access (none=no access, web=web app, desktop=desktop app, bundle=web+desktop)
+  // Course360Creator™ standalone product access (none=no access, web=web app, desktop=desktop app, bundle=web+desktop)
   creatorAccess: mysqlEnum("creatorAccess", ["none", "web", "desktop", "bundle"]).default("none").notNull(),
   // Creator 14-day trial end date (null = no trial started, past date = trial expired)
   creatorTrialEndsAt: timestamp("creatorTrialEndsAt"),
@@ -64,7 +64,7 @@ export const organizations = mysqlTable("organizations", {
   maxStorageBytes: bigint("maxStorageBytes", { mode: "number" }).default(10737418240),
   usedStorageBytes: bigint("usedStorageBytes", { mode: "number" }).default(0),
   isActive: boolean("isActive").default(true).notNull(),
-  // Subdomain on teachific.app (uses org slug by default)
+  // Subdomain on course360.app (uses org slug by default)
   subdomainEnabled: boolean("subdomainEnabled").default(false).notNull(),
   customSubdomain: varchar("customSubdomain", { length: 100 }),
   // Custom domain for Pro+ orgs
@@ -82,7 +82,7 @@ export const organizations = mysqlTable("organizations", {
   footerLinks: text("footerLinks"),
   // Primary org flag — the owner's default org shown on login
   isPrimary: boolean("isPrimary").default(false).notNull(),
-  // TeachificPay / Stripe Connect
+  // Course360Pay / Stripe Connect
   stripeConnectAccountId: varchar("stripeConnectAccountId", { length: 255 }),
   stripeConnectStatus: mysqlEnum("stripeConnectStatus", ["not_connected", "pending", "active", "restricted", "suspended"]).default("not_connected").notNull(),
   paymentGateway: mysqlEnum("paymentGateway", ["teachific_pay", "own_gateway"]).default("teachific_pay").notNull(),
@@ -108,7 +108,7 @@ export const organizations = mysqlTable("organizations", {
   embedAllowedDomains: text("embedAllowedDomains"), // JSON array of allowed domains
   embedDefaultTheme: mysqlEnum("embedDefaultTheme", ["light", "dark", "auto"]).default("auto").notNull(),
   embedAnalyticsEnabled: boolean("embedAnalyticsEnabled").default(true).notNull(),
-  embedHideTeachificBranding: boolean("embedHideTeachificBranding").default(false).notNull(),
+  embedHideCourse360Branding: boolean("embedHideCourse360Branding").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -788,7 +788,7 @@ export const platformSettings = mysqlTable("platform_settings", {
   id: int("id").autoincrement().primaryKey(),
   allowPublicRegistration: boolean("allowPublicRegistration").default(false).notNull(),
   maintenanceMode: boolean("maintenanceMode").default(false).notNull(),
-  platformName: varchar("platformName", { length: 255 }).default("Teachific").notNull(),
+  platformName: varchar("platformName", { length: 255 }).default("Course360").notNull(),
   supportEmail: varchar("supportEmail", { length: 320 }),
   maxUploadSizeMb: int("maxUploadSizeMb").default(500).notNull(),
   enterpriseMaxUploadSizeMb: int("enterpriseMaxUploadSizeMb").default(5000).notNull(),
@@ -1273,7 +1273,7 @@ export const certificateTemplates = mysqlTable("certificate_templates", {
   signatureTitle: varchar("signatureTitle", { length: 255 }),
   signatureImageUrl: text("signatureImageUrl"),
   footerText: text("footerText"),
-  showTeachificBranding: boolean("showTeachificBranding").default(true).notNull(),
+  showCourse360Branding: boolean("showCourse360Branding").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type CertificateTemplate = typeof certificateTemplates.$inferSelect;
@@ -1970,7 +1970,7 @@ export const orgPaymentSettings = mysqlTable("org_payment_settings", {
 export type OrgPaymentSettings = typeof orgPaymentSettings.$inferSelect;
 export type InsertOrgPaymentSettings = typeof orgPaymentSettings.$inferInsert;
 
-// ── Teachific Author: eLearning Authoring Tool ─────────────────────────────
+// ── Course360 Author: eLearning Authoring Tool ─────────────────────────────
 
 export const authoringProjects = mysqlTable("authoringProjects", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
@@ -2037,8 +2037,8 @@ export const appVersions = mysqlTable("app_versions", {
 export type AppVersion = typeof appVersions.$inferSelect;
 export type InsertAppVersion = typeof appVersions.$inferInsert;
 
-// ─── TeachificPay Disputes ────────────────────────────────────────────────────
-// Tracks Stripe disputes (chargebacks) for TeachificPay transactions.
+// ─── Course360Pay Disputes ────────────────────────────────────────────────────
+// Tracks Stripe disputes (chargebacks) for Course360Pay transactions.
 export const teachificPayDisputes = mysqlTable("teachific_pay_disputes", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
   orgId: bigint("orgId", { mode: "number" }).notNull(),
@@ -2077,11 +2077,11 @@ export const teachificPayDisputes = mysqlTable("teachific_pay_disputes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-export type TeachificPayDispute = typeof teachificPayDisputes.$inferSelect;
-export type InsertTeachificPayDispute = typeof teachificPayDisputes.$inferInsert;
+export type Course360PayDispute = typeof teachificPayDisputes.$inferSelect;
+export type InsertCourse360PayDispute = typeof teachificPayDisputes.$inferInsert;
 
-// ─── TeachificPay Charges ─────────────────────────────────────────────────────
-// Logs completed charges processed through TeachificPay for reporting.
+// ─── Course360Pay Charges ─────────────────────────────────────────────────────
+// Logs completed charges processed through Course360Pay for reporting.
 export const teachificPayCharges = mysqlTable("teachific_pay_charges", {
   id: bigint("id", { mode: "number" }).primaryKey().autoincrement(),
   orgId: bigint("orgId", { mode: "number" }).notNull(),
@@ -2106,8 +2106,8 @@ export const teachificPayCharges = mysqlTable("teachific_pay_charges", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-export type TeachificPayCharge = typeof teachificPayCharges.$inferSelect;
-export type InsertTeachificPayCharge = typeof teachificPayCharges.$inferInsert;
+export type Course360PayCharge = typeof teachificPayCharges.$inferSelect;
+export type InsertCourse360PayCharge = typeof teachificPayCharges.$inferInsert;
 
 // ─── Org Landing Pages ────────────────────────────────────────────────────────
 // One row per org. Created automatically on first subdomain assignment.

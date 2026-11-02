@@ -1,6 +1,6 @@
-# Teachific Module Integration Plan
+# Course360 Module Integration Plan
 
-**Goal:** Import and adapt 6 production-ready modules from UltrasoundAssist into Teachific, restructuring for org-level administration with subdomain/custom domain support at product level.
+**Goal:** Import and adapt 6 production-ready modules from UltrasoundAssist into Course360, restructuring for org-level administration with subdomain/custom domain support at product level.
 
 ---
 
@@ -21,8 +21,8 @@
 
 ### 1. **Single Domain Structure**
 - Remove cross-domain/multi-brand logic
-- All content lives at `teachific.app` or org's custom domain
-- Org slug determines subdomain: `{orgslug}.teachific.app`
+- All content lives at `course360.app` or org's custom domain
+- Org slug determines subdomain: `{orgslug}.course360.app`
 - Individual products can have custom domains: `courses.example.com`, `learn.example.com`, etc.
 
 ### 2. **Org-Level Scoping**
@@ -231,7 +231,7 @@ if (course?.customDomainVerified) {
 ## Affiliate System
 
 ### Commission Tracking:
-- Affiliate creates unique referral link: `teachific.app/ref/{affiliateId}`
+- Affiliate creates unique referral link: `course360.app/ref/{affiliateId}`
 - When user purchases via link, commission recorded
 - Org admin sets commission rate per affiliate
 - Affiliates view earnings dashboard

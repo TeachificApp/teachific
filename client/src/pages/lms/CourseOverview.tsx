@@ -1172,11 +1172,11 @@ function googleCalendarUrl(title: string, start: number, durationMinutes = 60, d
 /** Build and trigger download of a .ics file for a single event */
 function downloadICS(title: string, start: number, durationMinutes = 60, description = "", location = "") {
   const { start: s, end: e } = toICSDate(start, durationMinutes);
-  const uid = `${start}-${Math.random().toString(36).slice(2)}@teachific.com`;
+  const uid = `${start}-${Math.random().toString(36).slice(2)}@course360.app`;
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Teachific//LMS//EN",
+    "PRODID:-//Course360//LMS//EN",
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTART:${s}`,
@@ -1201,11 +1201,11 @@ function downloadAllICS(sessions: any[], courseTitle: string) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Teachific//LMS//EN",
+    "PRODID:-//Course360//LMS//EN",
   ];
   sessions.forEach((s) => {
     const { start, end } = toICSDate(s.sessionDate, s.durationMinutes ?? 60);
-    const uid = `${s.sessionDate}-${s.id}@teachific.com`;
+    const uid = `${s.sessionDate}-${s.id}@course360.app`;
     lines.push(
       "BEGIN:VEVENT",
       `UID:${uid}`,

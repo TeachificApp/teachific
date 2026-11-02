@@ -3,8 +3,8 @@
  *
  * Generates a branded PDF certificate using WeasyPrint (Python) via child_process.
  * White-label logic:
- *   - pro / enterprise plans  → org logo + org colors, NO Teachific branding
- *   - free / starter / builder → org logo + org colors + "Powered by Teachific™" footer
+ *   - pro / enterprise plans  → org logo + org colors, NO Course360 branding
+ *   - free / starter / builder → org logo + org colors + "Powered by Course360™" footer
  */
 import { execFile } from "child_process";
 import { promisify } from "util";
@@ -30,13 +30,13 @@ export interface CertificateData {
   signatureTitle?: string | null;
   signatureImageUrl?: string | null;
   footerText?: string | null;
-  showTeachificBranding: boolean;
+  showCourse360Branding: boolean;
 }
 
-/** Plans that get full white-label (no Teachific branding) */
+/** Plans that get full white-label (no Course360 branding) */
 const WHITE_LABEL_PLANS = ["pro", "enterprise"];
 
-export function shouldShowTeachificBranding(plan: string): boolean {
+export function shouldShowCourse360Branding(plan: string): boolean {
   return !WHITE_LABEL_PLANS.includes(plan);
 }
 
@@ -63,7 +63,7 @@ function buildCertificateHtml(data: CertificateData): string {
     signatureTitle,
     signatureImageUrl,
     footerText,
-    showTeachificBranding,
+    showCourse360Branding,
   } = data;
 
   const dateStr = issuedAt.toLocaleDateString("en-US", {
@@ -100,8 +100,8 @@ function buildCertificateHtml(data: CertificateData): string {
     </div>`
     : `<div class="signature-block"><div class="signature-line"></div><div class="signature-name">${escapeHtml(orgName)}</div></div>`;
 
-  const teachificFooter = showTeachificBranding
-    ? `<div class="teachific-badge">Powered by <strong>Teachific™</strong></div>`
+  const teachificFooter = showCourse360Branding
+    ? `<div class="teachific-badge">Powered by <strong>Course360™</strong></div>`
     : "";
 
   const customFooter = footerText

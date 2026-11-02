@@ -1,5 +1,5 @@
 /**
- * Teachific™ Subscription Tier Limits
+ * Course360™ Subscription Tier Limits
  *
  * Tiers: free → starter → builder → pro → enterprise
  *
@@ -45,7 +45,7 @@ export interface TierLimits {
   zapierIntegrations: boolean;
   /** Custom domain support */
   customDomain: boolean;
-  /** White-label (remove Teachific branding) */
+  /** White-label (remove Course360 branding) */
   whiteLabel: boolean;
   /** Upsell funnels / order bumps */
   upsellFunnels: boolean;

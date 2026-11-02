@@ -2,7 +2,7 @@
  * Stripe Payment Link helpers
  *
  * Generates permanent, shareable Stripe Payment Links for pricing options.
- * For orgs using TeachificPay (Free/Starter/Builder), links use the platform Stripe account.
+ * For orgs using Course360Pay (Free/Starter/Builder), links use the platform Stripe account.
  * For Pro/Enterprise orgs with own_gateway, links use the org's connected Stripe account.
  */
 
@@ -24,9 +24,9 @@ interface CreatePaymentLinkOptions {
   subscriptionInterval?: "monthly" | "quarterly" | "annual" | null;
   /** Org's own Stripe secret key (Pro/Enterprise with own_gateway) */
   orgStripeSecretKey?: string | null;
-  /** Org's Stripe Connect account ID (for TeachificPay transfers) */
+  /** Org's Stripe Connect account ID (for Course360Pay transfers) */
   stripeConnectAccountId?: string | null;
-  /** Platform fee percentage (0-100) for TeachificPay orgs */
+  /** Platform fee percentage (0-100) for Course360Pay orgs */
   platformFeePercent?: number;
   /** Metadata to attach to the payment link */
   metadata?: Record<string, string>;
@@ -105,7 +105,7 @@ export async function createStripePaymentLink(
       metadata: opts.metadata ?? {},
     };
 
-    // Add platform fee for TeachificPay orgs (not own_gateway)
+    // Add platform fee for Course360Pay orgs (not own_gateway)
     if (!opts.orgStripeSecretKey && opts.stripeConnectAccountId && opts.platformFeePercent && opts.platformFeePercent > 0) {
       linkParams.application_fee_percent = opts.platformFeePercent;
       linkParams.transfer_data = { destination: opts.stripeConnectAccountId };

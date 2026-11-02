@@ -115,7 +115,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // ─── Sitemap ────────────────────────────────────────────────────────────────
-const BASE = "https://teachific.app";
+const BASE = "https://course360.app";
 type SitemapEntry = { label: string; path: string; description?: string };
 type SitemapSection = { title: string; icon: React.ReactNode; entries: SitemapEntry[] };
 
@@ -260,15 +260,16 @@ const SITEMAP_SECTIONS: SitemapSection[] = [
     title: "Creative Tools",
     icon: <Laptop className="w-4 h-4" />,
     entries: [
-      { label: "TeachificCreator™ Dashboard", path: "/creator" },
-      { label: "TeachificCreator™ Download (legacy)", path: "/creator/download" },
-      { label: "TeachificCreator™ Pro (Marketing)", path: "/creator-pro" },
-      { label: "Teachific Studio™ Dashboard", path: "/studio" },
-      { label: "Teachific Studio™ Download (legacy)", path: "/studio/download" },
-      { label: "Teachific Studio™ Pro (Marketing)", path: "/studio-pro" },
-      { label: "Teachific QuizMaker™ Dashboard", path: "/quiz-creator-app" },
-      { label: "Teachific QuizMaker™ Download (legacy)", path: "/quiz-creator-app/download" },
-      { label: "Teachific QuizMaker™ Pro (Marketing)", path: "/quiz-creator-pro" },
+      { label: "Course360Creator™ Dashboard", path: "/creator" },
+      { label: "Course360Creator™ Download (legacy)", path: "/creator/download" },
+      { label: "Course360Creator™ Pro (Marketing)", path: "/creator-pro" },
+      { label: "Course360 Studio™ Dashboard", path: "/studio" },
+      { label: "Course360 Studio™ Download (legacy)", path: "/studio/download" },
+      { label: "Course360 Studio™ Pro (Marketing)", path: "/studio-pro" },
+      { label: "Course360 QuizMaker™ Dashboard", path: "/quiz-creator-app" },
+      { label: "Course360 QuizMaker™ Download (legacy)", path: "/quiz-creator-app/download" },
+      { label: "Course360 QuizMaker™ Pro (Marketing)", path: "/quiz-creator-pro" },
+      { label: "Teachific Games", path: "/teachific-games" },
     ],
   },
   {
@@ -307,7 +308,7 @@ function SitemapTab() {
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Platform Sitemap</h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            {totalPages} pages across {SITEMAP_SECTIONS.length} sections — live links to teachific.app
+            {totalPages} pages across {SITEMAP_SECTIONS.length} sections — live links to course360.app
           </p>
         </div>
         <div className="relative w-64">
@@ -464,7 +465,7 @@ function SettingsTab() {
               <Input
                 value={merged.platformName ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, platformName: e.target.value }))}
-                placeholder="Teachific"
+                placeholder="Course360"
                 className="bg-gray-50 border-gray-300 text-slate-900"
               />
             </div>
@@ -634,11 +635,11 @@ function OrgsTab() {
           </TableHeader>
           <TableBody>
             {orgs.map((org) => (
-              <TableRow key={org.id} className={`border-gray-200 hover:bg-gray-50 transition-colors ${org.name === "Teachific" ? "bg-teal-50/30" : ""}`}>
+              <TableRow key={org.id} className={`border-gray-200 hover:bg-gray-50 transition-colors ${org.name === "Course360" ? "bg-teal-50/30" : ""}`}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span className="text-teal-400 font-semibold">{org.name}</span>
-                    {org.name === "Teachific" && <Badge variant="outline" className="text-xs border-teal-500/40 text-teal-600 bg-teal-50">Platform</Badge>}
+                    {org.name === "Course360" && <Badge variant="outline" className="text-xs border-teal-500/40 text-teal-600 bg-teal-50">Platform</Badge>}
                   </div>
                 </TableCell>
                 <TableCell className="text-slate-700 text-xs">
@@ -680,7 +681,7 @@ function OrgsTab() {
                       >
                         <UserCheck className="w-3.5 h-3.5 mr-2" /> Login as Customer
                       </DropdownMenuItem>
-                      {org.name !== "Teachific" && (
+                      {org.name !== "Course360" && (
                         <>
                           <DropdownMenuSeparator className="bg-gray-100" />
                           <DropdownMenuItem
@@ -1858,7 +1859,7 @@ export default function PlatformAdminPage() {
             <FileQuestion className="w-3.5 h-3.5" /> QuizMaker
           </TabsTrigger>
           <TabsTrigger value="teachificpay" className="data-[state=active]:bg-teal-600 data-[state=active]:text-slate-900 text-slate-700 gap-1.5">
-            <DollarSign className="w-3.5 h-3.5" /> TeachificPay
+            <DollarSign className="w-3.5 h-3.5" /> Course360Pay
           </TabsTrigger>
           <TabsTrigger value="policies" className="data-[state=active]:bg-teal-600 data-[state=active]:text-slate-900 text-slate-700 gap-1.5">
             <Shield className="w-3.5 h-3.5" /> Policies
@@ -1907,7 +1908,7 @@ export default function PlatformAdminPage() {
           <QuizCreatorAdminTab />
         </TabsContent>
         <TabsContent value="teachificpay">
-          <TeachificPayAdminTab />
+          <Course360PayAdminTab />
         </TabsContent>
         <TabsContent value="policies">
           <PlatformPoliciesTab />
@@ -1992,7 +1993,7 @@ function BrandingTab() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-slate-700 text-sm">Platform Name</Label>
-              <Input value={merged.platformName ?? "Teachific"} onChange={e => setForm(f => ({ ...f, platformName: e.target.value }))} className="bg-white border-gray-300 text-slate-900" />
+              <Input value={merged.platformName ?? "Course360"} onChange={e => setForm(f => ({ ...f, platformName: e.target.value }))} className="bg-white border-gray-300 text-slate-900" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-slate-700 text-sm">Tagline</Label>
@@ -2474,7 +2475,7 @@ function TrialBadge({ trialEndsAt }: { trialEndsAt: Date | null | undefined }) {
   );
 }
 
-// ─── TeachificCreator Admin Tab ──────────────────────────────────────────────
+// ─── Course360Creator Admin Tab ──────────────────────────────────────────────
 function CreatorAdminTab() {
   const { data: users = [], refetch } = trpc.billing.adminListCreatorUsers.useQuery();
   const setRole = trpc.billing.adminSetCreatorRole.useMutation({
@@ -2492,10 +2493,10 @@ function CreatorAdminTab() {
         <CardHeader>
           <CardTitle className="text-slate-900 flex items-center gap-2">
             <PenTool className="w-4 h-4 text-teal-500" />
-            Teachific™ Creator — User Management
+            Course360™ Creator — User Management
           </CardTitle>
           <CardDescription className="text-slate-600">
-            View and manage all users with a Teachific™ Creator subscription or trial.
+            View and manage all users with a Course360™ Creator subscription or trial.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -2560,7 +2561,7 @@ function CreatorAdminTab() {
   );
 }
 
-// ─── Teachific Studio Admin Tab ──────────────────────────────────────────────
+// ─── Course360 Studio Admin Tab ──────────────────────────────────────────────
 function StudioAdminTab() {
   const { data: users = [], refetch } = trpc.billing.adminListStudioUsers.useQuery();
   const setRole = trpc.billing.adminSetStudioRole.useMutation({
@@ -2578,10 +2579,10 @@ function StudioAdminTab() {
         <CardHeader>
           <CardTitle className="text-slate-900 flex items-center gap-2">
             <Video className="w-4 h-4 text-teal-500" />
-            Teachific™ Studio — User Management
+            Course360™ Studio — User Management
           </CardTitle>
           <CardDescription className="text-slate-600">
-            View and manage all users with a Teachific™ Studio subscription or trial.
+            View and manage all users with a Course360™ Studio subscription or trial.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -2646,7 +2647,7 @@ function StudioAdminTab() {
   );
 }
 
-// ─── Teachific QuizMaker Admin Tab ─────────────────────────────────────────
+// ─── Course360 QuizMaker Admin Tab ─────────────────────────────────────────
 function QuizCreatorAdminTab() {
   const { data: users = [], refetch } = trpc.billing.adminListQuizCreatorUsers.useQuery();
   const setRole = trpc.billing.adminSetQuizCreatorRole.useMutation({
@@ -2664,10 +2665,10 @@ function QuizCreatorAdminTab() {
         <CardHeader>
           <CardTitle className="text-slate-900 flex items-center gap-2">
             <FileQuestion className="w-4 h-4 text-teal-500" />
-            Teachific™ QuizMaker — User Management
+            Course360™ QuizMaker — User Management
           </CardTitle>
           <CardDescription className="text-slate-600">
-            View and manage all users with a Teachific™ QuizMaker subscription or trial.
+            View and manage all users with a Course360™ QuizMaker subscription or trial.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -2731,8 +2732,8 @@ function QuizCreatorAdminTab() {
     </div>
   );
 }
-// ─── TeachificPay Admin Tab ──────────────────────────────────────────────────
-function TeachificPayAdminTab() {
+// ─── Course360Pay Admin Tab ──────────────────────────────────────────────────
+function Course360PayAdminTab() {
   const [payTab, setPayTab] = useState<"schools" | "disputes" | "charges">("schools");
   return (
     <div className="space-y-4">
@@ -2752,14 +2753,14 @@ function TeachificPayAdminTab() {
           </button>
         ))}
       </div>
-      {payTab === "schools" && <TeachificPaySchoolsPanel />}
-      {payTab === "disputes" && <TeachificPayDisputesPanel />}
-      {payTab === "charges" && <TeachificPayChargesPanel />}
+      {payTab === "schools" && <Course360PaySchoolsPanel />}
+      {payTab === "disputes" && <Course360PayDisputesPanel />}
+      {payTab === "charges" && <Course360PayChargesPanel />}
     </div>
   );
 }
 
-function TeachificPaySchoolsPanel() {
+function Course360PaySchoolsPanel() {
   const utils = trpc.useUtils();
   const { data: accounts = [] } = trpc.teachificPay.adminListAccounts.useQuery();
   const { data: revenue } = trpc.teachificPay.adminGetPlatformRevenue.useQuery();
@@ -2810,7 +2811,7 @@ function TeachificPaySchoolsPanel() {
         <CardHeader>
           <CardTitle className="text-slate-900 flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-teal-500" />
-            TeachificPay™ — Connected Schools
+            Course360Pay™ — Connected Schools
           </CardTitle>
           <CardDescription className="text-slate-600">
             All organizations and their Stripe Connect status, payment gateway, and platform fee settings.
@@ -2855,7 +2856,7 @@ function TeachificPaySchoolsPanel() {
                     </TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${a.paymentGateway === "own_gateway" ? "bg-violet-100 text-violet-700 border-violet-200" : "bg-teal-100 text-teal-700 border-teal-200"}`}>
-                        {a.paymentGateway === "own_gateway" ? "Own Gateway" : "TeachificPay"}
+                        {a.paymentGateway === "own_gateway" ? "Own Gateway" : "Course360Pay"}
                       </span>
                     </TableCell>
                     <TableCell className="text-slate-500 text-xs font-mono">{a.stripeConnectAccountId ?? "—"}</TableCell>
@@ -2869,7 +2870,7 @@ function TeachificPaySchoolsPanel() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="teachific_pay" className="text-slate-900 text-xs">TeachificPay</SelectItem>
+                          <SelectItem value="teachific_pay" className="text-slate-900 text-xs">Course360Pay</SelectItem>
                           <SelectItem value="own_gateway" className="text-slate-900 text-xs">Own Gateway</SelectItem>
                         </SelectContent>
                       </Select>
@@ -2928,7 +2929,7 @@ const DISPUTE_STATUS_LABELS: Record<string, { label: string; color: string; icon
   warning_closed:           { label: "Warning Closed",    color: "bg-slate-100 text-slate-600 border-slate-200",  icon: <ShieldX className="w-3 h-3" /> },
 };
 
-function TeachificPayDisputesPanel() {
+function Course360PayDisputesPanel() {
   const fmt = (cents: number, currency = "usd") =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 
@@ -3260,7 +3261,7 @@ function TeachificPayDisputesPanel() {
 }
 
 // ─── Charge History Panel ────────────────────────────────────────────────────
-function TeachificPayChargesPanel() {
+function Course360PayChargesPanel() {
   const fmt = (cents: number, currency = "usd") =>
     new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
 
@@ -3439,7 +3440,7 @@ function PlatformPoliciesTab() {
             Platform Legal Policies
           </CardTitle>
           <CardDescription className="text-slate-600">
-            These are Teachific's platform-wide Terms of Service and Privacy Policy — completely
+            These are Course360's platform-wide Terms of Service and Privacy Policy — completely
             independent of any org or school. They are publicly accessible at{" "}
             <a
               href={publicUrl}
@@ -3469,7 +3470,7 @@ function PlatformPoliciesTab() {
           <Textarea
             value={termsHtml}
             onChange={(e) => setTermsHtml(e.target.value)}
-            placeholder="<h2>Terms of Service</h2><p>By using Teachific...</p>"
+            placeholder="<h2>Terms of Service</h2><p>By using Course360...</p>"
             className="bg-white border-gray-300 text-slate-900 font-mono text-xs min-h-[320px] resize-y"
           />
         </CardContent>
@@ -3555,9 +3556,9 @@ function AppVersionsTab() {
   }
 
   const PRODUCT_LABELS: Record<string, string> = {
-    creator: "TeachificCreator™",
-    studio: "Teachific Studio™",
-    quizcreator: "Teachific QuizMaker™",
+    creator: "Course360Creator™",
+    studio: "Course360 Studio™",
+    quizcreator: "Course360 QuizMaker™",
   };
   const PRODUCT_ICONS: Record<string, string> = {
     creator: "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/fJXMsdmk8vcb8V4GDt37f6/icon-creator-Q43rWNPW6eUUYkvwYEJxKM.webp",
@@ -3676,9 +3677,9 @@ function AppVersionsTab() {
               <Select value={form.product} onValueChange={(v) => setForm(f => ({ ...f, product: v as any }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="creator">TeachificCreator™</SelectItem>
-                  <SelectItem value="studio">Teachific Studio™</SelectItem>
-                  <SelectItem value="quizcreator">Teachific QuizMaker™</SelectItem>
+                  <SelectItem value="creator">Course360Creator™</SelectItem>
+                  <SelectItem value="studio">Course360 Studio™</SelectItem>
+                  <SelectItem value="quizcreator">Course360 QuizMaker™</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -3688,11 +3689,11 @@ function AppVersionsTab() {
             </div>
             <div className="space-y-1.5">
               <Label>Windows Download URL (.exe)</Label>
-              <Input placeholder="https://cdn.teachific.app/releases/creator/TeachificCreator-1.0.0-Setup.exe" value={form.windowsUrl} onChange={e => setForm(f => ({ ...f, windowsUrl: e.target.value }))} />
+              <Input placeholder="https://cdn.course360.app/releases/creator/Course360Creator-1.0.0-Setup.exe" value={form.windowsUrl} onChange={e => setForm(f => ({ ...f, windowsUrl: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>macOS Download URL (.dmg)</Label>
-              <Input placeholder="https://cdn.teachific.app/releases/creator/TeachificCreator-1.0.0.dmg" value={form.macUrl} onChange={e => setForm(f => ({ ...f, macUrl: e.target.value }))} />
+              <Input placeholder="https://cdn.course360.app/releases/creator/Course360Creator-1.0.0.dmg" value={form.macUrl} onChange={e => setForm(f => ({ ...f, macUrl: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Release Notes (optional)</Label>

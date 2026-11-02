@@ -5,7 +5,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getUserById, getOrgById } from "./db";
+import { getOrgIdForUser, getOrgBySlug, createManualUser, addOrgMember, requireOrgAdmin, getOrgMembers, getOrgMember, getUserById, getOrgById } from "./db";
 import { sendEmail, sendOrgEmail, resolveMergeTags, buildUnsubscribeToken } from "./sendgrid";
 import { invokeLLM } from "./_core/llm";
 import { storagePut, storagePresignedPut, storagePutStream } from "./storage";
@@ -198,7 +198,45 @@ async function requireOrgId(userId: number): Promise<number> {
   return orgId;
 }
 
-async function getTeachificOrgId(): Promise<number | null> {
+type OrgScopedCtx = {
+  user: {
+    id: number;
+    role: string;
+    impersonatedOrgId?: number | null;
+  };
+};
+
+function hasPlatformWideAccess(ctx: OrgScopedCtx): boolean {
+  return ["site_owner", "site_admin", "admin"].includes(ctx.user.role) && !ctx.user.impersonatedOrgId;
+}
+
+async function assertOrgAccess(ctx: OrgScopedCtx, orgId: number): Promise<number> {
+  if (ctx.user.impersonatedOrgId) {
+    if (ctx.user.impersonatedOrgId !== orgId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "This customer-view session is scoped to another organization" });
+    }
+    return orgId;
+  }
+  if (hasPlatformWideAccess(ctx)) return orgId;
+  const membership = await getOrgMember(orgId, ctx.user.id);
+  if (!membership) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this organization" });
+  return orgId;
+}
+
+async function resolveOrgIdForRequest(ctx: OrgScopedCtx, requestedOrgId?: number): Promise<number> {
+  if (requestedOrgId) return assertOrgAccess(ctx, requestedOrgId);
+  if (ctx.user.impersonatedOrgId) return ctx.user.impersonatedOrgId;
+  return requireOrgId(ctx.user.id);
+}
+
+async function requirePageAccess(ctx: OrgScopedCtx, pageId: number) {
+  const page = await getPageById(pageId);
+  if (!page) throw new TRPCError({ code: "NOT_FOUND" });
+  await assertOrgAccess(ctx, page.orgId);
+  return page;
+}
+
+async function getCourse360OrgId(): Promise<number | null> {
   const teachOrg = await getOrgBySlug("teach");
   return teachOrg?.id ?? null;
 }
@@ -451,20 +489,20 @@ export const lmsRouter = router({
     list: protectedProcedure
       .input(z.object({ orgId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
-        const orgId = input?.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await resolveOrgIdForRequest(ctx, input?.orgId);
         return getPagesByOrg(orgId);
       }),
     get: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .query(async ({ input }) => {
-        const page = await getPageById(input.pageId);
-        if (!page) throw new TRPCError({ code: "NOT_FOUND" });
-        return page;
+      .query(async ({ ctx, input }) => {
+        return requirePageAccess(ctx, input.pageId);
       }),
     getByCourse: protectedProcedure
       .input(z.object({ courseId: z.number() }))
-      .query(async ({ input }) => {
-        return getPageByCourse(input.courseId);
+      .query(async ({ ctx, input }) => {
+        const page = await getPageByCourse(input.courseId);
+        if (page) await assertOrgAccess(ctx, page.orgId);
+        return page;
       }),
     getBySlug: publicProcedure
       .input(z.object({ slug: z.string() }))
@@ -481,7 +519,7 @@ export const lmsRouter = router({
         blocks: z.any().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        const orgId = input.orgId ?? await requireOrgId(ctx.user.id);
+        const orgId = await resolveOrgIdForRequest(ctx, input.orgId);
         const slug = input.slug ?? input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + nanoid(6);
         return createPage({
           orgId,
@@ -495,18 +533,32 @@ export const lmsRouter = router({
       }),
     update: protectedProcedure
       .input(z.object({ pageId: z.number(), data: z.record(z.string(), z.unknown()) }))
-      .mutation(async ({ input }) => {
-        return updatePage(input.pageId, input.data as any);
+      .mutation(async ({ ctx, input }) => {
+        const page = await requirePageAccess(ctx, input.pageId);
+        const updates = { ...(input.data as any) };
+        if (updates.orgId !== undefined) {
+          const nextOrgId = Number(updates.orgId);
+          if (!Number.isFinite(nextOrgId)) delete updates.orgId;
+          else {
+            await assertOrgAccess(ctx, nextOrgId);
+            if (!hasPlatformWideAccess(ctx) && nextOrgId !== page.orgId) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Cannot move a page outside your organization" });
+            }
+          }
+        }
+        return updatePage(input.pageId, updates);
       }),
     delete: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requirePageAccess(ctx, input.pageId);
         await deletePage(input.pageId);
         return { ok: true };
       }),
     duplicate: protectedProcedure
       .input(z.object({ pageId: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        await requirePageAccess(ctx, input.pageId);
         return duplicatePage(input.pageId);
       }),
     aiGenerate: protectedProcedure
@@ -2089,7 +2141,7 @@ export const lmsRouter = router({
     .input(z.object({ slug: z.string(), orgId: z.number().optional(), preview: z.boolean().optional() }))
     .query(async ({ input }) => {
       if (!input.orgId) {
-        const teachOrgId = await getTeachificOrgId();
+        const teachOrgId = await getCourse360OrgId();
         if (!teachOrgId) return null;
         return getCourseBySlug(teachOrgId, input.slug);
       }
@@ -2098,7 +2150,7 @@ export const lmsRouter = router({
   listCourses: protectedProcedure
     .input(z.object({ orgId: z.number().optional(), pageSize: z.number().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const orgId = input?.orgId ?? await getTeachificOrgId() ?? await requireOrgId(ctx.user.id);
+      const orgId = input?.orgId ?? await getCourse360OrgId() ?? await requireOrgId(ctx.user.id);
       const all = await getCoursesByOrg(orgId);
       return { courses: all, total: (all as any[]).length };
     }),

@@ -55,7 +55,7 @@ export function LicenseManager({ onClose }: Props) {
       label: "Pro",
       color: "text-teal-700",
       bg: "bg-teal-100",
-      description: "Unlimited quizzes and questions. AES-256 encrypted .quiz files. Teachific publish.",
+      description: "Unlimited quizzes and questions. AES-256 encrypted .quiz files. Course360 publish.",
     },
     enterprise: {
       label: "Enterprise",
@@ -130,7 +130,7 @@ export function LicenseManager({ onClose }: Props) {
                   ["Quizzes", "5", "∞", "∞"],
                   ["Questions/quiz", "10", "∞", "∞"],
                   ["Encrypted .quiz files", "✗", "✓", "✓"],
-                  ["Publish to Teachific", "✗", "✓", "✓"],
+                  ["Publish to Course360", "✗", "✓", "✓"],
                   ["Bulk export", "✗", "✗", "✓"],
                   ["Team sharing", "✗", "✗", "✓"],
                 ].map(([feature, free, pro, ent]) => (
@@ -147,8 +147,8 @@ export function LicenseManager({ onClose }: Props) {
 
           <p className="text-xs text-gray-400 text-center">
             Purchase a license at{" "}
-            <a href="https://teachific.app" target="_blank" rel="noreferrer" className="text-teal-600 hover:underline">
-              teachific.app
+            <a href="https://course360.app" target="_blank" rel="noreferrer" className="text-teal-600 hover:underline">
+              course360.app
             </a>
           </p>
         </div>

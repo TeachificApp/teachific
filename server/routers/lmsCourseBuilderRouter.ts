@@ -1,12 +1,12 @@
 /**
  * lmsCourseBuilderRouter.ts
- * Teachific™ LMS — Course/Section/Lesson CRUD (admin)
+ * Course360™ LMS — Course/Section/Lesson CRUD (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * Teachific™ LMS — LMS Management
+ * Course360™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -76,7 +76,18 @@ import {
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, assertCourseOwnership, assertSectionOwnership, assertLessonOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import {
+  assertAdmin,
+  assertCourseOwnership,
+  assertSectionOwnership,
+  assertLessonOwnership,
+  generateSlug,
+  uniqueSlug,
+  recalcProgress,
+  issueCertificateIfEnabled,
+  getLmsAdminOrgId,
+  hasPlatformWideLmsAccess,
+} from "./lmsHelpers";
 
 export const lmsCourseBuilderRouter = router({
   // ── Lesson fetch for editor ──
@@ -84,6 +95,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
@@ -102,13 +114,9 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Scope to the user's own org — platform admins (site_owner/site_admin) see all
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      const orgId = isPlatformAdmin ? null : await getOrgIdForUser(ctx.user.id);
-      // Safety: if not a platform admin and no org found, return empty to prevent data leak
-      if (!isPlatformAdmin && orgId === null) return { courses: [], total: 0 };
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return { courses: [], total: 0 };
       const conditions: any[] = [];
-      // Always filter by orgId unless the user is a platform admin
       if (orgId !== null) conditions.push(eq(lmsCourses.orgId, orgId));
       if (input.status !== "all") conditions.push(eq(lmsCourses.status, input.status as "draft" | "public" | "hidden" | "private"));
       if (input.type !== "all") conditions.push(eq(lmsCourses.type, input.type as "course" | "quiz" | "download" | "cohort"));
@@ -140,7 +148,7 @@ export const lmsCourseBuilderRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Resolve the org this course belongs to
-      const courseOrgId = await getOrgIdForUser(ctx.user.id);
+      const courseOrgId = await getLmsAdminOrgId(ctx) ?? await getOrgIdForUser(ctx.user.id);
       if (!courseOrgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
       const base = generateSlug(input.title);
       const slug = await uniqueSlug(db, base);
@@ -216,6 +224,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, pricingType, defaultMarkComplete: dmc, enrollmentCloseDate, ...updates } = input;
@@ -243,6 +252,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
@@ -264,6 +274,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ courses: z.array(z.object({ id: z.number(), libraryOrder: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const course of input.courses) await assertCourseOwnership(ctx, course.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.courses.map(c =>
@@ -280,6 +291,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -340,6 +352,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -399,6 +412,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
@@ -513,6 +527,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ sections: z.array(z.object({ id: z.number(), position: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const section of input.sections) await assertSectionOwnership(ctx, section.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.sections.map(s => db.update(lmsSections).set({ position: s.position }).where(eq(lmsSections.id, s.id))));
@@ -530,6 +545,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertSectionOwnership(ctx, input.sectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [section] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sectionId)).limit(1);
@@ -598,6 +614,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [template] = await db.select().from(lmsSectionTemplates).where(eq(lmsSectionTemplates.id, input.templateId)).limit(1);
@@ -643,6 +660,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
@@ -678,6 +696,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ lessonId: z.number(), templateId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [template] = await db.select().from(lessonTemplates).where(eq(lessonTemplates.id, input.templateId)).limit(1);
@@ -695,6 +714,8 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertSectionOwnership(ctx, input.sourceSectionId);
+      await assertCourseOwnership(ctx, input.targetCourseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [sourceSection] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sourceSectionId)).limit(1);
@@ -736,8 +757,12 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await getLmsAdminOrgId(ctx);
+      if (orgId === null && !hasPlatformWideLmsAccess(ctx)) return [];
       const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug })
-        .from(lmsCourses).orderBy(asc(lmsCourses.title));
+        .from(lmsCourses)
+        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .orderBy(asc(lmsCourses.title));
       const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
         .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
       const sectionsByCourse = new Map<number, typeof sections>();
@@ -769,6 +794,7 @@ export const lmsCourseBuilderRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       await assertCourseOwnership(ctx, input.courseId);
+      if (input.sectionId) await assertSectionOwnership(ctx, input.sectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Auto-calculate position: append at end of section (or course top-level)
@@ -894,6 +920,7 @@ export const lmsCourseBuilderRouter = router({
     .input(z.object({ lessons: z.array(z.object({ id: z.number(), position: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const lesson of input.lessons) await assertLessonOwnership(ctx, lesson.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.lessons.map(l => db.update(lmsLessons).set({ position: l.position }).where(eq(lmsLessons.id, l.id))));
@@ -910,6 +937,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const condition = input.onlyDrafts
@@ -928,6 +956,9 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
+      await assertCourseOwnership(ctx, input.courseId);
+      if (input.targetSectionId) await assertSectionOwnership(ctx, input.targetSectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Get next position in target section
@@ -954,6 +985,9 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
+      await assertCourseOwnership(ctx, input.targetCourseId);
+      if (input.targetSectionId) await assertSectionOwnership(ctx, input.targetSectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [src] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
@@ -994,6 +1028,8 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertSectionOwnership(ctx, input.sectionId);
+      await assertCourseOwnership(ctx, input.targetCourseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [srcSection] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sectionId)).limit(1);
@@ -1048,6 +1084,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsLessons).set({

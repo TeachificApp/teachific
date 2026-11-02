@@ -109,7 +109,7 @@ async function sendFormNotification(opts: {
     try {
       await sgMail.default.send({
         to,
-        from: { email: process.env.SENDGRID_FROM_EMAIL || "noreply@teachific.app", name: process.env.SENDGRID_FROM_NAME || "Teachific" },
+        from: { email: process.env.SENDGRID_FROM_EMAIL || "noreply@course360.app", name: process.env.SENDGRID_FROM_NAME || "Course360" },
         subject: `New submission: ${opts.formTitle}`,
         html,
       });
@@ -1350,7 +1350,7 @@ export const formsRouter = router({
       let html = "";
       try {
         const res = await fetch(input.url, {
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; TeachificBot/1.0)" },
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; Course360Bot/1.0)" },
           signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

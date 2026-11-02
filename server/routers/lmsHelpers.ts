@@ -1,6 +1,6 @@
 /**
  * lmsRouter.ts
- * Teachific™ LMS — LMS Management
+ * Course360™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -76,7 +76,29 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 const ADMIN_ROLES = ["admin", "site_owner", "site_admin", "org_super_admin", "org_admin"];
 const ORG_ADMIN_MEMBER_ROLES = ["org_super_admin", "org_admin", "sub_admin"];
-export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
+type LmsAdminContext = {
+  user: {
+    id: number;
+    role: string;
+    impersonatedOrgId?: number | null;
+  };
+};
+
+function isPlatformAdminRole(role: string | undefined): boolean {
+  return ["site_owner", "site_admin", "admin"].includes(role ?? "");
+}
+
+export function hasPlatformWideLmsAccess(ctx: LmsAdminContext): boolean {
+  return isPlatformAdminRole(ctx.user.role) && !ctx.user.impersonatedOrgId;
+}
+
+export async function getLmsAdminOrgId(ctx: LmsAdminContext): Promise<number | null> {
+  if (ctx.user.impersonatedOrgId) return ctx.user.impersonatedOrgId;
+  if (hasPlatformWideLmsAccess(ctx)) return null;
+  return getOrgIdForUser(ctx.user.id);
+}
+
+export async function assertAdmin(ctx: LmsAdminContext) {
   // Fast path: users.role already indicates platform or org admin
   if (ADMIN_ROLES.includes(ctx.user.role)) return;
   // Slow path: check org_members table (users whose admin status lives only in org_members)
@@ -96,21 +118,21 @@ export async function assertAdmin(ctx: { user: { id: number; role: string } }) {
  * Platform admins (site_owner/site_admin/admin) bypass the check.
  */
 export async function assertCourseOwnership(
-  ctx: { user: { id: number; role: string } },
+  ctx: LmsAdminContext,
   courseId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
-  if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-  const orgId = await getOrgIdForUser(ctx.user.id);
-  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+  const orgId = await getLmsAdminOrgId(ctx);
   const [course] = await db
     .select({ orgId: lmsCourses.orgId })
     .from(lmsCourses)
     .where(eq(lmsCourses.id, courseId))
     .limit(1);
-  if (!course || course.orgId !== orgId)
+  if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found" });
+  if (orgId === null && hasPlatformWideLmsAccess(ctx)) return;
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
+  if (course.orgId !== orgId)
     throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this course" });
 }
 
@@ -118,43 +140,29 @@ export async function assertCourseOwnership(
  * Verify that a section belongs to the calling admin's org (via its course).
  */
 export async function assertSectionOwnership(
-  ctx: { user: { id: number; role: string } },
+  ctx: LmsAdminContext,
   sectionId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
-  if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-  const orgId = await getOrgIdForUser(ctx.user.id);
-  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
   const [section] = await db
     .select({ courseId: lmsSections.courseId })
     .from(lmsSections)
     .where(eq(lmsSections.id, sectionId))
     .limit(1);
   if (!section) throw new TRPCError({ code: "NOT_FOUND", message: "Section not found" });
-  const [course] = await db
-    .select({ orgId: lmsCourses.orgId })
-    .from(lmsCourses)
-    .where(eq(lmsCourses.id, section.courseId))
-    .limit(1);
-  if (!course || course.orgId !== orgId)
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this section" });
+  await assertCourseOwnership(ctx, section.courseId);
 }
 
 /**
  * Verify that a lesson belongs to the calling admin's org (via its section → course).
  */
 export async function assertLessonOwnership(
-  ctx: { user: { id: number; role: string } },
+  ctx: LmsAdminContext,
   lessonId: number
 ): Promise<void> {
-  const isPlatformAdmin = ["site_owner", "site_admin", "admin"].includes(ctx.user.role);
-  if (isPlatformAdmin) return;
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-  const orgId = await getOrgIdForUser(ctx.user.id);
-  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No organisation found" });
   const [lesson] = await db
     .select({ sectionId: lmsLessons.sectionId, courseId: lmsLessons.courseId })
     .from(lmsLessons)
@@ -165,13 +173,38 @@ export async function assertLessonOwnership(
     ? (await db.select({ courseId: lmsSections.courseId }).from(lmsSections).where(eq(lmsSections.id, lesson.sectionId)).limit(1))[0]?.courseId
     : undefined);
   if (!courseId) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found for lesson" });
-  const [course] = await db
-    .select({ orgId: lmsCourses.orgId })
-    .from(lmsCourses)
-    .where(eq(lmsCourses.id, courseId))
+  await assertCourseOwnership(ctx, courseId);
+}
+
+export async function assertQuizOwnership(
+  ctx: LmsAdminContext,
+  quizId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [quiz] = await db
+    .select({ lessonId: lmsQuizzes.lessonId })
+    .from(lmsQuizzes)
+    .where(eq(lmsQuizzes.id, quizId))
     .limit(1);
-  if (!course || course.orgId !== orgId)
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this lesson" });
+  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+  if (!quiz.lessonId) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz lesson not found" });
+  await assertLessonOwnership(ctx, quiz.lessonId);
+}
+
+export async function assertQuizQuestionOwnership(
+  ctx: LmsAdminContext,
+  questionId: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const [question] = await db
+    .select({ quizId: lmsQuizQuestions.quizId })
+    .from(lmsQuizQuestions)
+    .where(eq(lmsQuizQuestions.id, questionId))
+    .limit(1);
+  if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
+  await assertQuizOwnership(ctx, question.quizId);
 }
 
 export function generateSlug(title: string): string {

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Setup Cron Jobs for Teachific Replication
+# Setup Cron Jobs for Course360 Replication
 # 
 # This script sets up automated sync jobs that run on a schedule.
 # Run this once to enable continuous replication.
@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LOG_DIR="/var/log/teachific"
 
-echo "🔧 Setting up cron jobs for Teachific replication..."
+echo "🔧 Setting up cron jobs for Course360 replication..."
 
 # Create log directory
 sudo mkdir -p "$LOG_DIR"
@@ -22,7 +22,7 @@ sudo chown "$USER:$USER" "$LOG_DIR"
 # Create cron jobs file
 CRON_FILE="/tmp/teachific-cron.txt"
 cat > "$CRON_FILE" << EOF
-# Teachific Replication Jobs
+# Course360 Replication Jobs
 # Database sync every 5 minutes
 */5 * * * * cd $PROJECT_DIR && node scripts/migrate-to-railway.mjs >> $LOG_DIR/sync.log 2>&1
 

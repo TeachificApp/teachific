@@ -1,5 +1,5 @@
 """
-Generate Teachific Quiz Import Template ZIP
+Generate Course360 Quiz Import Template ZIP
 Creates: QuizImportTemplate.zip containing:
   - QuizImportTemplate.xlsx (Instructions, Questions, Template sheets)
   - media/ folder with sample placeholder images
@@ -50,7 +50,7 @@ def build_instructions_sheet(wb):
     # Title row
     ws.merge_cells("A1:H1")
     c = ws["A1"]
-    c.value = "Teachific™ Quiz Import Template — Instructions"
+    c.value = "Course360™ Quiz Import Template — Instructions"
     c.fill = make_fill(TEAL)
     c.font = Font(name="Calibri", size=16, bold=True, color=WHITE)
     c.alignment = Alignment(horizontal="center", vertical="center")
@@ -59,7 +59,7 @@ def build_instructions_sheet(wb):
     # Subtitle
     ws.merge_cells("A2:H2")
     c = ws["A2"]
-    c.value = "Import quizzes into Teachific by uploading a ZIP file containing your Excel spreadsheet and optional media files."
+    c.value = "Import quizzes into Course360 by uploading a ZIP file containing your Excel spreadsheet and optional media files."
     c.fill = make_fill(TEAL_LIGHT)
     c.font = Font(name="Calibri", size=11, color=DARK)
     c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -229,7 +229,7 @@ def build_instructions_sheet(wb):
     para("✓  Leave the Points column blank to use the default value of 1 point.")
     para("✓  Info Slides (IS) are not graded — they display content only.")
     blank()
-    para("Need help? Visit teachific.app/support or contact your administrator.", fill=TEAL_LIGHT)
+    para("Need help? Visit course360.app/support or contact your administrator.", fill=TEAL_LIGHT)
 
     # Column widths
     set_col_width(ws, "A", 12)
@@ -484,7 +484,7 @@ def main():
     }
 
     # Build ZIP
-    zip_path = os.path.join(output_dir, "TeachificQuizImportTemplate.zip")
+    zip_path = os.path.join(output_dir, "Course360QuizImportTemplate.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("QuizImportTemplate.xlsx", xlsx_bytes)
         for fname, data in media_files.items():

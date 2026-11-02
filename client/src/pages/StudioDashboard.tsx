@@ -123,7 +123,7 @@ export default function StudioDashboard() {
         <div className="max-w-lg w-full text-center">
           <div className="mb-8">
             <span className="text-3xl font-black tracking-tight">
-              <span className="text-white">Teachific</span>
+              <span className="text-white">Course360</span>
               <span className="text-[#24abbc]"> Studio</span>
             </span>
           </div>
@@ -132,7 +132,7 @@ export default function StudioDashboard() {
           </div>
           <h1 className="text-2xl font-bold text-white mb-3">Activate Your Studio</h1>
           <p className="text-white/50 mb-8 leading-relaxed">
-            You need an active Teachific Studio subscription to access the course authoring tools.
+            You need an active Course360 Studio subscription to access the course authoring tools.
             Start free — no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -172,7 +172,7 @@ export default function StudioDashboard() {
               <strong>{studioTrialDaysLeft} day{studioTrialDaysLeft !== 1 ? "s" : ""} left in trial</strong>
             </span>
           )}
-          <span>Your exports include a <strong>Created with Teachific™</strong> watermark on the free/trial plan.</span>
+          <span>Your exports include a <strong>Created with Course360™</strong> watermark on the free/trial plan.</span>
           <Link href="/studio-pro">
             <span className="underline underline-offset-2 cursor-pointer hover:text-[#a0f0f5] transition-colors">Upgrade to remove →</span>
           </Link>
@@ -184,7 +184,7 @@ export default function StudioDashboard() {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-white/10">
           <span className="text-lg font-black tracking-tight">
-            <span className="text-white">Teachific</span>
+            <span className="text-white">Course360</span>
             <span className="text-[#24abbc]"> Studio</span>
           </span>
         </div>

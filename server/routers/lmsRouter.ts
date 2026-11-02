@@ -1,6 +1,6 @@
 /**
  * lmsRouter.ts
- * Teachific LMS — Router Aggregator
+ * Course360 LMS — Router Aggregator
  *
  * The lmsAdminRouter procedures are split across focused sub-routers:
  *   lmsCourseBuilderRouter    — course/section/lesson CRUD (~970 lines)
@@ -11,7 +11,7 @@
 
 /**
  * lmsRouter.ts
- * Teachific LMS — LMS Management
+ * Course360 LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -535,7 +535,7 @@ export const lmsPublicRouter = router({
         .limit(1);
       if (course) {
         try {
-          const previewUrl = `https://app.teachific.com/courses/${course.slug}?preview_token=${accessToken}`;
+          const previewUrl = `https://app.course360.app/courses/${course.slug}?preview_token=${accessToken}`;
           const emailData = buildFreePreviewConfirmationEmail({
             firstName: input.firstName,
             courseTitle: course.title,
@@ -1886,7 +1886,7 @@ export const lmsLearnerRouter = router({
           const courseName = course?.title ?? "your cohort course";
           const groupName = group?.name ?? "";
           const snippet = input.body ? (input.body.length > 200 ? input.body.slice(0, 200) + "…" : input.body) : "[media attachment]";
-          const discussionUrl = `https://learn.teachific.com/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
+          const discussionUrl = `https://learn.course360.app/courses/${course?.slug ?? input.courseId}?tab=cohort&cohortTab=discussions`;
           // Collect admins + cohort staff (exclude the poster)
           const adminUsers = await db.select({ id: users.id, email: users.email, name: users.name, displayName: users.displayName, notificationPrefs: users.notificationPrefs })
             .from(users).where(eq(users.role, "admin"));
@@ -2340,7 +2340,7 @@ export const lmsGroupRouter = router({
       signatureTitle: z.string().optional().nullable(),
       signatureImageUrl: z.string().optional().nullable(),
       footerText: z.string().optional().nullable(),
-      organizationName: z.string().default("Teachific"),
+      organizationName: z.string().default("Course360"),
       layout: z.enum(["classic", "modern", "minimal"]).default("classic"),
       isDefault: z.boolean().default(false),
     }))

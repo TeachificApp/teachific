@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, Layers, Video, Library } from "lucide-react";
 import FilesPage from "./FilesPage";
 import QuizzesPage from "./QuizzesPage";
@@ -17,13 +17,19 @@ function getDefaultTab(): TabId {
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "library", label: "Content Library", icon: Library },
-  { id: "record-edit", label: "Teachific Studio™", icon: Video },
+  { id: "record-edit", label: "Course360 Studio™", icon: Video },
   { id: "quizzes", label: "Quizzes", icon: BookOpen },
   { id: "flashcards", label: "Flashcards", icon: Layers },
 ];
 
 export default function MediaLibraryPage() {
   const [activeTab, setActiveTab] = useState<TabId>(getDefaultTab);
+
+  useEffect(() => {
+    const syncHashTab = () => setActiveTab(getDefaultTab());
+    window.addEventListener("hashchange", syncHashTab);
+    return () => window.removeEventListener("hashchange", syncHashTab);
+  }, []);
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);

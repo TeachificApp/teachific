@@ -192,14 +192,14 @@ const ownerProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-async function grantTeachificSchoolAccess(userId: number) {
+async function grantCourse360SchoolAccess(userId: number) {
   try {
     const teachOrg = await getOrgBySlug("teach");
     if (teachOrg) {
       await addOrgMember(teachOrg.id, userId, "org_admin");
     }
   } catch (_e) {
-    // Non-fatal: the Teachific training org may not exist in every environment yet.
+    // Non-fatal: the Course360 training org may not exist in every environment yet.
   }
 }
 
@@ -472,7 +472,7 @@ export const appRouter = router({
   }),
 
   // ── Subdomain Resolution (public) ──────────────────────────────────────────
-  // Resolves org info from a subdomain slug (e.g. "myorg" from myorg.teachific.app)
+  // Resolves org info from a subdomain slug (e.g. "myorg" from myorg.course360.app)
   resolveBySubdomain: publicProcedure
     .input(z.object({ subdomain: z.string().min(1) }))
     .query(async ({ input }) => {
@@ -558,7 +558,7 @@ export const appRouter = router({
           const orgRole = (input.role === "org_admin" || input.role === "org_super_admin") ? input.role : "member";
           await addOrgMember(input.orgId, newUser.id, orgRole, undefined, input.memberSubRole);
           if (orgRole === "org_admin" || orgRole === "org_super_admin") {
-            await grantTeachificSchoolAccess(newUser.id);
+            await grantCourse360SchoolAccess(newUser.id);
           }
           // If group assignment requested, add to group_members
           if (input.groupId) {
@@ -588,7 +588,7 @@ export const appRouter = router({
           await addOrgMember(input.orgId, input.userId, input.orgRole, undefined, input.memberSubRole);
         }
         if (input.orgRole === "org_admin" || input.orgRole === "org_super_admin") {
-          await grantTeachificSchoolAccess(input.userId);
+          await grantCourse360SchoolAccess(input.userId);
         }
         if (input.groupId) {
           const db2 = await getDb();
@@ -831,7 +831,7 @@ export const appRouter = router({
           if (newDomain) {
             const orgId = rows[0].org.id;
             const slug = rows[0].org.slug;
-            const expectedTarget = `${slug}.teachific.app`;
+            const expectedTarget = `${slug}.course360.app`;
             setImmediate(async () => {
               try {
                 const db2 = await getDb();
@@ -884,7 +884,7 @@ export const appRouter = router({
       const newOrg = await getOrgBySlug(finalSlug);
       if (newOrg) {
         await addOrgMember(newOrg.id, ctx.user.id, "org_super_admin");
-        await grantTeachificSchoolAccess(ctx.user.id);
+        await grantCourse360SchoolAccess(ctx.user.id);
       }
       return newOrg;
     }),
@@ -1005,7 +1005,7 @@ export const appRouter = router({
         domainVerificationStatus: org.domainVerificationStatus,
         domainVerifiedAt: org.domainVerifiedAt ?? null,
         domainVerificationError: org.domainVerificationError ?? null,
-        expectedCname: `${org.slug}.teachific.app`,
+        expectedCname: `${org.slug}.course360.app`,
         sslStatus,
       };
     }),
@@ -1024,7 +1024,7 @@ export const appRouter = router({
       if (!org.customDomain) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No custom domain configured. Please save a custom domain first." });
       }
-      const expectedTarget = `${org.slug}.teachific.app`;
+      const expectedTarget = `${org.slug}.course360.app`;
       // Set status to pending while we check
       await db.update(organizations)
         .set({ domainVerificationStatus: "pending", domainVerificationError: null })
@@ -1196,8 +1196,8 @@ export const appRouter = router({
         const org = await getOrgBySlug(input.slug);
         if (org) {
           await addOrgMember(org.id, ctx.user.id, "org_super_admin");
-          await grantTeachificSchoolAccess(ctx.user.id);
-          // Auto-seed landing page on org creation with Teachific teal branding
+          await grantCourse360SchoolAccess(ctx.user.id);
+          // Auto-seed landing page on org creation with Course360 teal branding
           const db = await getDb();
           if (db) {
             const defaultBlocks = JSON.stringify([
@@ -1393,7 +1393,7 @@ export const appRouter = router({
         .input(z.object({ orgId: z.number(), userId: z.number(), role: z.enum(["org_admin", "user"]) }))
         .mutation(async ({ input, ctx }) => {
           await addOrgMember(input.orgId, input.userId, input.role, ctx.user.id);
-          if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+          if (input.role === "org_admin") await grantCourse360SchoolAccess(input.userId);
         }),
       remove: adminProcedure
         .input(z.object({ orgId: z.number(), userId: z.number() }))
@@ -1402,7 +1402,7 @@ export const appRouter = router({
         .input(z.object({ orgId: z.number(), userId: z.number(), role: z.enum(["org_admin", "user"]) }))
         .mutation(async ({ input }) => {
           await updateOrgMemberRole(input.orgId, input.userId, input.role);
-          if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+          if (input.role === "org_admin") await grantCourse360SchoolAccess(input.userId);
         }),
       // Org-admin accessible updateRole — org admins can change member roles within their org
       updateMemberRole: orgAdminProcedure
@@ -1428,7 +1428,7 @@ export const appRouter = router({
             andOp(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, input.userId))
           );
           if (input.role === "org_admin" || input.role === "org_super_admin") {
-            await grantTeachificSchoolAccess(input.userId);
+            await grantCourse360SchoolAccess(input.userId);
           }
           return { success: true };
         }),
@@ -1525,7 +1525,7 @@ export const appRouter = router({
             if (!existingMember) {
               const orgRole = input.role === "org_admin" ? "org_admin" : "member";
               await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
-              if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
+              if (orgRole === "org_admin") await grantCourse360SchoolAccess(existing.id);
             }
           } else {
             const bcrypt = await import("bcryptjs");
@@ -1537,7 +1537,7 @@ export const appRouter = router({
             userId = newUser.id;
             const orgRole = input.role === "org_admin" ? "org_admin" : "member";
             await addOrgMember(input.orgId, userId, orgRole, ctx.user.id);
-            if (orgRole === "org_admin") await grantTeachificSchoolAccess(userId);
+            if (orgRole === "org_admin") await grantCourse360SchoolAccess(userId);
           }
           if (input.courseIds?.length) {
             const { getEnrollment: getEnr } = await import("./lmsDb");
@@ -1600,7 +1600,7 @@ export const appRouter = router({
                 const existingMember = await getOrgMember(input.orgId, existing.id);
                 const orgRole = u.role === "org_admin" ? "org_admin" : "member";
                 if (!existingMember) await addOrgMember(input.orgId, existing.id, orgRole, ctx.user.id);
-                if (orgRole === "org_admin") await grantTeachificSchoolAccess(existing.id);
+                if (orgRole === "org_admin") await grantCourse360SchoolAccess(existing.id);
                 updated++;
               } else {
                 const password = u.password || nanoid(12);
@@ -1611,7 +1611,7 @@ export const appRouter = router({
                 if (!newUser) throw new Error("Failed to create user");
                 const orgRole = u.role === "org_admin" ? "org_admin" : "member";
                 await addOrgMember(input.orgId, newUser.id, orgRole, ctx.user.id);
-                if (orgRole === "org_admin") await grantTeachificSchoolAccess(newUser.id);
+                if (orgRole === "org_admin") await grantCourse360SchoolAccess(newUser.id);
                 created++;
               }
             } catch (e: any) { failed++; errors.push(`${u.email}: ${e.message}`); }
@@ -1638,7 +1638,7 @@ export const appRouter = router({
           allowedDomains: org.embedAllowedDomains ? (JSON.parse(org.embedAllowedDomains) as string[]) : [],
           defaultTheme: org.embedDefaultTheme ?? "auto",
           analyticsEnabled: org.embedAnalyticsEnabled ?? true,
-          hideTeachificBranding: org.embedHideTeachificBranding ?? false,
+          hideCourse360Branding: org.embedHideCourse360Branding ?? false,
         };
       }),
 
@@ -1648,7 +1648,7 @@ export const appRouter = router({
         allowedDomains: z.array(z.string()).optional(),
         defaultTheme: z.enum(["light", "dark", "auto"]).optional(),
         analyticsEnabled: z.boolean().optional(),
-        hideTeachificBranding: z.boolean().optional(),
+        hideCourse360Branding: z.boolean().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const db = await getDb();
@@ -1667,7 +1667,7 @@ export const appRouter = router({
         if (input.allowedDomains !== undefined) updates.embedAllowedDomains = JSON.stringify(input.allowedDomains);
         if (input.defaultTheme !== undefined) updates.embedDefaultTheme = input.defaultTheme;
         if (input.analyticsEnabled !== undefined) updates.embedAnalyticsEnabled = input.analyticsEnabled;
-        if (input.hideTeachificBranding !== undefined) updates.embedHideTeachificBranding = input.hideTeachificBranding;
+        if (input.hideCourse360Branding !== undefined) updates.embedHideCourse360Branding = input.hideCourse360Branding;
         if (Object.keys(updates).length > 0) {
           await db.update(organizations).set(updates).where(eq(organizations.id, input.orgId));
         }
@@ -2453,9 +2453,9 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
           const isPaid = qRole !== "none" && !isTrialing;
           if (!isPaid) {
             const wsWatermark = XLSX.utils.json_to_sheet([{
-              "": "Created with Teachific\u2122 \u2014 This export was generated on the free/trial plan. Upgrade at teachific.com to remove this notice.",
+              "": "Created with Course360\u2122 \u2014 This export was generated on the free/trial plan. Upgrade at course360.app to remove this notice.",
             }]);
-            XLSX.utils.book_append_sheet(wb, wsWatermark, "Teachific\u2122");
+            XLSX.utils.book_append_sheet(wb, wsWatermark, "Course360\u2122");
           }
         }
         const buf = XLSX.write(wb, { type: "base64", bookType: "xlsx" }) as string;
@@ -2817,7 +2817,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             if (existing) {
               await addOrgMember(input.orgId, existing.id, u.role, undefined, u.memberSubRole);
               if (u.role === "org_admin" || u.role === "org_super_admin") {
-                await grantTeachificSchoolAccess(existing.id);
+                await grantCourse360SchoolAccess(existing.id);
               }
               results.push({ email: u.email, status: "added_existing", userId: existing.id });
             } else {
@@ -2827,7 +2827,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
               if (newUser) {
                 await addOrgMember(input.orgId, newUser.id, u.role, undefined, u.memberSubRole);
                 if (u.role === "org_admin" || u.role === "org_super_admin") {
-                  await grantTeachificSchoolAccess(newUser.id);
+                  await grantCourse360SchoolAccess(newUser.id);
                 }
                 results.push({ email: u.email, status: "created", userId: newUser.id });
               }
@@ -2951,7 +2951,8 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const impersonationToken = await sdk.createImpersonationToken(
           orgAdmin.openId,
           orgAdmin.name ?? orgAdmin.email ?? "User",
-          ctx.user.openId
+          ctx.user.openId,
+          { orgId: input.orgId }
         );
         ctx.res.cookie(COOKIE_NAME, impersonationToken, { ...cookieOptions, maxAge: 60 * 60 * 1000 });
         return { success: true, impersonatedUser: { id: orgAdmin.id, name: orgAdmin.name, email: orgAdmin.email } };
@@ -3040,7 +3041,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         await db2.insert(orgMembersTable).values({ orgId, userId: adminUserId, role: "org_super_admin" }).onDuplicateKeyUpdate({ set: { role: "org_super_admin" } });
         // Set subscription plan
         await db2.insert(orgSubTable).values({ orgId, plan: input.plan, status: "active" }).onDuplicateKeyUpdate({ set: { plan: input.plan, status: "active" } });
-        await grantTeachificSchoolAccess(adminUserId);
+        await grantCourse360SchoolAccess(adminUserId);
         return { orgId, adminUserId };
       }),
     uploadPlatformLogo: adminProcedure
@@ -3261,7 +3262,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       .mutation(async ({ input }) => {
         await updateOrgMemberRole(input.orgId, input.userId, input.role as any);
         if (input.role === "org_admin" || input.role === "org_super_admin") {
-          await grantTeachificSchoolAccess(input.userId);
+          await grantCourse360SchoolAccess(input.userId);
         }
         return { success: true };
       }),
@@ -3276,7 +3277,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const existing = await getOrgMember(input.orgId, input.userId);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, input.userId, input.role as any);
-        if (input.role === "org_admin") await grantTeachificSchoolAccess(input.userId);
+        if (input.role === "org_admin") await grantCourse360SchoolAccess(input.userId);
         return { success: true };
       }),
     addUserToOrgByEmail: adminProcedure
@@ -3291,7 +3292,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         const existing = await getOrgMember(input.orgId, user.id);
         if (existing) throw new TRPCError({ code: "CONFLICT", message: "User is already a member of this org" });
         await addOrgMember(input.orgId, user.id, input.role as any);
-        if (input.role === "org_admin") await grantTeachificSchoolAccess(user.id);
+        if (input.role === "org_admin") await grantCourse360SchoolAccess(user.id);
         return { success: true, userId: user.id, name: user.name, email: user.email };
       }),
   }),
@@ -3372,10 +3373,10 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             <tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6;vertical-align:top">Message</td><td style="padding:8px 12px;white-space:pre-wrap">${safeMessage}</td></tr>
             ${ctx.user ? `<tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6">User ID</td><td style="padding:8px 12px">${ctx.user.id}</td></tr>` : ""}
           </table>
-          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Teachific support form.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Course360 support form.</p>
         `;
         await sendEmail({
-          to: "support@teachific.net",
+          to: "support@course360.app",
           subject: `[Support] ${input.subject}`,
           html,
           replyTo: input.email,

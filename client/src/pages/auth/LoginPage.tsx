@@ -24,8 +24,8 @@ const features = [
 
 function getRootAppUrl(path: string) {
   const { protocol, hostname, port } = window.location;
-  if (hostname.endsWith(".teachific.app") && hostname !== "teachific.app" && hostname !== "www.teachific.app") {
-    return `${protocol}//teachific.app${path}`;
+  if (hostname.endsWith(".course360.app") && hostname !== "course360.app" && hostname !== "www.course360.app") {
+    return `${protocol}//course360.app${path}`;
   }
   const portSuffix = port ? `:${port}` : "";
   return `${protocol}//${hostname}${portSuffix}${path}`;
@@ -104,12 +104,12 @@ export default function LoginPage() {
   // ── Desktop-app minimal login ────────────────────────────────────────────
   if (isDesktop) {
     const appName = returnTo.startsWith("/studio")
-      ? "Teachific Studio™"
+      ? "Course360 Studio™"
       : returnTo.startsWith("/quiz-creator")
-      ? "Teachific QuizMaker™"
+      ? "Course360 QuizMaker™"
       : contextParam === "desktop" && !returnTo
-      ? "Teachific"
-      : "TeachificCreator™";
+      ? "Course360"
+      : "Course360Creator™";
 
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-white px-8">
@@ -151,7 +151,7 @@ export default function LoginPage() {
             >
               Sign in
             </h2>
-            <p className="text-sm text-slate-500">Use your Teachific account credentials</p>
+            <p className="text-sm text-slate-500">Use your Course360 account credentials</p>
           </div>
 
           {error && (
@@ -307,7 +307,7 @@ export default function LoginPage() {
             </h1>
             <p className="text-white/60 text-base leading-relaxed max-w-sm">
               Join thousands of educators who turned their expertise into a thriving online school
-              with Teachific.
+              with Course360.
             </p>
           </div>
 
@@ -346,13 +346,13 @@ export default function LoginPage() {
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
-          © {new Date().getFullYear()} Teachific™. All rights reserved.
+          © {new Date().getFullYear()} Course360™. All rights reserved.
         </p>
       </div>}
 
       {/* ── Right panel: form ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12">
-        {/* Logo: org branding on subdomain, Teachific on root */}
+        {/* Logo: org branding on subdomain, Course360 on root */}
         <div className="mb-8 text-center">
           {isOrgSubdomain ? (
             branding?.logoUrl ? (
@@ -378,7 +378,7 @@ export default function LoginPage() {
               Welcome back
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Teachific account"}
+              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Course360 account"}
             </p>
           </div>
 

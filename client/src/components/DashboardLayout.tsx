@@ -125,7 +125,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/lms" },
-      { icon: GraduationCap, label: "Teachific Learn", path: "https://learn.teachific.app", external: true },
+      { icon: GraduationCap, label: "Course360 Learn", path: "https://learn.course360.app", external: true },
     ],
   },
 
@@ -170,7 +170,8 @@ const navGroups: NavGroup[] = [
           { label: "Categories", path: "/lms/manage?tab=collections" },
           { label: "Media Library", path: "/media-library" },
           { label: "Question Bank", path: "/lms/manage?tab=question_bank" },
-          { label: "Teachific Studio™", path: "/studio" },
+          { label: "Teachific Games", path: "/lms/teachific-games" },
+          { label: "Course360 Studio™", path: "/media-library#record-edit" },
         ],
       },
     ],
@@ -238,6 +239,24 @@ const navGroups: NavGroup[] = [
     ],
   },
 
+  // ── Blueprints ──
+  {
+    dividerBefore: true,
+    items: [
+      {
+        icon: Library,
+        label: "Blueprints",
+        path: "/blueprints",
+        subItems: [
+          { label: "Blueprint Hub", path: "/blueprints" },
+          { label: "Marketplace", path: "/blueprints/marketplace" },
+          { label: "Installed Blueprints", path: "/blueprints/installed" },
+          { label: "Manage Blueprints", path: "/blueprints/manage" },
+        ],
+      },
+    ],
+  },
+
   // ── Integrations ──
   {
     dividerBefore: true,
@@ -246,27 +265,38 @@ const navGroups: NavGroup[] = [
         icon: Webhook,
         label: "Integrations",
         path: "/integrations",
-        adminOnly: true,
         subItems: [
           { label: "All Integrations", path: "/integrations" },
+          { label: "Stripe / Payments", path: "/lms/settings/payment" },
+          { label: "Zapier & Webhooks", path: "/integrations/webhooks" },
+          { label: "API Keys", path: "/integrations/api" },
           { label: "Import from Thinkific", path: "/integrations/thinkific" },
           { label: "Import from Teachable", path: "/integrations/teachable" },
           { label: "Import from Kajabi", path: "/integrations/kajabi" },
-          { label: "Webhooks / Zapier", path: "/integrations/webhooks" },
-          { label: "API Keys", path: "/integrations/api" },
         ],
       },
     ],
   },
-  // ── Settings ──
+  // ── Setup ──
   {
     dividerBefore: true,
     items: [
       {
         icon: Settings,
-        label: "Settings",
+        label: "Setup",
         path: "/lms/settings",
-        adminOnly: true,
+        subItems: [
+          { label: "Organization Profile", path: "/lms/settings/general" },
+          { label: "Branding & Logo", path: "/lms/settings/branding" },
+          { label: "Website & Domain", path: "/lms/settings/domain" },
+          { label: "Payments & Receipts", path: "/lms/settings/payment" },
+          { label: "Site Policies & Contact Links", path: "/lms/settings/policies" },
+          { label: "Homepage", path: "/lms/settings/homepage" },
+          { label: "Landing Page", path: "/lms/settings/landing" },
+          { label: "Certificates", path: "/lms/settings/certificates" },
+          { label: "Email Sender", path: "/lms/settings/email" },
+          { label: "Embed Settings", path: "/lms/settings/embed" },
+        ],
       },
     ],
   },
@@ -326,7 +356,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     user?.role === "site_owner" ||
     user?.role === "site_admin" ||
     user?.role === "org_super_admin" ||
-    orgCtx?.role === "org_admin"
+    orgCtx?.role === "org_admin" ||
+    orgCtx?.role === "org_super_admin"
   );
   if (user && !isAdminRole) {
     return <StudentLayout>{children}</StudentLayout>;
@@ -340,8 +371,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full bg-white/5 backdrop-blur rounded-2xl border border-white/10 shadow-2xl">
           <div className="flex flex-col items-center gap-4">
             <span className="text-4xl font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.03em" }}>
-              <span className="text-white">teach</span>
-              <span style={{ color: "#24abbc" }}>ific</span>
+              <span className="text-white">Course</span>
+              <span style={{ color: "#24abbc" }}>360</span>
               <span className="text-white" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "2px" }}>™</span>
             </span>
             {errorCode === "registration_closed" ? (
@@ -487,13 +518,16 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed && (
                 <span className="text-[21px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
-                  <span className="text-sidebar-foreground">teach</span>
-                  <span style={{ color: "#24abbc" }}>ific</span>
+                  <span className="text-sidebar-foreground">Course</span>
+                  <span style={{ color: "#24abbc" }}>360</span>
                   <span className="text-sidebar-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
                 </span>
               )}
               {isCollapsed && (
-                <span className="text-[21px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#24abbc" }}>t</span>
+                <span className="text-[18px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.04em" }}>
+                  <span className="text-sidebar-foreground">C</span>
+                  <span style={{ color: "#24abbc" }}>360</span>
+                </span>
               )}
             </div>
           </SidebarHeader>

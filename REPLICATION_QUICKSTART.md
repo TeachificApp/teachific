@@ -1,4 +1,4 @@
-# Teachific Replication - Quick Start Guide
+# Course360 Replication - Quick Start Guide
 
 Get your failover system running in 5 minutes.
 
@@ -104,7 +104,7 @@ node scripts/failover-monitor.mjs check
 ### View logs
 ```bash
 # GitHub Actions
-# Go to: https://github.com/TeachificApp/teachificapp/actions
+# Go to: https://github.com/Course360App/teachificapp/actions
 
 # Cron jobs
 tail -f /var/log/teachific/sync.log
@@ -252,4 +252,4 @@ For detailed setup and troubleshooting:
 
 ---
 
-**You're all set!** Your Teachific instance now has automatic failover protection. 🎉
+**You're all set!** Your Course360 instance now has automatic failover protection. 🎉

@@ -1,6 +1,6 @@
-# Teachific™ — Railway Deployment Guide
+# Course360™ — Railway Deployment Guide
 
-This guide walks you through deploying Teachific™ to [Railway](https://railway.app) as a self-hosted alternative to the Manus platform. The app runs as a single Node.js process (Express + Vite SSR) backed by a MySQL database and S3-compatible file storage.
+This guide walks you through deploying Course360™ to [Railway](https://railway.app) as a self-hosted alternative to the Manus platform. The app runs as a single Node.js process (Express + Vite SSR) backed by a MySQL database and S3-compatible file storage.
 
 ---
 
@@ -103,8 +103,8 @@ In your Railway service, go to **Variables** and add the following:
 | Variable | Value |
 |---|---|
 | `SENDGRID_API_KEY` | Your SendGrid API key |
-| `SENDGRID_FROM_EMAIL` | Verified sender email (e.g., `hello@teachific.app`) |
-| `SENDGRID_FROM_NAME` | Sender name (e.g., `Teachific`) |
+| `SENDGRID_FROM_EMAIL` | Verified sender email (e.g., `hello@course360.app`) |
+| `SENDGRID_FROM_NAME` | Sender name (e.g., `Course360`) |
 
 ### Optional — Manus OAuth (if keeping Manus login)
 If you want to keep Manus OAuth login working alongside email/password:
@@ -170,7 +170,7 @@ Or connect to Railway's MySQL and paste the contents of each file in sequence.
 Once you've tested on the Railway-generated URL (e.g., `teachific-production.up.railway.app`):
 
 1. In Railway, go to your service → **Settings** → **Networking** → **Custom Domain**.
-2. Add `teachific.app` and `www.teachific.app`.
+2. Add `course360.app` and `www.course360.app`.
 3. Railway will show you the DNS records to add.
 4. In your domain registrar (GoDaddy), update the DNS:
    - Add a `CNAME` record: `www` → `teachific-production.up.railway.app`
@@ -181,10 +181,10 @@ Once you've tested on the Railway-generated URL (e.g., `teachific-production.up.
 
 ## Step 8 — Set Up Org Subdomains (Optional)
 
-Teachific supports org subdomains (e.g., `myschool.teachific.app`). To enable this on Railway:
+Course360 supports org subdomains (e.g., `myschool.course360.app`). To enable this on Railway:
 
-1. Add a **wildcard DNS record**: `*.teachific.app` → `teachific-production.up.railway.app`
-2. In Railway, add `*.teachific.app` as a custom domain.
+1. Add a **wildcard DNS record**: `*.course360.app` → `teachific-production.up.railway.app`
+2. In Railway, add `*.course360.app` as a custom domain.
 3. Railway will provision a wildcard SSL certificate automatically.
 
 ---
@@ -251,4 +251,4 @@ Before going live, verify these flows on your Railway staging URL:
 - Railway docs: [docs.railway.app](https://docs.railway.app)
 - AWS S3 docs: [docs.aws.amazon.com/s3](https://docs.aws.amazon.com/s3)
 - OpenAI docs: [platform.openai.com/docs](https://platform.openai.com/docs)
-- Teachific support: support@teachific.net
+- Course360 support: support@course360.app
