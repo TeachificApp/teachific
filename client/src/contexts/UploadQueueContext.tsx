@@ -1,7 +1,7 @@
 /**
  * UploadQueueContext
  *
- * Provides a global background upload queue for TeachificStudio.
+ * Provides a global background upload queue for Course360Studio.
  * Files are uploaded in 5 MB chunks to avoid proxy timeout limits.
  * Files are processed one at a time (sequential) so the storage endpoint
  * is never flooded. Users can navigate away and uploads continue.

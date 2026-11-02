@@ -69,7 +69,7 @@ const FEATURES = [
     icon: Lock,
     title: "AES-256 Encrypted .quiz Files",
     description:
-      "Every quiz exports as a portable, encrypted .quiz file you own. Share it, archive it, or import it into any Teachific LMS course with one click.",
+      "Every quiz exports as a portable, encrypted .quiz file you own. Share it, archive it, or import it into any Course360 LMS course with one click.",
   },
   {
     icon: Sparkles,
@@ -97,9 +97,9 @@ const FEATURES = [
   },
   {
     icon: ListChecks,
-    title: "Teachific LMS™ Integration",
+    title: "Course360 LMS™ Integration",
     description:
-      "Publish any .quiz file directly to a Teachific course lesson. Student attempts, scores, and completion data flow back to your LMS gradebook automatically.",
+      "Publish any .quiz file directly to a Course360 course lesson. Student attempts, scores, and completion data flow back to your LMS gradebook automatically.",
   },
 ];
 
@@ -116,7 +116,7 @@ const PLAN_FEATURES = [
   "Matching drag-and-drop builder",
   "Student preview mode",
   "Detailed scoring & partial credit",
-  "Teachific LMS™ direct publish",
+  "Course360 LMS™ direct publish",
   "50 GB media storage",
   "Priority email & chat support",
 ];
@@ -124,7 +124,7 @@ const PLAN_FEATURES = [
 const PLANS = [
   {
     id: "pro",
-    name: "Teachific QuizMaker™",
+    name: "Course360 QuizMaker™",
     badge: null,
     monthlyPrice: 47,
     annualPrice: 399,
@@ -141,7 +141,7 @@ const PLANS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Teachific QuizMaker™",
+      "Everything in Course360 QuizMaker™",
       "Unlimited seats",
       "SSO / SAML integration",
       "White-label quiz player",
@@ -191,7 +191,7 @@ export default function QuizCreatorLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-black tracking-tight cursor-pointer">
-                <span className="text-white">Teachific</span>
+                <span className="text-white">Course360</span>
                 <span className="text-teal-400"> QuizMaker</span>
                 <sup className="text-[10px] text-teal-400 ml-0.5">™</sup>
               </span>
@@ -227,7 +227,7 @@ export default function QuizCreatorLandingPage() {
         <div className="relative max-w-4xl mx-auto text-center">
           <Badge className="bg-teal-500/20 text-teal-300 border-teal-500/30 mb-6 text-sm px-4 py-1">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            7 Question Types · Encrypted .quiz Files · Teachific LMS™ Integration
+            7 Question Types · Encrypted .quiz Files · Course360 LMS™ Integration
           </Badge>
 
           <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6">
@@ -237,7 +237,7 @@ export default function QuizCreatorLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Teachific QuizMaker™ is the standalone quiz authoring tool built for educators who demand more
+            Course360 QuizMaker™ is the standalone quiz authoring tool built for educators who demand more
             than a basic form builder. Create hotspot, matching, and 5 other question types — then export to a
             portable, encrypted .quiz file that belongs to you.
           </p>
@@ -324,7 +324,7 @@ export default function QuizCreatorLandingPage() {
               Built for Serious Content Creators
             </h2>
             <p className="text-white/60 text-lg max-w-2xl mx-auto">
-              Teachific QuizMaker™ isn't a form builder with a quiz skin. It's purpose-built authoring software
+              Course360 QuizMaker™ isn't a form builder with a quiz skin. It's purpose-built authoring software
               for educators who create content professionally.
             </p>
           </div>
@@ -363,7 +363,7 @@ export default function QuizCreatorLandingPage() {
               </p>
               <p className="text-white/50 text-base leading-relaxed mb-10">
                 Hotspot questions are the gold standard for visual assessment in healthcare education,
-                engineering training, and technical certification programs. Teachific QuizMaker™ is the only
+                engineering training, and technical certification programs. Course360 QuizMaker™ is the only
                 standalone tool that makes them this easy to build.
               </p>
               <Link href="/register">
@@ -479,7 +479,7 @@ export default function QuizCreatorLandingPage() {
                   )}
                 </div>
 
-                <Link href={plan.id === "enterprise" ? "mailto:sales@teachific.app" : "/register"}>
+                <Link href={plan.id === "enterprise" ? "mailto:sales@course360.app" : "/register"}>
                   <Button
                     className={`w-full font-semibold rounded-xl py-3 h-auto ${
                       plan.highlight
@@ -510,7 +510,7 @@ export default function QuizCreatorLandingPage() {
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
                   <th className="text-left px-6 py-4 text-white/60 font-medium">Feature</th>
-                  <th className="text-center px-4 py-4 text-teal-400 font-bold">Teachific QuizMaker™</th>
+                  <th className="text-center px-4 py-4 text-teal-400 font-bold">Course360 QuizMaker™</th>
                   <th className="text-center px-4 py-4 text-white/40 font-medium">Google Forms</th>
                   <th className="text-center px-4 py-4 text-white/40 font-medium">Typeform</th>
                 </tr>
@@ -522,7 +522,7 @@ export default function QuizCreatorLandingPage() {
                   ["Encrypted portable file export", true, false, false],
                   ["XLS import & export", true, false, false],
                   ["Branching & conditional logic", true, false, true],
-                  ["Teachific LMS™ integration", true, false, false],
+                  ["Course360 LMS™ integration", true, false, false],
                   ["AI quiz generator", true, false, false],
                   ["Starting price/mo", "$47", "Free", "$25"],
                 ].map(([feature, qc, gf, tf], i) => (
@@ -565,7 +565,7 @@ export default function QuizCreatorLandingPage() {
                 Start Building Better Assessments Today
               </h2>
               <p className="text-white/60 text-lg mb-10 leading-relaxed">
-                Join educators who have moved beyond basic quiz forms. Teachific QuizMaker™ gives you the
+                Join educators who have moved beyond basic quiz forms. Course360 QuizMaker™ gives you the
                 authoring power to build assessments that are as sophisticated as the subjects you teach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -581,7 +581,7 @@ export default function QuizCreatorLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 text-lg px-10 py-4 rounded-xl h-auto"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Teachific LMS™
+                    View Course360 LMS™
                   </Button>
                 </Link>
               </div>
@@ -596,20 +596,20 @@ export default function QuizCreatorLandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="text-lg font-black">
-              <span className="text-white">Teachific</span>
+              <span className="text-white">Course360</span>
               <span className="text-teal-400"> QuizMaker</span>
               <sup className="text-[10px] text-teal-400">™</sup>
             </span>
-            <span className="text-white/30 text-sm">by Teachific™</span>
+            <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-white/40 text-sm">
-            <Link href="/" className="hover:text-white transition-colors">Teachific Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">TeachificCreator™</Link>
-            <Link href="/studio-pro" className="hover:text-white transition-colors">Teachific Studio™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360Creator™</Link>
+            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360 Studio™</Link>
             <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
             <Link href="/register" className="hover:text-white transition-colors">Register</Link>
           </div>
-          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved.</p>
+          <p className="text-white/30 text-xs">© {new Date().getFullYear()} Course360™. All rights reserved.</p>
         </div>
       </footer>
     </div>

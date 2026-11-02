@@ -1,5 +1,5 @@
 /**
- * Stripe Billing Router for Teachific
+ * Stripe Billing Router for Course360
  * Handles org subscription checkout, customer portal, and payment settings.
  */
 import { TRPCError } from "@trpc/server";
@@ -319,7 +319,7 @@ export const stripeRouter = router({
         });
       }
 
-      // Get org's Teachific plan to determine transaction fee
+      // Get org's Course360 plan to determine transaction fee
       const [orgSub] = await db
         .select()
         .from(orgSubscriptions)
@@ -552,7 +552,7 @@ export const stripeRouter = router({
       await db.update(users).set({ studioTrialEndsAt: trialEndsAt }).where(eq(users.id, input.userId));
       return { success: true };
     }),
-  // ── TeachificCreator™ checkout (Web / Desktop / Bundle) ───────────────────────────
+  // ── Course360Creator™ checkout (Web / Desktop / Bundle) ───────────────────────────
   createCreatorSingleCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),
@@ -563,7 +563,7 @@ export const stripeRouter = router({
       const stripe = getStripe();
       const priceKey = `creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "TeachificCreator price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360Creator price not found. Please try again shortly." });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -588,7 +588,7 @@ export const stripeRouter = router({
       return { checkoutUrl: session.url };
     }),
 
-  // ── Teachific Studio™ checkout (Web / Desktop / Bundle) ──────────────────────────────
+  // ── Course360 Studio™ checkout (Web / Desktop / Bundle) ──────────────────────────────
   createStudioSingleCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),
@@ -599,7 +599,7 @@ export const stripeRouter = router({
       const stripe = getStripe();
       const priceKey = `studio_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Teachific Studio price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Studio price not found. Please try again shortly." });
       const session = await stripe.checkout.sessions.create({
         mode: "subscription",
         payment_method_types: ["card"],
@@ -624,7 +624,7 @@ export const stripeRouter = router({
       return { checkoutUrl: session.url };
     }),
 
-  // ── Teachific QuizMaker™ checkout (Web / Desktop / Bundle) ─────────────────────────
+  // ── Course360 QuizMaker™ checkout (Web / Desktop / Bundle) ─────────────────────────
   createQuizCreatorCheckout: protectedProcedure
     .input(z.object({
       interval: z.enum(["monthly", "annual"]),

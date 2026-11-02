@@ -1433,7 +1433,7 @@ export const funnelPublicRouter = router({
         // Free product — bypass Stripe entirely
         const customerName = `${input.firstName || ""} ${input.lastName || ""}`.trim();
         const brandMode = (checkoutBlock.data?.brandMode as string) || "teachific";
-        const baseUrl = "https://app.teachific.com";
+        const baseUrl = "https://app.course360.app";
 
         // 1. Create or find user account
         let resolvedUserId: number | null = ctx.user?.id ?? null;
@@ -1471,7 +1471,7 @@ export const funnelPublicRouter = router({
               to: { name: customerName || firstName, email: input.email },
               subject: `Your account is ready — set your password to access ${selectedProduct.name || "your purchase"}`,
               htmlBody: emailContent.htmlBody,
-              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${"Teachific"}`,
+              previewText: `Set your password to access your ${selectedProduct.name || "purchase"} on ${"Course360"}`,
             });
             console.log(`[FreeCheckout] Sent set-password email to ${input.email} (new user ${resolvedUserId})`);
           } catch (emailErr) {

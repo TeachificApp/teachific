@@ -217,4 +217,4 @@ await finalizePackage(packageId, entryPointPath, contentType, TITLE);
 console.log(`✅ Package finalized: entry=${entryPointPath}, type=${contentType}`);
 
 await db.end();
-console.log(`\n🎉 Done! Package ID: ${packageId} — "${TITLE}" is ready in Teachific™\n`);
+console.log(`\n🎉 Done! Package ID: ${packageId} — "${TITLE}" is ready in Course360™\n`);

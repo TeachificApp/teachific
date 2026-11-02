@@ -127,7 +127,7 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
       <span className="text-gray-400">{TYPE_ICONS[course.type]}</span>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-gray-900 text-sm truncate">{course.title}</p>
-        <p className="text-xs text-gray-400">{course.brand === "teachific" ? "Teachific™" : "Teachific™"} · {course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`}</p>
+        <p className="text-xs text-gray-400">{course.brand === "teachific" ? "Course360™" : "Course360™"} · {course.type} · {course.isFree ? "Free" : `$${Number(course.price).toFixed(2)}`}</p>
       </div>
       <Badge className={`text-xs ${STATUS_COLORS[course.status]}`}>{course.status}</Badge>
       <Button size="sm" variant="ghost" className="h-7 text-xs text-teal-600 hover:bg-teal-50" onClick={() => onEdit(course.id)}>
@@ -417,7 +417,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                   <Select value={brand} onValueChange={v => setBrand(v as any)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="teachific">Teachific™</SelectItem>
+                      <SelectItem value="teachific">Course360™</SelectItem>
                       
                     </SelectContent>
                   </Select>
@@ -531,7 +531,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       <Select value={brand} onValueChange={v => setBrand(v as any)}>
                         <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="teachific">Teachific™</SelectItem>
+                          <SelectItem value="teachific">Course360™</SelectItem>
                           
                         </SelectContent>
                       </Select>
@@ -1683,7 +1683,7 @@ function CourseSettingsForm({ course, onSave, saving }: { course: any; onSave: (
           <Select value={brand} onValueChange={setBrand}>
             <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="teachific">Teachific™</SelectItem>
+              <SelectItem value="teachific">Course360™</SelectItem>
               
             </SelectContent>
           </Select>
@@ -5514,7 +5514,7 @@ function AffiliateLinksPanel({ affiliateId, affiliateName }: { affiliateId: numb
           <div className="space-y-3 py-2">
             <div>
               <Label className="text-xs">Destination URL *</Label>
-              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.teachific.com/courses/..." className="mt-1 text-sm" />
+              <Input value={destUrl} onChange={e => setDestUrl(e.target.value)} placeholder="https://learn.course360.app/courses/..." className="mt-1 text-sm" />
             </div>
             <div>
               <Label className="text-xs">Custom Slug (optional)</Label>
@@ -6416,7 +6416,7 @@ function CommunityFormInline({
           <Select value={form.brand} onValueChange={v => setForm(f => ({ ...f, brand: v }))}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all_about_ultrasound">Teachific™</SelectItem>
+              <SelectItem value="all_about_ultrasound">Course360™</SelectItem>
               
             </SelectContent>
           </Select>
@@ -10894,31 +10894,31 @@ function LMSPublishDomainSettings() {
                 value={courseDomain}
                 onChange={setCourseDomain}
                 label="Courses Default Domain"
-                description="Course landing pages use your org domain by default (e.g. yourslug.teachific.app/courses/course-slug) or a verified custom domain."
+                description="Course landing pages use your org domain by default (e.g. yourslug.course360.app/courses/course-slug) or a verified custom domain."
               />
               <DomainSelect
                 value={funnelDomain}
                 onChange={setFunnelDomain}
                 label="Funnels Default Domain"
-                description="Funnels use your org domain by default (e.g. yourslug.teachific.app/funnel-slug/page-slug) or a verified funnel domain."
+                description="Funnels use your org domain by default (e.g. yourslug.course360.app/funnel-slug/page-slug) or a verified funnel domain."
               />
               <DomainSelect
                 value={downloadDomain}
                 onChange={setDownloadDomain}
                 label="Downloads Default Domain"
-                description="Download landing pages use your org domain by default (e.g. yourslug.teachific.app/downloads/download-slug) or a verified download domain."
+                description="Download landing pages use your org domain by default (e.g. yourslug.course360.app/downloads/download-slug) or a verified download domain."
               />
               <DomainSelect
                 value={productDomain}
                 onChange={setProductDomain}
                 label="Products Default Domain"
-                description="Product pages use your org domain by default (e.g. yourslug.teachific.app/products/product-slug) or a verified product domain."
+                description="Product pages use your org domain by default (e.g. yourslug.course360.app/products/product-slug) or a verified product domain."
               />
               <DomainSelect
                 value={formDomain}
                 onChange={setFormDomain}
                 label="Forms Default Domain"
-                description="Public forms use your org domain by default (e.g. yourslug.teachific.app/forms/form-slug) or a verified form domain."
+                description="Public forms use your org domain by default (e.g. yourslug.course360.app/forms/form-slug) or a verified form domain."
               />
               <div className="flex justify-end pt-2 border-t border-gray-100">
                 <Button

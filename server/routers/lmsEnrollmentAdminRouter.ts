@@ -1,12 +1,12 @@
 /**
  * lmsEnrollmentAdminRouter.ts
- * Teachific™ LMS — Enrollments, Groups, Analytics, Orders (admin)
+ * Course360™ LMS — Enrollments, Groups, Analytics, Orders (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * Teachific™ LMS — LMS Management
+ * Course360™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -610,7 +610,7 @@ export const lmsEnrollmentAdminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
 
-      const systemPrompt = `You are an expert medical education curriculum designer specializing in ultrasound and echocardiography for Teachific™ and Teachific™.
+      const systemPrompt = `You are an expert medical education curriculum designer specializing in ultrasound and echocardiography for Course360™ and Course360™.
 You create structured, clinically accurate, and pedagogically sound course content.
 Always use United States English spelling.
 Return ONLY valid JSON — no markdown, no code fences, no extra text.

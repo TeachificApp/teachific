@@ -43,7 +43,7 @@
 }
 
 :root {
-  /* Teachific™ brand: exact colors from teachific.app screenshot */
+  /* Course360™ brand: exact colors from course360.app screenshot */
   /* Primary teal: #24abbc */
   --primary: oklch(0.6809 0.1100 208.1);
   --primary-foreground: oklch(1 0 0);
@@ -82,7 +82,7 @@
 }
 
 .dark {
-  /* Teachific™ dark mode — sidebar stays navy, primary stays teal */
+  /* Course360™ dark mode — sidebar stays navy, primary stays teal */
   --primary: oklch(0.72 0.1100 208.1);
   --primary-foreground: oklch(1 0 0);
   --sidebar-primary: oklch(0.72 0.1100 208.1);

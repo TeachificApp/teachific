@@ -125,7 +125,7 @@ const navGroups: NavGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/lms" },
-      { icon: GraduationCap, label: "Teachific Learn", path: "https://learn.teachific.app", external: true },
+      { icon: GraduationCap, label: "Course360 Learn", path: "https://learn.course360.app", external: true },
     ],
   },
 
@@ -170,7 +170,7 @@ const navGroups: NavGroup[] = [
           { label: "Categories", path: "/lms/manage?tab=collections" },
           { label: "Media Library", path: "/media-library" },
           { label: "Question Bank", path: "/lms/manage?tab=question_bank" },
-          { label: "Teachific Studio™", path: "/studio" },
+          { label: "Course360 Studio™", path: "/studio" },
         ],
       },
     ],

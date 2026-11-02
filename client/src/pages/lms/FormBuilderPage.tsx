@@ -3205,7 +3205,7 @@ export default function FormBuilderPage() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Paste the URL of any web page containing a form. Teachific will extract the fields automatically using AI.
+              Paste the URL of any web page containing a form. Course360 will extract the fields automatically using AI.
             </p>
             <div className="flex gap-2">
               <Input

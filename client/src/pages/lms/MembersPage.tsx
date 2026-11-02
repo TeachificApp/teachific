@@ -92,7 +92,7 @@ export default function MembersPage() {
         return {
           name: cols[nameIdx] ?? "",
           email: cols[emailIdx] ?? "",
-          password: passIdx >= 0 && cols[passIdx] ? cols[passIdx] : "Teachific@123",
+          password: passIdx >= 0 && cols[passIdx] ? cols[passIdx] : "Course360@123",
           role: (roleIdx >= 0 && cols[roleIdx]?.toLowerCase().includes("admin") ? "org_admin" : "user") as "org_admin" | "user",
         };
       }).filter(r => r.name && r.email);
@@ -422,7 +422,7 @@ export default function MembersPage() {
                 onChange={(e) => setEnrollEmail(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                The student must already have a Teachific account with this email.
+                The student must already have a Course360 account with this email.
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -628,7 +628,7 @@ export default function MembersPage() {
                         </TableBody>
                       </Table>
                     </div>
-                    <p className="text-xs text-muted-foreground">Default password: <code className="bg-muted px-1 rounded">Teachific@123</code> (if not specified in CSV)</p>
+                    <p className="text-xs text-muted-foreground">Default password: <code className="bg-muted px-1 rounded">Course360@123</code> (if not specified in CSV)</p>
                   </div>
                 )}
               </>

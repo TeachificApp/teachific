@@ -28,9 +28,9 @@ describe("certificateCompletionHtml", () => {
       courseTitle: "POCUS Basics",
       issuedAt: new Date(),
       verificationCode: "CERT-XYZ",
-      orgName: "Teachific",
+      orgName: "Course360",
     });
-    expect(html).toContain("Teachific");
+    expect(html).toContain("Course360");
   });
 
   it("includes the course URL CTA when provided", () => {
@@ -75,10 +75,10 @@ describe("dripUnlockHtml", () => {
     const html = dripUnlockHtml({
       userName: "Frank",
       courseTitle: "Echo Basics",
-      orgName: "Teachific",
+      orgName: "Course360",
       unlockedLessons: ["Lesson 1"],
     });
-    expect(html).toContain("Teachific");
+    expect(html).toContain("Course360");
   });
 
   it("includes the course URL CTA when provided", () => {

@@ -9,7 +9,7 @@ import { GraduationCap, ArrowRight, LogOut } from "lucide-react";
 /**
  * SchoolPickerPage
  *
- * Shown when a user logs in at the root domain (teachific.app) and belongs
+ * Shown when a user logs in at the root domain (course360.app) and belongs
  * to multiple orgs. They choose which school to go to.
  *
  * Also shown for single-org users who somehow land at root before the
@@ -36,7 +36,7 @@ export default function SchoolPickerPage() {
       <div className="mb-10 text-center">
         <div className="flex items-center justify-center gap-2 mb-4">
           <GraduationCap className="h-8 w-8 text-teal-600" />
-          <span className="text-2xl font-bold text-gray-900">Teachific</span>
+          <span className="text-2xl font-bold text-gray-900">Course360</span>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Choose Your School</h1>
         <p className="text-gray-500 text-base">

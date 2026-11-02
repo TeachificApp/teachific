@@ -62,7 +62,7 @@ export const embeddedCheckoutRouter = router({
    * Create a Stripe PaymentIntent for an embedded checkout block.
    * Works on any page type — funnel, landing page, product page, or LMS lesson.
    *
-   * Supports org's own Stripe gateway (Pro+ plans) or TeachificPay (all plans).
+   * Supports org's own Stripe gateway (Pro+ plans) or Course360Pay (all plans).
    */
   createPaymentIntent: publicProcedure
     .input(
@@ -174,11 +174,11 @@ export const embeddedCheckoutRouter = router({
         stripeInstance = new Stripe(paySettings.stripeSecretKey, { apiVersion: "2025-02-24.acacia" as any });
         useOwnGateway = true;
       } else if (!paySettings?.stripeSecretKey && planLimits.customGateway) {
-        // Plan allows custom gateway but not configured — use TeachificPay
+        // Plan allows custom gateway but not configured — use Course360Pay
         stripeInstance = getStripe();
         useOwnGateway = false;
       } else {
-        // Free/Starter/Builder plans must use TeachificPay
+        // Free/Starter/Builder plans must use Course360Pay
         stripeInstance = getStripe();
         useOwnGateway = false;
       }

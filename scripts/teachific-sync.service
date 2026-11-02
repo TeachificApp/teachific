@@ -1,5 +1,5 @@
 [Unit]
-Description=Teachific Database Sync to Railway
+Description=Course360 Database Sync to Railway
 Documentation=file:///home/ubuntu/scorm-host/REPLICATION_SETUP.md
 After=network.target
 

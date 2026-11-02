@@ -39,7 +39,7 @@ const PLAN_FEATURES = [
   "Export to MP4 (up to 4K)",
   "Auto-save recordings to Media Library",
   "Snap-to-corner draggable camera bubble",
-  "Publish directly to Teachific LMS™",
+  "Publish directly to Course360 LMS™",
   "50 GB media storage",
   "Priority email & chat support",
 ];
@@ -47,7 +47,7 @@ const PLAN_FEATURES = [
 const PLANS = [
   {
     id: "pro",
-    name: "Teachific Studio™",
+    name: "Course360 Studio™",
     badge: null,
     monthlyPrice: 47,
     annualPrice: 399,
@@ -64,7 +64,7 @@ const PLANS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Teachific Studio™",
+      "Everything in Course360 Studio™",
       "Unlimited seats",
       "SSO / SAML integration",
       "Unlimited storage",
@@ -120,8 +120,8 @@ const FEATURES = [
   },
   {
     icon: Mic,
-    title: "Publish to Teachific LMS™",
-    desc: "One-click publish your finished video directly to your Teachific school. Live in seconds.",
+    title: "Publish to Course360 LMS™",
+    desc: "One-click publish your finished video directly to your Course360 school. Live in seconds.",
   },
 ];
 
@@ -147,7 +147,7 @@ const TESTIMONIALS = [
     role: "Freelance Trainer",
     company: "Self-employed",
     quote:
-      "At $47/mo I get everything I need: screen + cam recording, captions, and direct publish to my Teachific school. No other tool comes close.",
+      "At $47/mo I get everything I need: screen + cam recording, captions, and direct publish to my Course360 school. No other tool comes close.",
     stars: 5,
   },
 ];
@@ -169,7 +169,7 @@ export default function StudioLandingPage() {
 
   function handleCTA(planId: string) {
     if (planId === "enterprise") {
-      window.location.href = "mailto:sales@teachific.app";
+      window.location.href = "mailto:sales@course360.app";
       return;
     }
     if (user) {
@@ -187,7 +187,7 @@ export default function StudioLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-bold tracking-tight cursor-pointer">
-                <span className="text-white">Teachific</span>
+                <span className="text-white">Course360</span>
                 <span className="text-violet-400"> Studio</span>
                 <sup className="text-[10px] text-violet-400 ml-0.5">™</sup>
               </span>
@@ -250,8 +250,8 @@ export default function StudioLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Teachific Studio™ is a professional screen and camera recording tool with AI transcription,
-            transcript-based editing, auto-highlight clips, and one-click publish to your Teachific LMS™.
+            Course360 Studio™ is a professional screen and camera recording tool with AI transcription,
+            transcript-based editing, auto-highlight clips, and one-click publish to your Course360 LMS™.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -285,7 +285,7 @@ export default function StudioLandingPage() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-green-500/60" />
               <div className="ml-4 flex-1 h-5 bg-white/5 rounded text-xs text-white/30 flex items-center px-3">
-                Teachific Studio™ — Module 3: Product Demo Recording
+                Course360 Studio™ — Module 3: Product Demo Recording
               </div>
             </div>
             <div className="flex h-[380px]">
@@ -402,14 +402,14 @@ export default function StudioLandingPage() {
       <section className="py-16 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">
-            Teachific Studio™ vs. Other Recording Tools
+            Course360 Studio™ vs. Other Recording Tools
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="text-left py-3 px-4 text-white/60 font-medium">Feature</th>
-                  <th className="py-3 px-4 text-violet-400 font-bold">Teachific Studio™</th>
+                  <th className="py-3 px-4 text-violet-400 font-bold">Course360 Studio™</th>
                   <th className="py-3 px-4 text-white/40 font-medium">Other Tools</th>
                   <th className="py-3 px-4 text-white/40 font-medium">Screen Recorders</th>
                 </tr>
@@ -590,7 +590,7 @@ export default function StudioLandingPage() {
                 Start Recording Today
               </h2>
               <p className="text-lg text-white/60 mb-8">
-                Join thousands of trainers and instructional designers who use Teachific Studio™ to create
+                Join thousands of trainers and instructional designers who use Course360 Studio™ to create
                 professional training videos — without the complexity.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -610,7 +610,7 @@ export default function StudioLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 h-14 text-base px-8"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Teachific LMS™
+                    View Course360 LMS™
                   </Button>
                 </Link>
               </div>
@@ -630,20 +630,20 @@ export default function StudioLandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">
-              Teachific<span className="text-violet-400"> Studio</span>
+              Course360<span className="text-violet-400"> Studio</span>
               <sup className="text-[10px] text-violet-400">™</sup>
             </span>
-            <span className="text-white/30 text-sm">by Teachific™</span>
+            <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/" className="hover:text-white transition-colors">Teachific Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">TeachificCreator™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360Creator™</Link>
             <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">QuizMaker™</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>
           <p className="text-sm text-white/30">
-            © {new Date().getFullYear()} Teachific™. All rights reserved.
+            © {new Date().getFullYear()} Course360™. All rights reserved.
           </p>
         </div>
       </footer>

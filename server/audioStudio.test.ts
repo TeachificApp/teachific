@@ -1,5 +1,5 @@
 /**
- * Teachific Studio™ — Audio & TTS feature tests
+ * Course360 Studio™ — Audio & TTS feature tests
  * Tests for TTS input validation, audio format helpers, and voice options.
  */
 

@@ -24,6 +24,8 @@ export type SessionPayload = {
   name: string;
   /** Set when this session is an impersonation — contains the real admin's openId */
   impersonatedBy?: string;
+  /** Org selected by platform admin impersonation. Keeps customer-view sessions tenant-scoped. */
+  impersonatedOrgId?: number;
 };
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
@@ -188,7 +190,7 @@ class SDKServer {
     targetOpenId: string,
     targetName: string,
     adminOpenId: string,
-    options: { expiresInMs?: number } = {}
+    options: { expiresInMs?: number; orgId?: number } = {}
   ): Promise<string> {
     const issuedAt = Date.now();
     const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
@@ -200,6 +202,7 @@ class SDKServer {
       appId: ENV.appId,
       name: targetName,
       impersonatedBy: adminOpenId,
+      ...(options.orgId ? { impersonatedOrgId: options.orgId } : {}),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -220,6 +223,7 @@ class SDKServer {
       appId: payload.appId,
       name: payload.name,
       ...(payload.impersonatedBy ? { impersonatedBy: payload.impersonatedBy } : {}),
+      ...(payload.impersonatedOrgId ? { impersonatedOrgId: payload.impersonatedOrgId } : {}),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -228,7 +232,7 @@ class SDKServer {
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string; impersonatedBy?: string } | null> {
+  ): Promise<SessionPayload | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -239,7 +243,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name, impersonatedBy } = payload as Record<string, unknown>;
+      const { openId, appId, name, impersonatedBy, impersonatedOrgId } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -255,6 +259,7 @@ class SDKServer {
         appId,
         name,
         impersonatedBy: typeof impersonatedBy === "string" ? impersonatedBy : undefined,
+        impersonatedOrgId: typeof impersonatedOrgId === "number" ? impersonatedOrgId : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -286,7 +291,7 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<User & { impersonatedBy?: string }> {
+  async authenticateRequest(req: Request): Promise<User & { impersonatedBy?: string; impersonatedOrgId?: number }> {
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
     const session = await this.verifySession(sessionCookie);
@@ -330,7 +335,7 @@ class SDKServer {
     }
 
     // Attach impersonation metadata to the user object
-    return { ...user, impersonatedBy: session.impersonatedBy };
+    return { ...user, impersonatedBy: session.impersonatedBy, impersonatedOrgId: session.impersonatedOrgId };
   }
 }
 

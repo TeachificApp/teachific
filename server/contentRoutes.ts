@@ -6,9 +6,9 @@
  * GET /api/content/:packageId/*      — proxy the matching file from S3
  *
  * We PROXY (not redirect) so that:
- *  1. The response comes from the Teachific domain — no X-Frame-Options block from S3.
+ *  1. The response comes from the Course360 domain — no X-Frame-Options block from S3.
  *  2. We can set our own headers (X-Frame-Options: ALLOWALL, CORS, etc.).
- *  3. The iframe src stays on the Teachific origin so relative asset paths resolve.
+ *  3. The iframe src stays on the Course360 origin so relative asset paths resolve.
  *
  * NOTE: For large binary assets (images, video, audio) we still redirect to S3
  * to avoid unnecessary bandwidth through the server. Only HTML/JS/CSS files are

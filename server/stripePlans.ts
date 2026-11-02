@@ -1,12 +1,12 @@
 /**
- * Teachific Platform Subscription Plans
+ * Course360 Platform Subscription Plans
  * Defines plan limits and manages Stripe products/prices.
  */
 import Stripe from "stripe";
 import { ENV } from "./_core/env";
 
-// ─── Teachific Pay feature flag ─────────────────────────────────────────────
-// Set to true only when Teachific Pay has completed testing and is ready for
+// ─── Course360 Pay feature flag ─────────────────────────────────────────────
+// Set to true only when Course360 Pay has completed testing and is ready for
 // public launch. While false, all orgs use their own Stripe gateway and no
 // platform fee is applied. This flag gates UI visibility only — the server
 // router and DB tables remain intact for internal testing.
@@ -35,7 +35,7 @@ export interface PlanLimits {
   whiteLabel: boolean;
   emailMarketing: boolean;
   transactionFeePercent: number; // legacy — kept for reference
-  teachificPayFeePercent: number; // platform fee on TeachificPay transactions
+  teachificPayFeePercent: number; // platform fee on Course360Pay transactions
   customGateway: boolean; // can use own Stripe/payment gateway
   groupRegistrations: boolean;
   deepAnalytics: boolean;
@@ -64,7 +64,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: false,
     emailMarketing: false,
     transactionFeePercent: 0,
-    teachificPayFeePercent: 2, // 2% TeachificPay fee (internal test mode only)
+    teachificPayFeePercent: 2, // 2% Course360Pay fee (internal test mode only)
     customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false,
@@ -91,7 +91,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: false,
     emailMarketing: false,
     transactionFeePercent: 3,
-    teachificPayFeePercent: 1, // 1% TeachificPay fee (internal test mode only)
+    teachificPayFeePercent: 1, // 1% Course360Pay fee (internal test mode only)
     customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false,
@@ -118,7 +118,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     whiteLabel: true,
     emailMarketing: false,
     transactionFeePercent: 1,
-    teachificPayFeePercent: 0.5, // 0.5% TeachificPay fee (internal test mode only)
+    teachificPayFeePercent: 0.5, // 0.5% Course360Pay fee (internal test mode only)
     customGateway: true, // all plans use own Stripe gateway while TEACHIFIC_PAY_ENABLED=false
     groupRegistrations: false,
     deepAnalytics: false, // basic analytics only
@@ -146,7 +146,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     emailMarketing: true,
     transactionFeePercent: 0,
     teachificPayFeePercent: 0, // 0% fee on Pro — revenue from subscription
-    customGateway: true, // Pro can use own gateway or TeachificPay
+    customGateway: true, // Pro can use own gateway or Course360Pay
     groupRegistrations: true,
     deepAnalytics: true,
     affiliatePlatform: true,
@@ -173,7 +173,7 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     emailMarketing: true,
     transactionFeePercent: 0,
     teachificPayFeePercent: 0, // 0% fee on Enterprise — revenue from subscription
-    customGateway: true, // Enterprise can use own gateway or TeachificPay
+    customGateway: true, // Enterprise can use own gateway or Course360Pay
     groupRegistrations: true,
     deepAnalytics: true,
     affiliatePlatform: true,
@@ -221,8 +221,8 @@ export async function ensureStripePlans(): Promise<void> {
     let product = products.data.find((p) => p.metadata?.teachific_tier === tier);
     if (!product) {
       product = await stripe.products.create({
-        name: `Teachific ${plan.name}`,
-        description: `Teachific ${plan.name} plan`,
+        name: `Course360 ${plan.name}`,
+        description: `Course360 ${plan.name} plan`,
         metadata: { teachific_tier: tier },
       });
     }
@@ -261,11 +261,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[annualKey] = annualPrice.id;
   }
 
-  // ── Teachific Studio™ — Web + Desktop plans ────────────────────────────────────
+  // ── Course360 Studio™ — Web + Desktop plans ────────────────────────────────────
   const studioAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "Teachific Studio™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Teachific Studio™ Web — browser-based editing, CC styling, transcript editing" },
-    desktop: { name: "Teachific Studio™ Desktop", monthlyPrice: 4700, annualPrice: 39900, description: "Teachific Studio™ Desktop — full desktop app, HD MP4 export, multi-track editing" },
-    bundle:  { name: "Teachific Studio™ Bundle",  monthlyPrice: 6700, annualPrice: 54900, description: "Teachific Studio™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360 Studio™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Course360 Studio™ Web — browser-based editing, CC styling, transcript editing" },
+    desktop: { name: "Course360 Studio™ Desktop", monthlyPrice: 4700, annualPrice: 39900, description: "Course360 Studio™ Desktop — full desktop app, HD MP4 export, multi-track editing" },
+    bundle:  { name: "Course360 Studio™ Bundle",  monthlyPrice: 6700, annualPrice: 54900, description: "Course360 Studio™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(studioAppPlans) as ["web"|"desktop"|"bundle", typeof studioAppPlans["web"]][]) {
     const productKey = `studio_${tier}`;
@@ -302,11 +302,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[`studio_${tier}_annual`] = annualPrice.id;
   }
 
-  // ── TeachificCreator™ — Web + Desktop plans ──────────────────────────────────────
+  // ── Course360Creator™ — Web + Desktop plans ──────────────────────────────────────
   const creatorAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "TeachificCreator™ Web",    monthlyPrice: 9900,  annualPrice: 89900,  description: "TeachificCreator™ Web — browser-based SCORM authoring, branching scenarios, AI content generation" },
-    desktop: { name: "TeachificCreator™ Desktop", monthlyPrice: 11700, annualPrice: 99900,  description: "TeachificCreator™ Desktop — full desktop authoring suite" },
-    bundle:  { name: "TeachificCreator™ Bundle",  monthlyPrice: 14900, annualPrice: 129900, description: "TeachificCreator™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360Creator™ Web",    monthlyPrice: 9900,  annualPrice: 89900,  description: "Course360Creator™ Web — browser-based SCORM authoring, branching scenarios, AI content generation" },
+    desktop: { name: "Course360Creator™ Desktop", monthlyPrice: 11700, annualPrice: 99900,  description: "Course360Creator™ Desktop — full desktop authoring suite" },
+    bundle:  { name: "Course360Creator™ Bundle",  monthlyPrice: 14900, annualPrice: 129900, description: "Course360Creator™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(creatorAppPlans) as ["web"|"desktop"|"bundle", typeof creatorAppPlans["web"]][]) {
     const productKey = `creator_${tier}`;
@@ -343,11 +343,11 @@ export async function ensureStripePlans(): Promise<void> {
     STRIPE_PRICE_IDS[`creator_${tier}_annual`] = annualPrice.id;
   }
 
-  // ── Teachific QuizMaker™ — Web + Desktop plans ─────────────────────────────────
+  // ── Course360 QuizMaker™ — Web + Desktop plans ─────────────────────────────────
   const quizCreatorAppPlans: Record<"web" | "desktop" | "bundle", { name: string; monthlyPrice: number; annualPrice: number; description: string }> = {
-    web:     { name: "Teachific QuizMaker™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Teachific QuizMaker™ Web — browser-based quiz creation, 7 question types, LMS integration" },
-    desktop: { name: "Teachific QuizMaker™ Desktop", monthlyPrice: 4800, annualPrice: 39900, description: "Teachific QuizMaker™ Desktop — full desktop quiz authoring, AES-256 encrypted .quiz files" },
-    bundle:  { name: "Teachific QuizMaker™ Bundle",  monthlyPrice: 6500, annualPrice: 54900, description: "Teachific QuizMaker™ Bundle — Web + Desktop apps" },
+    web:     { name: "Course360 QuizMaker™ Web",    monthlyPrice: 3700, annualPrice: 29900, description: "Course360 QuizMaker™ Web — browser-based quiz creation, 7 question types, LMS integration" },
+    desktop: { name: "Course360 QuizMaker™ Desktop", monthlyPrice: 4800, annualPrice: 39900, description: "Course360 QuizMaker™ Desktop — full desktop quiz authoring, AES-256 encrypted .quiz files" },
+    bundle:  { name: "Course360 QuizMaker™ Bundle",  monthlyPrice: 6500, annualPrice: 54900, description: "Course360 QuizMaker™ Bundle — Web + Desktop apps" },
   };
   for (const [tier, plan] of Object.entries(quizCreatorAppPlans) as ["web"|"desktop"|"bundle", typeof quizCreatorAppPlans["web"]][]) {
     const productKey = `quiz_creator_${tier}`;

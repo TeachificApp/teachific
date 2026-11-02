@@ -1,4 +1,4 @@
-# Teachific Module Integration - Detailed Breakdown
+# Course360 Module Integration - Detailed Breakdown
 
 **Total Scope:**
 - **88 database tables** (47 LMS + 7 Email + 9 Form + 11 Media + 7 Member + 14 Funnel)
@@ -355,8 +355,8 @@ Funnel builder with landing pages, branch logic, lead capture, digital products,
 ## Role Hierarchy (Updated)
 
 ```
-site_owner (Teachific platform owner)
-├─ site_admin (Teachific platform admin)
+site_owner (Course360 platform owner)
+├─ site_admin (Course360 platform admin)
 └─ org_super_admin (Org owner)
    ├─ org_admin (Org administrator)
    │  ├─ instructor (Create/manage courses, forms, media)

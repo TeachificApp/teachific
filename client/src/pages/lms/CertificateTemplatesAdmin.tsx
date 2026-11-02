@@ -48,10 +48,10 @@ const DEFAULT_TEMPLATE: Omit<CertTemplate, "id" | "createdAt"> = {
   textColor: "#0e1e2e",
   fontFamily: "Helvetica",
   signatureName: "Lara Williams, RVT, RDMS",
-  signatureTitle: "Founder, Teachific™",
+  signatureTitle: "Founder, Course360™",
   signatureImageUrl: null,
-  footerText: "www.teachific.com  ·  © Teachific™",
-  organizationName: "Teachific",
+  footerText: "www.course360.app  ·  © Course360™",
+  organizationName: "Course360",
   layout: "classic",
   isDefault: false,
   isActive: true,
@@ -164,7 +164,7 @@ function TemplateEditor({
           </div>
           <div>
             <Label>Signature Title</Label>
-            <Input value={form.signatureTitle ?? ""} onChange={e => set("signatureTitle", e.target.value || null)} placeholder="e.g. Founder, Teachific™" />
+            <Input value={form.signatureTitle ?? ""} onChange={e => set("signatureTitle", e.target.value || null)} placeholder="e.g. Founder, Course360™" />
           </div>
           <div className="col-span-2">
             <Label>Signature Image URL (optional)</Label>
@@ -177,7 +177,7 @@ function TemplateEditor({
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Footer</p>
         <div>
           <Label>Footer Text</Label>
-          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="www.teachific.com  ·  © Teachific™" />
+          <Input value={form.footerText ?? ""} onChange={e => set("footerText", e.target.value || null)} placeholder="www.course360.app  ·  © Course360™" />
         </div>
       </div>
 

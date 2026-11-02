@@ -1,6 +1,6 @@
 /**
  * ProductSwitcher
- * Shows links to other Teachific products the current user is subscribed to.
+ * Shows links to other Course360 products the current user is subscribed to.
  * Renders nothing if the user has no cross-product subscriptions.
  */
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -24,7 +24,7 @@ type ProductSwitcherProps = {
 const PRODUCTS = [
   {
     key: "lms" as const,
-    label: "Teachific LMS",
+    label: "Course360 LMS",
     shortLabel: "LMS",
     // LMS is the current app — navigates internally
     href: "/lms",
@@ -47,7 +47,7 @@ const PRODUCTS = [
   },
   {
     key: "studio" as const,
-    label: "Teachific Studio™",
+    label: "Course360 Studio™",
     shortLabel: "Studio",
     href: "/studio",
     external: false,

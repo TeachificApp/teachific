@@ -1,12 +1,12 @@
 /**
  * lmsQuizLandingRouter.ts
- * Teachific™ LMS — Quiz Builder + Landing Pages (admin)
+ * Course360™ LMS — Quiz Builder + Landing Pages (admin)
  * Auto-extracted from lmsRouter.ts to reduce file size and fix TypeScript OOM.
  */
 
 /**
  * lmsRouter.ts
- * Teachific™ LMS — LMS Management
+ * Course360™ LMS — LMS Management
  *
  * Sub-routers:
  *   lmsPublic   — public course catalog, landing pages, instructor profiles
@@ -76,7 +76,17 @@ import {
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, assertCourseOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import {
+  assertAdmin,
+  assertCourseOwnership,
+  assertLessonOwnership,
+  assertQuizOwnership,
+  assertQuizQuestionOwnership,
+  generateSlug,
+  uniqueSlug,
+  recalcProgress,
+  issueCertificateIfEnabled,
+} from "./lmsHelpers";
 
 export const lmsQuizLandingRouter = router({
   // ── Quizzes ──
@@ -84,6 +94,7 @@ export const lmsQuizLandingRouter = router({
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       let [quiz] = await db.select().from(lmsQuizzes).where(eq(lmsQuizzes.lessonId, input.lessonId)).limit(1);
@@ -116,6 +127,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { lessonId, ...updates } = input;
@@ -135,6 +147,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [result] = await db.insert(lmsQuizQuestions).values({
@@ -152,6 +165,7 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertQuizQuestionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, options, ...rest } = input;
@@ -165,6 +179,7 @@ export const lmsQuizLandingRouter = router({
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertQuizQuestionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsQuizQuestions).where(eq(lmsQuizQuestions.id, input.id));
@@ -183,6 +198,11 @@ export const lmsQuizLandingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertQuizOwnership(ctx, input.quizId);
+      if (input.courseId) await assertCourseOwnership(ctx, input.courseId);
+      if (input.lessonIds?.length) {
+        for (const lessonId of input.lessonIds) await assertLessonOwnership(ctx, lessonId);
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -329,6 +349,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertQuizOwnership(ctx, input.quizId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -385,6 +406,7 @@ Rules:
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lp] = await db.select({
@@ -427,6 +449,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const blocksJson = JSON.stringify(input.blocks);
@@ -468,6 +491,7 @@ Rules:
       };
       collectGroupCourseIds(input.blocks);
       for (const cid of courseIdsToEnableGroup) {
+        await assertCourseOwnership(ctx, cid);
         await db.update(lmsCourses).set({ allowGroupPurchase: true }).where(eq(lmsCourses.id, cid));
       }
       return { success: true };
@@ -482,6 +506,7 @@ Rules:
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { courseId, ...seoData } = input;
@@ -502,6 +527,7 @@ Rules:
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 

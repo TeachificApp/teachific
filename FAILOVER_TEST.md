@@ -1,4 +1,4 @@
-# Teachific Failover Testing Guide
+# Course360 Failover Testing Guide
 
 This guide walks you through testing the failover system to ensure it works when you need it.
 
@@ -173,13 +173,13 @@ Before running any tests:
 3. **Test application on Railway:**
    ```bash
    # Test login
-   curl -X POST https://www.teachific.app/api/oauth/callback
+   curl -X POST https://www.course360.app/api/oauth/callback
    
    # Test course access
-   curl https://www.teachific.app/api/trpc/courses.getAll
+   curl https://www.course360.app/api/trpc/courses.getAll
    
    # Test media access
-   curl https://www.teachific.app/api/media/sample.mp4
+   curl https://www.course360.app/api/media/sample.mp4
    ```
 
 4. **Verify functionality:**

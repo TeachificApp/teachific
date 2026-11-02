@@ -421,7 +421,7 @@ export function buildNewCaseSubmissionAdminEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
-      This is an automated notification from Teachific™. The submitter has acknowledged the HIPAA/PHI policy.
+      This is an automated notification from Course360™. The submitter has acknowledged the HIPAA/PHI policy.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -447,7 +447,7 @@ export function buildCaseApprovedEmail(opts: {
       <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Now live in the Case Library</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6;">
-      Thank you for contributing to the Teachific™ learning community. Your case will help educators, physicians, and learners sharpen their clinical scanning skills.
+      Thank you for contributing to the Course360™ learning community. Your case will help educators, physicians, and learners sharpen their clinical scanning skills.
     </p>
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.caseUrl}"
@@ -499,7 +499,7 @@ export function buildCaseRejectedEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       If you have questions about this decision, please contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -738,7 +738,7 @@ export function buildPeerReviewFeedbackEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
-      This is an automated notification from Teachific™ Accreditation Tool.
+      This is an automated notification from Course360™ Accreditation Tool.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -843,8 +843,8 @@ export function buildMeetingInvitationEmail(opts: {
       </a>
     </div>
     <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
-      This invitation was sent from the Teachific™ Accreditation Tool.<br/>
-      You can also manage your RSVP by logging in to <a href="${opts.appUrl}" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">Teachific™</a>.
+      This invitation was sent from the Course360™ Accreditation Tool.<br/>
+      You can also manage your RSVP by logging in to <a href="${opts.appUrl}" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">Course360™</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -855,21 +855,21 @@ export function buildPlatformFreeWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to Teachific™ - Your Free Account is Ready";
-  const previewText = "Your free Teachific™ account is ready - sign in to get started";
+  const subject = "Welcome to Course360™ - Your Free Account is Ready";
+  const previewText = "Your free Course360™ account is ready - sign in to get started";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to Teachific™, ${opts.firstName}!
+      Welcome to Course360™, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
-      Your free Teachific™ account has been created. You now have access to our learning tools and course catalog.
+      Your free Course360™ account has been created. You now have access to our learning tools and course catalog.
     </p>
     <div style="background:#f0fbfc;border-left:3px solid ${brandColor};padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
       <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${brandColor};">Your free access includes:</p>
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
         <li style="margin:4px 0;">ACR TI-RADS Thyroid Nodule Assessment</li>
         <li style="margin:4px 0;">Daily Challenge - Thyroid category</li>
-        <li style="margin:4px 0;">Access to the Teachific™ learning community</li>
+        <li style="margin:4px 0;">Access to the Course360™ learning community</li>
       </ul>
     </div>
     <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
@@ -878,12 +878,12 @@ export function buildPlatformFreeWelcomeEmail(opts: {
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Sign In to Teachific™
+        Sign In to Course360™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -894,11 +894,11 @@ export function buildPlatformPremiumWelcomeEmail(opts: {
   firstName: string;
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
-  const subject = "Welcome to Teachific™ Premium - Full Access Unlocked";
-  const previewText = "Your Teachific™ Premium account is ready - full access awaits";
+  const subject = "Welcome to Course360™ Premium - Full Access Unlocked";
+  const previewText = "Your Course360™ Premium account is ready - full access awaits";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
-      Welcome to Teachific™ Premium, ${opts.firstName}!
+      Welcome to Course360™ Premium, ${opts.firstName}!
     </h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">
       Your premium membership is now active. You have full access to every clinical intelligence tool, learning resource, and feature on the platform.
@@ -917,12 +917,12 @@ export function buildPlatformPremiumWelcomeEmail(opts: {
     <div style="text-align:center;margin:28px 0;">
       <a href="${opts.loginUrl}"
         style="display:inline-block;background:linear-gradient(135deg,${brandColor},#4ad9e0);color:#ffffff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;" target="_blank" rel="noopener noreferrer">
-        Open Teachific™
+        Open Course360™
       </a>
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `);
   return { subject, htmlBody, previewText };
@@ -991,7 +991,7 @@ export function buildFunnelPurchaseConfirmationEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };
@@ -1024,7 +1024,7 @@ export function buildPaymentFailedEmail(opts: {
     </div>
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">
       Questions? Contact us at
-      <a href="mailto:support@teachific.com" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@teachific.com</a>.
+      <a href="mailto:support@course360.app" style="color:${brandColor};" target="_blank" rel="noopener noreferrer">support@course360.app</a>.
     </p>
   `, opts.brandMode);
   return { subject, htmlBody, previewText };

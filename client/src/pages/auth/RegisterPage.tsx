@@ -125,20 +125,20 @@ export default function RegisterPage() {
           {/* Testimonial */}
           <div className="rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
             <p className="text-white/70 text-sm italic leading-relaxed">
-              "Teachific helped me go from zero to $12K/month in under 6 months. The platform just works."
+              "Course360 helped me go from zero to $12K/month in under 6 months. The platform just works."
             </p>
             <p className="text-white/40 text-xs mt-2">— Sarah K., Nutrition Coach</p>
           </div>
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
-          © {new Date().getFullYear()} Teachific™. All rights reserved.
+          © {new Date().getFullYear()} Course360™. All rights reserved.
         </p>
       </div>}
 
       {/* ── Right panel: form ───────────────────────────────────────── */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white px-8 py-12">
-        {/* Logo: org branding on subdomain, Teachific on root */}
+        {/* Logo: org branding on subdomain, Course360 on root */}
         <div className="mb-8 text-center">
           {isOrgSubdomain ? (
             branding?.logoUrl ? (

@@ -2,7 +2,7 @@
  * orgUrl.ts — Shared utilities for building org-specific URLs.
  *
  * All org content (forms, courses, shop, webinars, quizzes, custom pages)
- * must be served from the org's subdomain (e.g. https://myorg.teachific.app/)
+ * must be served from the org's subdomain (e.g. https://myorg.course360.app/)
  * or custom domain, NOT from the root domain with the org slug in the path.
  *
  * This ensures custom domain / whitelabel support works correctly: if an org uses
@@ -25,7 +25,7 @@ export interface OrgUrlInfo {
 /**
  * Returns the base URL for an org's content.
  *
- * - On teachific.app (production): returns `https://{slug}.teachific.app`
+ * - On course360.app (production): returns `https://{slug}.course360.app`
  *   or `https://{customDomain}` if the org has a verified custom domain.
  * - On localhost / Manus preview / Railway preview: returns a path-based
  *   fallback `/school/{slug}` so development still works.
@@ -63,8 +63,8 @@ export function getOrgBaseUrl(
     return `https://${customDomain}`;
   }
 
-  // On production teachific.app, use subdomain format
-  return `${protocol}//${slug}.teachific.app`;
+  // On production course360.app, use subdomain format
+  return `${protocol}//${slug}.course360.app`;
 }
 
 /**
@@ -197,7 +197,7 @@ export function getOrgThankYouUrl(
 export function isOnOrgSubdomain(slug: string): boolean {
   const hostname = window.location.hostname;
   return (
-    hostname === `${slug}.teachific.app` ||
+    hostname === `${slug}.course360.app` ||
     // Also true if we're on the fallback /school/:slug path on localhost
     (
       (hostname === "localhost" || hostname === "127.0.0.1") &&

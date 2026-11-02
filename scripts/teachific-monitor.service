@@ -1,5 +1,5 @@
 [Unit]
-Description=Teachific Failover Monitor
+Description=Course360 Failover Monitor
 Documentation=file:///home/ubuntu/scorm-host/REPLICATION_SETUP.md
 After=network.target
 Wants=teachific-sync.service

@@ -23,7 +23,7 @@ const tutorials = [
         html: `
           <h2>Create a course</h2>
           <ol>
-            <li>Open <strong>LMS Management</strong> from the main Teachific app.</li>
+            <li>Open <strong>LMS Management</strong> from the main Course360 app.</li>
             <li>Select <strong>Courses</strong>, then click <strong>New Course</strong>.</li>
             <li>Add a title, description, cover image, and pricing settings.</li>
             <li>Save as draft while you build the curriculum.</li>
@@ -92,7 +92,7 @@ const tutorials = [
   },
   {
     slug: "use-teachific-studio",
-    title: "Use Teachific Studio",
+    title: "Use Course360 Studio",
     subtitle: "Record, edit, and publish training videos for your organization.",
     lessons: [
       {
@@ -100,7 +100,7 @@ const tutorials = [
         html: `
           <h2>Record content quickly</h2>
           <ol>
-            <li>Open <strong>Teachific Studio</strong> from the app menu.</li>
+            <li>Open <strong>Course360 Studio</strong> from the app menu.</li>
             <li>Record screen, camera, or both.</li>
             <li>Trim mistakes, add captions, and export the final clip.</li>
           </ol>
@@ -185,19 +185,19 @@ const tutorials = [
   },
   {
     slug: "teachific-platform-faq",
-    title: "Teachific Platform FAQ",
+    title: "Course360 Platform FAQ",
     subtitle: "Common answers for org admins and super admins.",
     lessons: [
       {
         title: "Account and access FAQs",
         html: `
           <h2>Account and access</h2>
-          <h3>Who can access Teachific Learn?</h3>
-          <p>Teachific Learn is for organization admins, organization super admins, site admins, and site owners.</p>
-          <h3>Can learners sign up directly for Teachific Learn?</h3>
-          <p>No. Learners access their own organization's school. Teachific Learn is not a public signup LMS.</p>
+          <h3>Who can access Course360 Learn?</h3>
+          <p>Course360 Learn is for organization admins, organization super admins, site admins, and site owners.</p>
+          <h3>Can learners sign up directly for Course360 Learn?</h3>
+          <p>No. Learners access their own organization's school. Course360 Learn is not a public signup LMS.</p>
           <h3>Where do org admins land after login?</h3>
-          <p>Org admins land on their organization subdomain dashboard. Teachific Learn is opened from a direct menu link.</p>
+          <p>Org admins land on their organization subdomain dashboard. Course360 Learn is opened from a direct menu link.</p>
         `,
       },
       {
@@ -205,9 +205,9 @@ const tutorials = [
         html: `
           <h2>Courses and products</h2>
           <h3>Where do I manage my organization's courses?</h3>
-          <p>Use <strong>LMS Management</strong> in the main Teachific app.</p>
-          <h3>Why don't my org courses show in the top-level Teachific course section?</h3>
-          <p>The top-level Teachific course area is reserved for Teachific tutorial content. Your org content is managed in your admin area and displayed in your organization school.</p>
+          <p>Use <strong>LMS Management</strong> in the main Course360 app.</p>
+          <h3>Why don't my org courses show in the top-level Course360 course section?</h3>
+          <p>The top-level Course360 course area is reserved for Course360 tutorial content. Your org content is managed in your admin area and displayed in your organization school.</p>
           <h3>Can I hide a course from the public library?</h3>
           <p>Yes. Disable <strong>Show in Education Library</strong> in course settings while keeping direct access available.</p>
         `,
@@ -218,10 +218,10 @@ const tutorials = [
           <h2>Billing and integrations</h2>
           <h3>Where do I connect Thinkific, Teachable, or Kajabi?</h3>
           <p>Open <strong>Integrations</strong> and connect the platform for your own organization.</p>
-          <h3>Is Thinkific required for Teachific to work?</h3>
+          <h3>Is Thinkific required for Course360 to work?</h3>
           <p>No. Thinkific import is optional and org-scoped.</p>
           <h3>Where do I manage billing?</h3>
-          <p>Use the Billing area in the main app, or contact Teachific support for enterprise plan changes.</p>
+          <p>Use the Billing area in the main app, or contact Course360 support for enterprise plan changes.</p>
         `,
       },
     ],
@@ -257,7 +257,7 @@ function textBlock(html) {
 async function getTeachOrg() {
   const [rows] = await db.execute("SELECT id, ownerId FROM organizations WHERE slug = ? LIMIT 1", [TEACHIFIC_ORG_SLUG]);
   if (rows.length === 0) {
-    throw new Error("Teachific org with slug 'teach' was not found. Create it before seeding tutorials.");
+    throw new Error("Course360 org with slug 'teach' was not found. Create it before seeding tutorials.");
   }
   return rows[0];
 }

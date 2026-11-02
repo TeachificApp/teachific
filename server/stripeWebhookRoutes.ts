@@ -327,10 +327,10 @@ router.post(
           break;
         }
 
-        // ── TeachificPay: log completed charges ──────────────────────────────
+        // ── Course360Pay: log completed charges ──────────────────────────────
         case "charge.succeeded": {
           const charge = event.data.object as Stripe.Charge;
-          if (!charge.transfer_data?.destination) break; // Only log TeachificPay charges
+          if (!charge.transfer_data?.destination) break; // Only log Course360Pay charges
           const db = await getDb();
           if (!db) break;
           // Find org by Connect account ID
@@ -356,7 +356,7 @@ router.post(
           break;
         }
 
-        // ── TeachificPay: dispute opened ──────────────────────────────────────
+        // ── Course360Pay: dispute opened ──────────────────────────────────────
         case "charge.dispute.created": {
           const dispute = event.data.object as Stripe.Dispute;
           const db = await getDb();
@@ -405,7 +405,7 @@ router.post(
           const dueDateStr = dispute.evidence_details?.due_by
             ? new Date(dispute.evidence_details.due_by * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
             : "Unknown";
-          const adminDisputeUrl = `https://teachific.app/admin?tab=teachificpay&subtab=disputes`;
+          const adminDisputeUrl = `https://course360.app/admin?tab=teachificpay&subtab=disputes`;
 
           // In-app notification (always fires)
           await notifyOwner({
@@ -449,7 +449,7 @@ router.post(
     </div>
     <a href="${adminDisputeUrl}" class="cta">Review Dispute in Admin Panel →</a>
   </div>
-  <div class="ftr">Automated notification from Teachific™. You are receiving this as the platform owner.</div>
+  <div class="ftr">Automated notification from Course360™. You are receiving this as the platform owner.</div>
 </div></body></html>`;
             await sendEmail({
               to: ownerEmail,
@@ -460,7 +460,7 @@ router.post(
           break;
         }
 
-        // ── TeachificPay: dispute updated ─────────────────────────────────────
+        // ── Course360Pay: dispute updated ─────────────────────────────────────
         case "charge.dispute.updated": {
           const dispute = event.data.object as Stripe.Dispute;
           const db = await getDb();
@@ -475,7 +475,7 @@ router.post(
           break;
         }
 
-        // ── TeachificPay: dispute closed (won or lost) ────────────────────────
+        // ── Course360Pay: dispute closed (won or lost) ────────────────────────
         case "charge.dispute.closed": {
           const dispute = event.data.object as Stripe.Dispute;
           const db = await getDb();
@@ -496,7 +496,7 @@ router.post(
           const [closedOwner] = await db.select({ email: users.email }).from(users).where(eq(users.openId, ENV.ownerOpenId)).limit(1);
           const closedOwnerEmail = closedOwner?.email ?? null;
           const closedAmountStr = `$${(dispute.amount / 100).toFixed(2)} ${dispute.currency.toUpperCase()}`;
-          const adminUrl2 = `https://teachific.app/admin?tab=teachificpay&subtab=disputes`;
+          const adminUrl2 = `https://course360.app/admin?tab=teachificpay&subtab=disputes`;
 
           if (dispute.status === "won") {
             await notifyOwner({
@@ -512,7 +512,7 @@ router.post(
   <p style="color:#166534">The <strong>${closedAmountStr}</strong> dispute from <strong>${closedSchoolName}</strong> has been <strong>won</strong>. The funds will remain in the connected account.</p>
   <p style="color:#166534">Learner: ${closedDisputeRow?.learnerEmail ?? "Unknown"}</p>
   <a href="${adminUrl2}" style="display:inline-block;background:#0d9488;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:600;margin-top:16px">View in Admin Panel →</a>
-  <p style="font-size:12px;color:#6b7280;margin-top:24px">Teachific™ automated notification</p>
+  <p style="font-size:12px;color:#6b7280;margin-top:24px">Course360™ automated notification</p>
 </div>`,
               }).catch(() => {});
             }
@@ -530,7 +530,7 @@ router.post(
   <p style="color:#7f1d1d">The <strong>${closedAmountStr}</strong> dispute from <strong>${closedSchoolName}</strong> has been <strong>lost</strong>. The funds have been returned to the cardholder and a $15 dispute fee has been charged by Stripe.</p>
   <p style="color:#7f1d1d">Learner: ${closedDisputeRow?.learnerEmail ?? "Unknown"}</p>
   <a href="${adminUrl2}" style="display:inline-block;background:#0d9488;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:600;margin-top:16px">View in Admin Panel →</a>
-  <p style="font-size:12px;color:#6b7280;margin-top:24px">Teachific™ automated notification</p>
+  <p style="font-size:12px;color:#6b7280;margin-top:24px">Course360™ automated notification</p>
 </div>`,
               }).catch(() => {});
             }
@@ -538,7 +538,7 @@ router.post(
           break;
         }
 
-        // ── TeachificPay: charge refunded ─────────────────────────────────────
+        // ── Course360Pay: charge refunded ─────────────────────────────────────
         case "charge.refunded": {
           const charge = event.data.object as Stripe.Charge;
           const db = await getDb();

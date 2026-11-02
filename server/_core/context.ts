@@ -7,7 +7,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: (User & { impersonatedBy?: string }) | null;
+  user: (User & { impersonatedBy?: string; impersonatedOrgId?: number }) | null;
 };
 
 /** Parse a single named cookie from the Cookie header */
@@ -55,8 +55,8 @@ export function verifySessionToken(token: string): { userId: number; ts: number 
   }
 }
 
-/** Resolve a user from the custom Teachific email/password session cookie */
-async function resolveTeachificSession(cookieHeader: string | undefined): Promise<User | null> {
+/** Resolve a user from the custom Course360 email/password session cookie */
+async function resolveCourse360Session(cookieHeader: string | undefined): Promise<User | null> {
   try {
     const raw = parseCookie(cookieHeader, "teachific_session");
     if (!raw) return null;
@@ -72,14 +72,14 @@ async function resolveTeachificSession(cookieHeader: string | undefined): Promis
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: (User & { impersonatedBy?: string }) | null = null;
+  let user: (User & { impersonatedBy?: string; impersonatedOrgId?: number }) | null = null;
 
   try {
     // Primary: Manus OAuth / app_session_id cookie
     user = await sdk.authenticateRequest(opts.req);
   } catch {
-    // Fallback: custom Teachific email/password session cookie
-    user = await resolveTeachificSession(opts.req.headers.cookie);
+    // Fallback: custom Course360 email/password session cookie
+    user = await resolveCourse360Session(opts.req.headers.cookie);
   }
 
   return {

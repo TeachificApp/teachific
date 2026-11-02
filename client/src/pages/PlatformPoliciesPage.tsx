@@ -7,7 +7,7 @@ import { FileText, Shield, ArrowLeft } from "lucide-react";
 
 /**
  * PlatformPoliciesPage
- * Public page at /policies — serves Teachific's own Terms of Service and Privacy Policy.
+ * Public page at /policies — serves Course360's own Terms of Service and Privacy Policy.
  * Content is stored in platform_settings (not linked to any org).
  */
 export default function PlatformPoliciesPage() {
@@ -32,7 +32,7 @@ export default function PlatformPoliciesPage() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Teachific
+            Back to Course360
           </button>
           <span className="text-muted-foreground">/</span>
           <span className="font-medium text-sm">Legal Policies</span>
@@ -49,7 +49,7 @@ export default function PlatformPoliciesPage() {
             <h1 className="text-3xl font-bold text-foreground">Legal Policies</h1>
           </div>
           <p className="text-muted-foreground">
-            Teachific™ Platform — these policies govern your use of the Teachific platform and services.
+            Course360™ Platform — these policies govern your use of the Course360 platform and services.
           </p>
         </div>
 
@@ -78,8 +78,8 @@ export default function PlatformPoliciesPage() {
                   <p className="font-medium text-base">Terms of Service not yet published.</p>
                   <p className="text-sm mt-1">
                     Please check back soon or contact{" "}
-                    <a href="mailto:support@teachific.app" className="text-teal-600 hover:underline">
-                      support@teachific.app
+                    <a href="mailto:support@course360.app" className="text-teal-600 hover:underline">
+                      support@course360.app
                     </a>
                     .
                   </p>
@@ -101,8 +101,8 @@ export default function PlatformPoliciesPage() {
                   <p className="font-medium text-base">Privacy Policy not yet published.</p>
                   <p className="text-sm mt-1">
                     Please check back soon or contact{" "}
-                    <a href="mailto:support@teachific.app" className="text-teal-600 hover:underline">
-                      support@teachific.app
+                    <a href="mailto:support@course360.app" className="text-teal-600 hover:underline">
+                      support@course360.app
                     </a>
                     .
                   </p>
@@ -114,7 +114,7 @@ export default function PlatformPoliciesPage() {
 
         {/* Footer note */}
         <p className="text-xs text-muted-foreground text-center mt-10">
-          © {new Date().getFullYear()} Teachific™. All rights reserved.
+          © {new Date().getFullYear()} Course360™. All rights reserved.
         </p>
       </div>
     </div>

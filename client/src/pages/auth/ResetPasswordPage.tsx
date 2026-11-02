@@ -114,13 +114,13 @@ export default function ResetPasswordPage() {
               <span style={{ color: TEAL_LIGHT }}>Fresh start.</span>
             </h1>
             <p className="text-white/60 text-base leading-relaxed max-w-sm">
-              Choose a strong password to protect your Teachific account. We recommend at least 12 characters with a mix of letters, numbers, and symbols.
+              Choose a strong password to protect your Course360 account. We recommend at least 12 characters with a mix of letters, numbers, and symbols.
             </p>
           </div>
         </div>
 
         <p className="relative z-10 text-white/25 text-xs">
-          © {new Date().getFullYear()} Teachific™. All rights reserved.
+          © {new Date().getFullYear()} Course360™. All rights reserved.
         </p>
       </div>}
 

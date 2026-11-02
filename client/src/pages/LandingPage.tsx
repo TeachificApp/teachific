@@ -68,21 +68,21 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
               <a href="/creator-pro" className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                 <span className="text-base mt-0.5">✏️</span>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Teachific™ Creator</div>
+                  <div className="text-sm font-semibold text-gray-900">Course360™ Creator</div>
                   <div className="text-xs text-gray-500">eLearning authoring tool</div>
                 </div>
               </a>
               <a href="/studio-pro" className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                 <span className="text-base mt-0.5">🎦</span>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Teachific™ Studio</div>
+                  <div className="text-sm font-semibold text-gray-900">Course360™ Studio</div>
                   <div className="text-xs text-gray-500">Course authoring &amp; hosting</div>
                 </div>
               </a>
               <a href="/quiz-creator-pro" className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                 <span className="text-base mt-0.5">📝</span>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Teachific™ QuizMaker</div>
+                  <div className="text-sm font-semibold text-gray-900">Course360™ QuizMaker</div>
                   <div className="text-xs text-gray-500">Standalone quiz builder</div>
                 </div>
               </a>
@@ -162,7 +162,7 @@ function HeroSection() {
         </h1>
 
         <p className="max-w-2xl mx-auto text-xl text-gray-500 leading-relaxed mb-10">
-          Teachific™ gives educators, trainers, and creators everything they need to build, sell, and
+          Course360™ gives educators, trainers, and creators everything they need to build, sell, and
           deliver world-class online courses — without the technical headaches.
         </p>
 
@@ -315,7 +315,7 @@ const FEATURES = [
     icon: Wand2,
     title: "AI Course & Page Builder",
     description:
-      "Go from idea to income in minutes. Describe your topic and let Teachific™ AI generate a complete course outline, lesson content, and a polished sales landing page — ready to publish instantly.",
+      "Go from idea to income in minutes. Describe your topic and let Course360™ AI generate a complete course outline, lesson content, and a polished sales landing page — ready to publish instantly.",
     color: TEAL,
   },
   {
@@ -327,7 +327,7 @@ const FEATURES = [
   },
   {
     icon: Video,
-    title: "Teachific Studio™",
+    title: "Course360 Studio™",
     description:
       "Record, edit, and publish video content directly in your browser. Add captions, trim clips, generate highlights, and produce polished lessons without leaving the platform.",
     color: "#6366f1",
@@ -364,7 +364,7 @@ const FEATURES = [
     icon: Upload,
     title: "SCORM & HTML5 Support",
     description:
-      "Import any SCORM 1.2 or 2004 package, or raw HTML5 content. Teachific serves it securely with full LMS tracking, completion detection, and learner data persistence.",
+      "Import any SCORM 1.2 or 2004 package, or raw HTML5 content. Course360 serves it securely with full LMS tracking, completion detection, and learner data persistence.",
     color: "#8b5cf6",
   },
   {
@@ -401,7 +401,7 @@ function FeaturesSection() {
             One platform. Infinite possibilities.
           </h2>
           <p className="max-w-2xl mx-auto text-lg text-gray-500">
-            Stop juggling five different tools. Teachific™ brings your entire online education
+            Stop juggling five different tools. Course360™ brings your entire online education
             business under one roof — from content creation to revenue collection.
           </p>
         </div>
@@ -438,14 +438,14 @@ function HowItWorksSection() {
       number: "01",
       title: "Create Your School",
       description:
-        "Sign up free and let Teachific™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
+        "Sign up free and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
       icon: Sparkles,
     },
     {
       number: "02",
       title: "Build Your Courses",
       description:
-        "Describe your topic and let Teachific™ AI draft a full course outline, lesson content, and a sales landing page. Upload videos, add quizzes, import SCORM, and publish — all in one place.",
+        "Describe your topic and let Course360™ AI draft a full course outline, lesson content, and a sales landing page. Upload videos, add quizzes, import SCORM, and publish — all in one place.",
       icon: BookOpen,
     },
     {
@@ -481,7 +481,7 @@ function HowItWorksSection() {
             From idea to income — in no time
           </h2>
           <p className="max-w-xl mx-auto text-lg text-gray-500">
-            Teachific™ is designed to get you live fast — and keep growing with you as your school
+            Course360™ is designed to get you live fast — and keep growing with you as your school
             scales.
           </p>
         </div>
@@ -519,7 +519,7 @@ function TestimonialsSection() {
   const testimonials = [
     {
       quote:
-        "Teachific™ replaced three separate tools I was paying for. The SCORM support alone saved me hours every week, and my students love the clean learning experience.",
+        "Course360™ replaced three separate tools I was paying for. The SCORM support alone saved me hours every week, and my students love the clean learning experience.",
       name: "Dr. Sarah Mitchell",
       role: "Medical Education Director",
       rating: 5,
@@ -548,7 +548,7 @@ function TestimonialsSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            Educators love Teachific™
+            Educators love Course360™
           </h2>
           <p className="text-lg text-gray-500">Real results from real creators.</p>
         </div>
@@ -689,7 +689,7 @@ const COMPARISON_FEATURES: ComparisonRow[] = [
   { feature: "Quiz builder", free: true, starter: true, builder: true, pro: true, enterprise: true },
   { feature: "Public school page", free: true, starter: true, builder: true, pro: true, enterprise: true },
   { feature: "SCORM support", free: false, starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Teachific Studio™", free: false, starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "Course360 Studio™", free: false, starter: false, builder: true, pro: true, enterprise: true },
   { feature: "Membership tiers", free: "0", starter: "1", builder: "3", pro: "10", enterprise: "Unlimited" },
   { feature: "Community", free: false, starter: false, builder: true, pro: true, enterprise: true },
   { feature: "Custom domain", free: false, starter: false, builder: true, pro: true, enterprise: true },
@@ -786,7 +786,7 @@ function PricingSection() {
               <a
                 href={
                   tier.name === "Enterprise"
-                    ? "mailto:hello@teachific.app"
+                    ? "mailto:hello@course360.app"
                     : "/register"
                 }
                 className={`w-full text-center py-3 px-6 rounded-xl text-sm font-bold transition-all block ${
@@ -885,7 +885,7 @@ function CtaSection() {
           Start building today.
         </h2>
         <p className="text-xl text-white/80 mb-10 max-w-xl mx-auto">
-          Join thousands of educators who chose Teachific™ to share their expertise, grow their
+          Join thousands of educators who chose Course360™ to share their expertise, grow their
           audience, and build sustainable income from their knowledge.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -966,17 +966,17 @@ function LandingFooter() {
             <ul className="space-y-2 text-sm">
               <li>
                 <a href="/creator-pro" className="hover:text-white transition-colors">
-                  Teachific™ Creator
+                  Course360™ Creator
                 </a>
               </li>
               <li>
                 <a href="/studio-pro" className="hover:text-white transition-colors">
-                  Teachific™ Studio
+                  Course360™ Studio
                 </a>
               </li>
               <li>
                 <a href="/quiz-creator-pro" className="hover:text-white transition-colors">
-                  Teachific™ QuizMaker
+                  Course360™ QuizMaker
                 </a>
               </li>
             </ul>
@@ -998,7 +998,7 @@ function LandingFooter() {
                 </a>
               </li>
               <li>
-                <a href="mailto:hello@teachific.app" className="hover:text-white transition-colors">
+                <a href="mailto:hello@course360.app" className="hover:text-white transition-colors">
                   Contact Us
                 </a>
               </li>
@@ -1034,7 +1034,7 @@ function LandingFooter() {
         </div>
 
         <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs">© {new Date().getFullYear()} Teachific™. All rights reserved.</p>
+          <p className="text-xs">© {new Date().getFullYear()} Course360™. All rights reserved.</p>
           <p className="text-xs">Built for educators, by educators.</p>
         </div>
       </div>
@@ -1047,7 +1047,7 @@ export default function LandingPage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    document.title = "Teachific™ — Build & Sell Online Courses";
+    document.title = "Course360™ — Build & Sell Online Courses";
   }, []);
 
   // Show branded loading screen only while we're waiting for the server

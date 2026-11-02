@@ -5,7 +5,7 @@
  * Supports:
  *  - POST /api/quiz/import/preview  — accepts .xlsx, .xls, or .zip (with media/ folder)
  *  - GET  /api/quiz/export/:quizId  — export quiz to XLSX
- *  - GET  /api/quiz/template        — download Teachific ZIP import template (redirects to CDN)
+ *  - GET  /api/quiz/template        — download Course360 ZIP import template (redirects to CDN)
  *  - GET  /api/quiz/template/xlsx   — download XLSX-only template
  */
 import express, { Request, Response } from "express";
@@ -18,9 +18,9 @@ import { getQuizById, getQuestionsByQuiz, getChoicesByQuestion } from "./quizDb"
 import { sdk } from "./_core/sdk";
 import { authenticateRequest } from "./authHelper";
 
-// CDN URLs for the pre-built Teachific templates
+// CDN URLs for the pre-built Course360 templates
 const TEMPLATE_ZIP_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/fJXMsdmk8vcb8V4GDt37f6/TeachificQuizImportTemplate_a611ae1e.zip";
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/fJXMsdmk8vcb8V4GDt37f6/Course360QuizImportTemplate_a611ae1e.zip";
 const TEMPLATE_XLSX_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663401463434/fJXMsdmk8vcb8V4GDt37f6/QuizImportTemplate_ad09d65c.xlsx";
 
@@ -164,7 +164,7 @@ router.post("/import/preview", upload.single("file"), async (req: Request, res: 
 });
 
 // ── GET /api/quiz/export/:quizId ──────────────────────────────────────────────
-// Export a quiz to XLSX in the Teachific Template format
+// Export a quiz to XLSX in the Course360 Template format
 router.get("/export/:quizId", async (req: Request, res: Response) => {
   try {
     const authUser = await authenticateRequest(req);
@@ -231,7 +231,7 @@ router.post("/bank-import/preview", upload.single("file"), async (req: Request, 
     // ── SCORM ZIP ────────────────────────────────────────────────────────────
     if (originalName.endsWith(".zip")) {
       const { xlsxBuffer, xmlBuffers, mediaMap } = await extractBankZip(req.file.buffer);
-      // If it contains an XLSX, treat as Teachific Excel import
+      // If it contains an XLSX, treat as Course360 Excel import
       if (xlsxBuffer) {
         const orgId = (user as any)?.orgId?.toString() ?? "unknown";
         let mediaUrlMap = new Map<string, string>();
@@ -474,7 +474,7 @@ router.get("/bank-import/csv-template", (_req: Request, res: Response) => {
 });
 
 // ── GET /api/quiz/template ────────────────────────────────────────────────────
-// Redirect to the pre-built Teachific ZIP import template (includes sample media)
+// Redirect to the pre-built Course360 ZIP import template (includes sample media)
 router.get("/template", (_req: Request, res: Response) => {
   res.redirect(302, TEMPLATE_ZIP_URL);
 });

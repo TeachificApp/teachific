@@ -128,7 +128,7 @@ async function fireWebhook(
   const body = JSON.stringify(payload);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "User-Agent": "Teachific-Zapier/1.0",
+    "User-Agent": "Course360-Zapier/1.0",
   };
 
   // Add HMAC signature if secret is configured
@@ -137,7 +137,7 @@ async function fireWebhook(
       .createHmac("sha256", webhook.secret)
       .update(body)
       .digest("hex");
-    headers["X-Teachific-Signature"] = signature;
+    headers["X-Course360-Signature"] = signature;
   }
 
   let responseStatus = 0;
@@ -374,7 +374,7 @@ export const zapierRouter = router({
       const body = JSON.stringify(testPayload);
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "User-Agent": "Teachific-Zapier/1.0",
+        "User-Agent": "Course360-Zapier/1.0",
       };
 
       if (webhook.secret) {
@@ -382,7 +382,7 @@ export const zapierRouter = router({
           .createHmac("sha256", webhook.secret)
           .update(body)
           .digest("hex");
-        headers["X-Teachific-Signature"] = signature;
+        headers["X-Course360-Signature"] = signature;
       }
 
       let status = 0;

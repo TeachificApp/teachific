@@ -1,5 +1,5 @@
 /**
- * EnrollmentGate — Teachific's auth/enrollment guard component.
+ * EnrollmentGate — Course360's auth/enrollment guard component.
  *
  * Wraps any content with a blur overlay and shows one of three prompts:
  *  1. Loading — checking auth/enrollment status
