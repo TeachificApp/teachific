@@ -167,6 +167,20 @@ import JoinGroupPage from "./pages/JoinGroupPage";
 
 
 const AUTH_PATHS = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email", "/magic-link"];
+const GAMES_ALIAS_PATHS = ["/games", "/teach-games", "/teachific-games"];
+
+function getRootAppPath(path: string) {
+  const { hostname, protocol } = window.location;
+  if (hostname.endsWith(".course360.app") && hostname !== "course360.app" && hostname !== "www.course360.app") {
+    return `${protocol}//course360.app${path}`;
+  }
+  return path;
+}
+
+function RedirectTo({ path }: { path: string }) {
+  window.location.replace(getRootAppPath(path));
+  return null;
+}
 
 // Bare routes — no admin sidebar (share links, embeds, auth pages, student player)
 function BareRouter() {
@@ -233,6 +247,10 @@ function BareRouter() {
         <Route path="/creator/download">{() => <DesktopDownloadPage app="creator" />}</Route>
         <Route path="/creator" component={CreatorDashboardPage} />
         <Route path="/creator/:projectId" component={CreatorEditorPage} />
+        {/* Legacy Teach Games URLs now live under the Course360 Creator toolset. */}
+        <Route path="/games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
         {/* Public quiz player — no auth required */}
         <Route path="/school/:orgSlug/quiz/:shareToken" component={PublicQuizPlayerPage} />
         <Route path="/quiz/:shareToken" component={PublicQuizPlayerPage} />
@@ -304,6 +322,8 @@ function AdminRouter() {
           <Route path="/media-library" component={MediaLibraryPage} />
           <Route path="/question-bank" component={QuestionBankPage} />
           <Route path="/question-bank/import" component={QuestionBankImportPage} />
+          <Route path="/lms/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+          <Route path="/lms/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
           <Route path="/record">{() => { window.location.replace("/media-library#record-edit"); return null; }}</Route>
 
           {/* ── Marketing ── */}
@@ -459,6 +479,12 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/reset-password" component={ResetPasswordPage} />
         <Route path="/verify-email" component={VerifyEmailPage} />
         <Route path="/magic-link/verify" component={MagicLinkVerifyPage} />
+        <Route path="/studio/download">{() => <RedirectTo path="/studio/download" />}</Route>
+        <Route path="/studio-pro">{() => <RedirectTo path="/studio-pro" />}</Route>
+        <Route path="/studio">{() => <RedirectTo path="/studio" />}</Route>
+        <Route path="/games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
 
         {/* ── Admin dashboard routes (org_admin / org_super_admin) ── */}
         {/* These are served inside DashboardLayout on the subdomain */}
@@ -495,6 +521,8 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/products/community/:hubId/manage">{() => <DashboardLayout><CommunityManagePage /></DashboardLayout>}</Route>
         <Route path="/products/categories">{() => <DashboardLayout><CategoriesPage /></DashboardLayout>}</Route>
         <Route path="/media-library">{() => <DashboardLayout><MediaLibraryPage /></DashboardLayout>}</Route>
+        <Route path="/lms/teach-games">{() => <RedirectTo path="/creator" />}</Route>
+        <Route path="/lms/teachific-games">{() => <RedirectTo path="/creator" />}</Route>
         <Route path="/marketing/website">{() => <DashboardLayout><WebsitePage /></DashboardLayout>}</Route>
         <Route path="/marketing/email">{() => <DashboardLayout><EmailCampaignsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
@@ -622,6 +650,7 @@ function Router() {
     path.startsWith("/studio") ||
     path.startsWith("/studio-pro") ||
     path.startsWith("/creator") ||
+    GAMES_ALIAS_PATHS.includes(path) ||
     path.startsWith("/policies") ||
     path === "/terms" ||
     path === "/privacy" ||

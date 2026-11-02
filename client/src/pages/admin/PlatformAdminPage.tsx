@@ -269,6 +269,7 @@ const SITEMAP_SECTIONS: SitemapSection[] = [
       { label: "Course360 QuizMaker™ Dashboard", path: "/quiz-creator-app" },
       { label: "Course360 QuizMaker™ Download (legacy)", path: "/quiz-creator-app/download" },
       { label: "Course360 QuizMaker™ Pro (Marketing)", path: "/quiz-creator-pro" },
+      { label: "Teachific Games", path: "/teachific-games" },
     ],
   },
   {

@@ -170,7 +170,8 @@ const navGroups: NavGroup[] = [
           { label: "Categories", path: "/lms/manage?tab=collections" },
           { label: "Media Library", path: "/media-library" },
           { label: "Question Bank", path: "/lms/manage?tab=question_bank" },
-          { label: "Course360 Studio™", path: "/studio" },
+          { label: "Teachific Games", path: "/lms/teachific-games" },
+          { label: "Course360 Studio™", path: "/media-library#record-edit" },
         ],
       },
     ],
@@ -487,13 +488,16 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed && (
                 <span className="text-[21px] font-bold tracking-tight select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.02em" }}>
-                  <span className="text-sidebar-foreground">teach</span>
-                  <span style={{ color: "#24abbc" }}>ific</span>
+                  <span className="text-sidebar-foreground">Course</span>
+                  <span style={{ color: "#24abbc" }}>360</span>
                   <span className="text-sidebar-foreground" style={{ fontSize: "0.45em", verticalAlign: "super", marginLeft: "1px" }}>™</span>
                 </span>
               )}
               {isCollapsed && (
-                <span className="text-[21px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#24abbc" }}>t</span>
+                <span className="text-[18px] font-bold select-none" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: "-0.04em" }}>
+                  <span className="text-sidebar-foreground">C</span>
+                  <span style={{ color: "#24abbc" }}>360</span>
+                </span>
               )}
             </div>
           </SidebarHeader>
