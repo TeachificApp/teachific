@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +28,7 @@ import {
 } from "@/components/ui/table";
 
 export default function MembersPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<"name" | "enrollments" | "progress" | "joined">("joined");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -260,6 +263,7 @@ export default function MembersPage() {
           <p className="text-sm text-muted-foreground mt-0.5">View and manage students enrolled in your courses</p>
         </div>
         <div className="flex gap-2">
+          {(user?.role === "site_owner" || user?.role === "site_admin") && <Button variant="outline" size="sm" asChild><Link href="/members/organization-accounts">Organization Accounts</Link></Button>}
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5">
             <Download className="h-4 w-4" /> Export CSV
           </Button>

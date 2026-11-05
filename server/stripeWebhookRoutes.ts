@@ -26,6 +26,7 @@ import { fulfillPrintifyOrder } from "./lib/fulfillPrintifyOrder";
 import { emitEmailWorkflowEvent } from "./lib/emailWorkflowEngine";
 import { generateUniqueOrgSlug } from "../shared/slugUtils";
 import { randomBytes, randomUUID } from "node:crypto";
+import { getOrgSubscriptionTrialDates, isOrgPlatformSubscription } from "./lib/orgSubscriptionTrialDates";
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
   slug: string;
@@ -290,6 +291,14 @@ async function resolveSubscriptionOrgId(subscription: Stripe.Subscription): Prom
   return storedSubscription?.orgId ?? 0;
 }
 
+async function isCurrentOrgPlatformSubscription(orgId: number, subscription: Stripe.Subscription): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const [stored] = await db.select({ stripeSubscriptionId: orgSubscriptions.stripeSubscriptionId })
+    .from(orgSubscriptions).where(eq(orgSubscriptions.orgId, orgId)).limit(1);
+  return isOrgPlatformSubscription(subscription, stored?.stripeSubscriptionId);
+}
+
 /**
  * Creates a new owner account and school only after Stripe confirms the
  * card-backed platform trial Checkout session. The fulfillment marker makes
@@ -403,6 +412,7 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
       status: normalizeStripeStatus(subscription.status),
       currentPeriodStart: item ? new Date(item.current_period_start * 1000) : null,
       currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : null,
+      ...getOrgSubscriptionTrialDates(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       starterTrialClaimed: true,
     });
@@ -957,6 +967,7 @@ router.post(
             status: normalizeStripeStatus(subscription.status),
             currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
             currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
+            ...getOrgSubscriptionTrialDates(subscription),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             // A visitor has redeemed the introductory offer only after their
             // first paid Checkout session completes and the subscription exists
@@ -971,7 +982,7 @@ router.post(
         case "customer.subscription.updated": {
           const subscription = event.data.object as Stripe.Subscription;
           const orgId = await resolveSubscriptionOrgId(subscription);
-          if (!orgId) break;
+          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
 
           // Determine plan from price metadata
           const priceId = subscription.items.data[0]?.price?.id;
@@ -988,6 +999,7 @@ router.post(
             status: normalizeStripeStatus(subscription.status),
             currentPeriodStart: item2 ? new Date(item2.current_period_start * 1000) : undefined,
             currentPeriodEnd: item2 ? new Date(item2.current_period_end * 1000) : undefined,
+            ...getOrgSubscriptionTrialDates(subscription),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
           });
 
@@ -1038,10 +1050,11 @@ router.post(
           }
 
           // ── Org subscription cancelled ────────────────────────────────────────
-          if (!orgId) break;
+          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
           await upsertOrgSubscription(orgId, {
             plan: "free",
             status: "cancelled",
+            ...getOrgSubscriptionTrialDates(subscription),
             cancelAtPeriodEnd: false,
           });
           console.log(`[Stripe Webhook] Org ${orgId} subscription cancelled, downgraded to free`);
@@ -1105,12 +1118,14 @@ router.post(
 
           // ── Org subscription renewal: update period dates ─────────────────────
           if (orgId) {
+            if (!await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
             const plan = subscription.metadata?.plan as string ?? "starter";
             await upsertOrgSubscription(orgId, {
               plan: plan as any,
               status: normalizeStripeStatus(subscription.status),
               currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
               currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
+              ...getOrgSubscriptionTrialDates(subscription),
               cancelAtPeriodEnd: subscription.cancel_at_period_end,
             });
             console.log(`[Stripe Webhook] Org ${orgId} subscription renewed — next period ends ${item ? new Date(item.current_period_end * 1000).toISOString() : "unknown"}`);
@@ -1213,8 +1228,8 @@ router.post(
           }
 
           // Org subscription payment failed
-          if (!orgId) break;
-          await upsertOrgSubscription(orgId, { status: "past_due" });
+          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
+          await upsertOrgSubscription(orgId, { status: "past_due", ...getOrgSubscriptionTrialDates(subscription) });
           console.log(`[Stripe Webhook] Org ${orgId} payment failed, status: past_due`);
           break;
         }

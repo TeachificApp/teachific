@@ -11,6 +11,7 @@ import { getOrgSubscription, upsertOrgSubscription } from "./lmsDb";
 import { ENV } from "./_core/env";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { canonicalizeCourse360Origin } from "./lib/canonicalCourse360Domain";
+import { getOrgSubscriptionTrialDates } from "./lib/orgSubscriptionTrialDates";
 
 async function getDb() {
   const { getDb: _getDb } = await import("./db");
@@ -390,7 +391,7 @@ export const stripeRouter = router({
       const currentPlanName = (sub.plan ?? "free") as string;
       const isUpgrade = (PLAN_ORDER[input.plan] ?? 0) > (PLAN_ORDER[currentPlanName] ?? 0);
 
-      await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+      const updatedSubscription = await stripe.subscriptions.update(sub.stripeSubscriptionId, {
         items: [{ id: currentItem.id, price: priceId }],
         proration_behavior: isUpgrade ? "create_prorations" : "none",
         billing_cycle_anchor: isUpgrade ? "now" : "unchanged",
@@ -400,7 +401,8 @@ export const stripeRouter = router({
       // Immediately update the DB so the UI reflects the change without waiting for webhook
       await upsertOrgSubscription(orgCtx.orgId, {
         plan: input.plan,
-        status: "active",
+        status: updatedSubscription.status === "trialing" ? "trialing" : sub.status,
+        ...getOrgSubscriptionTrialDates(updatedSubscription),
         stripeSubscriptionId: sub.stripeSubscriptionId,
         stripeCustomerId: sub.stripeCustomerId ?? undefined,
         currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
@@ -451,10 +453,11 @@ export const stripeRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
       }
       const stripe = getStripe();
-      await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: false });
+      const updatedSubscription = await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: false });
       await upsertOrgSubscription(orgCtx.orgId, {
         plan: sub.plan ?? "free",
-        status: "active",
+        status: updatedSubscription.status === "trialing" ? "trialing" : sub.status,
+        ...getOrgSubscriptionTrialDates(updatedSubscription),
         stripeSubscriptionId: sub.stripeSubscriptionId,
         stripeCustomerId: sub.stripeCustomerId ?? undefined,
         currentPeriodEnd: sub.currentPeriodEnd ?? undefined,

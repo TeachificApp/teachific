@@ -484,6 +484,9 @@ export const orgSubscriptions = mysqlTable("org_subscriptions", {
   status: mysqlEnum("status", ["active", "trialing", "past_due", "cancelled", "unpaid"]).default("active").notNull(),
   currentPeriodStart: timestamp("currentPeriodStart"),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
+  trialStartedAt: timestamp("trialStartedAt"),
+  trialEndsAt: timestamp("trialEndsAt"),
+  rawStripeStatus: varchar("rawStripeStatus", { length: 64 }),
   cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
   // Keeps the introductory paid-plan offer one-time per organization even after
   // a canceled Checkout session or later subscription cancellation. The legacy

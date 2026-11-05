@@ -3,6 +3,7 @@ import dns from "node:dns";
 import { sendEmail } from "./sendgrid";
 import { getOrgLinkInvitationUrl } from "./lib/orgLinkInvitationUrl";
 import { sendEmailViaOrg } from "./_core/email";
+import { orgAccountsRouter } from "./routers/orgAccountsRouter";
 import { resetPasswordHtml } from "./emailTemplates";
 import { getOrgBaseUrl } from "./lib/orgUrl";
 import { isValidOrganizationTimeZone } from "../shared/emailCampaignSchedule";
@@ -478,6 +479,7 @@ export const appRouter = router({
       }),
   }),
   productsAdmin: productsAdminRouter,
+  orgAccounts: orgAccountsRouter,
   invoices: invoiceRouter,
   blueprints: blueprintRouter,
   blueprintReferrals: blueprintReferralRouter,

@@ -113,7 +113,7 @@ function ImpersonationBanner({ userName }: { userName: string }) {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type NavSubItem = { label: string; path: string; external?: boolean };
+type NavSubItem = { label: string; path: string; external?: boolean; adminOnly?: boolean };
 type NavItem = {
   icon: React.ElementType;
   label: string;
@@ -151,6 +151,7 @@ const navGroups: NavGroup[] = [
         subItems: [
           { label: "Contacts", path: "/admin/contacts" },
           { label: "All Users", path: "/members/users" },
+          { label: "Organization Accounts", path: "/members/organization-accounts", adminOnly: true },
           { label: "Groups", path: "/members/groups" },
           { label: "Certificates", path: "/members/certificates" },
           { label: "Discussions", path: "/members/discussions" },
@@ -675,6 +676,7 @@ function DashboardLayoutContent({
                                   </button>
                                 )}
                                 {item.subItems!.filter((sub) => {
+                                  if (sub.adminOnly && !isAdmin) return false;
                                   // Hide CME Management unless org has CME enabled (platform admins always see it)
                                   if (sub.path === "/lms/cme" && !isAdmin && !cmeEnabled) return false;
                                   return true;

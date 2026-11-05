@@ -88,6 +88,7 @@ import PublicPagePage from "./pages/PublicPagePage";
 import GroupsPage from "./pages/members/GroupsPage";
 import GroupManagerPortalPage from "./pages/members/GroupManagerPortalPage";
 import MemberCertificatesPage from "./pages/members/MemberCertificatesPage";
+import OrganizationAccountsPage from "./pages/members/OrganizationAccountsPage";
 import DiscussionsPage from "./pages/members/DiscussionsPage";
 import AssignmentsPage from "./pages/members/AssignmentsPage";
 
@@ -319,6 +320,7 @@ function AdminRouter() {
 
           {/* ── Members ── */}
           <Route path="/members/users" component={MembersPage} />
+          <Route path="/members/organization-accounts" component={OrganizationAccountsPage} />
           <Route path="/members/groups" component={GroupsPage} />
           <Route path="/members/group-manager" component={GroupManagerPortalPage} />
           <Route path="/members/certificates" component={MemberCertificatesPage} />
@@ -576,6 +578,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/lms/courses/:id/after_purchase" component={CourseEditorPage} />
         <Route path="/lms/courses/:id" component={CourseEditorPage} />
         <Route path="/members/users">{() => <DashboardLayout><MembersPage /></DashboardLayout>}</Route>
+        <Route path="/members/organization-accounts">{() => <DashboardLayout><OrganizationAccountsPage /></DashboardLayout>}</Route>
         <Route path="/members/groups">{() => <DashboardLayout><GroupsPage /></DashboardLayout>}</Route>
         <Route path="/members/certificates">{() => <DashboardLayout><MemberCertificatesPage /></DashboardLayout>}</Route>
         <Route path="/members/discussions">{() => <DashboardLayout><DiscussionsPage /></DashboardLayout>}</Route>
