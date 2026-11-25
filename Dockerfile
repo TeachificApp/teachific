@@ -34,6 +34,11 @@ RUN NODE_ENV=production corepack pnpm build
 # Production runtime
 FROM node:22-alpine AS runner
 RUN npm install -g corepack@latest && corepack prepare pnpm@11.24.0 --activate
+# Studio request-scoped MP4/clip rendering and persistent subtitle fonts.
+# Existing build, dependencies, runtime settings and launch command are retained.
+RUN apk add --no-cache ffmpeg fontconfig font-dejavu font-liberation
+# Enforce bounded FFmpeg resource usage; fail image build if prlimit is absent.
+RUN apk add --no-cache util-linux && command -v prlimit
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

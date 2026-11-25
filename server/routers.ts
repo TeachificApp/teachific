@@ -11,6 +11,8 @@ import { getEffectiveSubscriptionPlan } from "../shared/subscriptionEntitlement"
 import { getLimits } from "../shared/tierLimits";
 import https from "node:https";
 import { TRPCError } from "@trpc/server";
+import { requireCourse360AppCapability, requireCourse360AppOrganization, getCourse360AppCapabilityStatus } from "./lib/course360AppCapabilities";
+import { setCourse360PaymentManualRole } from "./lib/course360PaymentLedger";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import {
@@ -3313,9 +3315,10 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
     exportXls: protectedProcedure
       .input(z.object({ quizId: z.number() }))
       .query(async ({ ctx, input }) => {
+        const capability = await requireCourse360AppCapability(ctx.user.id, "quiz_creator", "web");
         const XLSX = await import("xlsx");
         const quiz = await getQuizById(input.quizId);
-        if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!quiz || quiz.orgId !== capability.orgId) throw new TRPCError({ code: "NOT_FOUND" });
         const questions = await getQuestionsByQuiz(input.quizId);
         const questionsWithChoices = await Promise.all(
           questions.map(async (q) => ({ ...q, choices: await getChoicesByQuestion(q.id) }))
@@ -3357,23 +3360,12 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         }];
         const wsTemplate = XLSX.utils.json_to_sheet(templateRows);
         XLSX.utils.book_append_sheet(wb, wsTemplate, "Template");
-        // Add watermark sheet for free/trial users
-        const db = await getDb();
-        if (db) {
-          const [userRow] = await db.select({
-            quizCreatorAccess: users.quizCreatorAccess,
-            quizCreatorTrialEndsAt: users.quizCreatorTrialEndsAt,
-          }).from(users).where(eq(users.id, ctx.user.id));
-          const qRole = (userRow as any)?.quizCreatorAccess ?? "none";
-          const qTrial = (userRow as any)?.quizCreatorTrialEndsAt ?? null;
-          const isTrialing = qRole !== "none" && qTrial && new Date(qTrial) > new Date();
-          const isPaid = qRole !== "none" && !isTrialing;
-          if (!isPaid) {
-            const wsWatermark = XLSX.utils.json_to_sheet([{
-              "": "Created with Course360™ — This export was generated on the free/trial plan. Upgrade at course360.app to remove this notice.",
-            }]);
-            XLSX.utils.book_append_sheet(wb, wsWatermark, "Teachific\u2122");
-          }
+        // Preserve watermark sheet/copy; scoped paid/manual/support policy only.
+        if (!capability.isPaid && !capability.hasManualGrant && !capability.platformSupport) {
+          const wsWatermark = XLSX.utils.json_to_sheet([{
+            "": "Created with Course360™ — This export was generated on the free/trial plan. Upgrade at course360.app to remove this notice.",
+          }]);
+          XLSX.utils.book_append_sheet(wb, wsWatermark, "Teachific\u2122");
         }
         const buf = XLSX.write(wb, { type: "base64", bookType: "xlsx" }) as string;
         return { base64: buf, filename: `${quiz.title ?? "quiz"}.xlsx` };
@@ -3382,7 +3374,8 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
     // XLS Import — accepts base64-encoded XLSX, returns parsed questions for preview
     importXls: protectedProcedure
       .input(z.object({ base64: z.string() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireCourse360AppCapability(ctx.user.id, "quiz_creator", "web");
         const XLSX = await import("xlsx");
         const buf = Buffer.from(input.base64, "base64");
         const wb = XLSX.read(buf, { type: "buffer" });
@@ -3432,6 +3425,8 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
         titleOverride: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const capability = await requireCourse360AppCapability(ctx.user.id, "quiz_creator", "web");
+        if (input.orgId !== capability.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the requested school before importing." });
         // Parse the .quiz file format: TEACHIFIC_QUIZ_V1\n<base64payload>
         const lines = input.quizFileContent.trim().split("\n");
         if (lines[0] !== "TEACHIFIC_QUIZ_V1") {
@@ -4077,9 +4072,10 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
 
     // ── Desktop App Version Management ──────────────────────────────────────
     // Public: get latest download URLs for a product
-    getLatestAppVersion: publicProcedure
+    getLatestAppVersion: protectedProcedure
       .input(z.object({ product: z.enum(["creator", "studio", "quizcreator"]) }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        await requireCourse360AppCapability(ctx.user.id, input.product === "quizcreator" ? "quiz_creator" : input.product, "desktop");
         const db2 = await getDb();
         if (!db2) return null;
         const { appVersions } = await import("../drizzle/schema");
@@ -4091,11 +4087,14 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
       }),
 
     // Public: get all versions for all products
-    getAllAppVersions: publicProcedure.query(async () => {
+    getAllAppVersions: protectedProcedure.query(async ({ ctx }) => {
+      await requireCourse360AppOrganization(ctx.user.id);
       const db2 = await getDb();
       if (!db2) return [];
       const { appVersions } = await import("../drizzle/schema");
-      return db2.select().from(appVersions);
+      const rows = await db2.select().from(appVersions);
+      const status = await Promise.all((["studio", "creator", "quiz_creator"] as const).map(app => getCourse360AppCapabilityStatus(ctx.user.id, app, "desktop")));
+      return rows.filter(row => status[ row.product === "studio" ? 0 : row.product === "creator" ? 1 : 2 ].access.isActive);
     }),
 
     // Admin: upsert an app version (create or update)
@@ -4222,27 +4221,17 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
   quizCreator: router({
     /** Get the current user's QuizMaker role */
     getMyRole: protectedProcedure.query(async ({ ctx }) => {
-      // Platform owners/admins always get full QuizMaker access
-      const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-      if (isPlatformAdmin) {
-        return { role: "bundle" as const, trialEndsAt: null, isInTrial: false, isPaid: true };
-      }
-      const user = await getUserById(ctx.user.id);
-      const role = (user?.quizCreatorAccess ?? "none") as "none" | "web" | "desktop" | "bundle";
-      const trialEndsAt = (user as any)?.quizCreatorTrialEndsAt ?? null;
-      const isInTrial = role !== "none" && trialEndsAt && new Date(trialEndsAt) > new Date();
-      const isPaid = role !== "none" && !isInTrial;
-      return { role, trialEndsAt, isInTrial, isPaid };
+      const status = await getCourse360AppCapabilityStatus(ctx.user.id, "quiz_creator", "web");
+      return { ...status.access, role: status.access.tier, orgId: status.orgId, platformSupport: status.platformSupport, reason: status.reason };
     }),
 
-    /** Admin: set a user's QuizMaker role */
+    /** Admin: set a scoped manual role, retaining historical global fields. */
     setUserRole: adminProcedure
-      .input(z.object({
-        userId: z.number(),
-        role: z.enum(["none", "web", "desktop", "bundle"]),
-      }))
-      .mutation(async ({ input }) => {
-        await updateUser(input.userId, { quizCreatorAccess: input.role });
+      .input(z.object({ userId: z.number(), role: z.enum(["none", "web", "desktop", "bundle"]) }))
+      .mutation(async ({ input, ctx }) => {
+        const scope = await requireCourse360AppOrganization(ctx.user.id);
+        if (!scope.platformSupport) throw new TRPCError({ code: "FORBIDDEN" });
+        await setCourse360PaymentManualRole({ orgId: scope.orgId, userId: input.userId, product: "quiz_creator", tier: input.role, actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: null });
         return { success: true };
       }),
 

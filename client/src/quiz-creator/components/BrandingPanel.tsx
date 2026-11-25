@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { useQuizStore } from "../store/quizStore";
+import { useQuizCurrentCloudSave } from "../lib/useQuizCurrentCloudSave";
 import { Palette, Type, Image, MessageSquare, Save, Loader2 } from "lucide-react";
 
 interface BrandingPanelProps {
@@ -12,6 +14,9 @@ const PRESET_COLORS = [
 ];
 
 export default function BrandingPanel({ quizId }: BrandingPanelProps) {
+  const trpcUtils = trpc.useUtils();
+  const hydrated = useRef<number | null>(null);
+  const { saveCurrent } = useQuizCurrentCloudSave();
   const [primaryColor, setPrimaryColor] = useState("#24abbc");
   const [bgColor, setBgColor] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -30,7 +35,8 @@ export default function BrandingPanel({ quizId }: BrandingPanelProps) {
   );
 
   useEffect(() => {
-    if (quiz) {
+    if (quiz && hydrated.current !== quizId) {
+      hydrated.current = quizId;
       setPrimaryColor((quiz as any).brandPrimaryColor || "#24abbc");
       setBgColor((quiz as any).brandBgColor || "");
       setLogoUrl((quiz as any).brandLogoUrl || "");
@@ -39,16 +45,11 @@ export default function BrandingPanel({ quizId }: BrandingPanelProps) {
     }
   }, [quiz]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!quizId) return;
-    updateBranding.mutate({
-      quizId,
-      brandPrimaryColor: primaryColor || null,
-      brandBgColor: bgColor || null,
-      brandLogoUrl: logoUrl || null,
-      brandFontFamily: fontFamily || null,
-      completionMessage: completionMessage || null,
-    });
+    const current = useQuizStore.getState();
+    current.updateMeta({ branding: { ...current.quiz.meta.branding, primaryColor: primaryColor || "#24abbc", backgroundColor: bgColor || "#f9fafb", logoUrl: logoUrl || undefined, fontFamily: fontFamily || undefined }, resultSlide: { ...current.quiz.meta.resultSlide, enabled: current.quiz.meta.resultSlide?.enabled ?? true, passMessage: completionMessage, failMessage: completionMessage } });
+    try { await saveCurrent(); await updateBranding.mutateAsync({ quizId, brandPrimaryColor: primaryColor || null, brandBgColor: bgColor || null, brandLogoUrl: logoUrl || null, brandFontFamily: fontFamily || null, completionMessage: completionMessage || null }); const saved = await trpcUtils.quizMaker.getQuiz.fetch({ quizId }); const state = useQuizStore.getState(); useQuizStore.setState({ quiz: { ...state.quiz, meta: { ...state.quiz.meta, nativeRevision: (saved.builderConfig.meta as any).nativeRevision } } }); } catch (error) { alert("Branding save failed: " + (error as Error).message); }
   };
 
   if (!quizId) {

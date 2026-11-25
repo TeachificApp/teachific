@@ -32,7 +32,7 @@ import {
 } from "../../drizzle/schema";
 import { and, eq, inArray, sql, desc, asc, isNull } from "drizzle-orm";
 import { buildStandaloneLearnerOptions } from "../lib/questionOptionOrder";
-import { canOpenEmbeddedLearnerQuiz } from "../lib/embeddedLearnerQuizAccess";
+import { course360NativeCourseQuizProcedures, resolveCourse360QuizLessonAccess, isCourse360NativeQuiz, nativeCourseInfo, nativeCourseAttemptHistory, nativeCourseSnapshot, rejectNativeCourseLegacyAccess } from "../lib/course360NativeCourseQuizRuntime";
 
 // ─── Quiz settings schema ─────────────────────────────────────────────────────
 const quizSettingsSchema = z.object({
@@ -86,99 +86,7 @@ export async function resolveEmbeddedLearnerQuizAccess(
   ctx: RequestContext,
   input: z.infer<typeof embeddedLearnerQuizInput>,
 ) {
-  const connection = await db();
-  const [quiz] = await connection.select({
-    id: quizzes.id,
-    orgId: quizzes.orgId,
-    title: quizzes.title,
-    description: quizzes.description,
-    timeLimitSeconds: quizzes.timeLimitSeconds,
-    maxAttempts: quizzes.maxAttempts,
-    passScorePercent: quizzes.passScorePercent,
-    quizType: quizzes.quizType,
-    feedbackMode: quizzes.feedbackMode,
-    showExplanations: quizzes.showExplanations,
-    showCorrectAnswers: quizzes.showCorrectAnswers,
-    isPublished: quizzes.isPublished,
-    visibility: quizzes.visibility,
-  }).from(quizzes).where(eq(quizzes.id, input.quizId)).limit(1);
-  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
-
-  if (input.authorPreview) {
-    await requireActiveQuizOrgAdmin(ctx, quiz.orgId);
-    return { quiz, course: null, lesson: null, isStaffPreview: true };
-  }
-
-  if (!input.courseSlug || !input.sourceLessonId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "This quiz must be opened from its assigned course lesson.",
-    });
-  }
-
-  const [lesson] = await connection.select({
-    id: lmsLessons.id,
-    courseId: lmsLessons.courseId,
-    standaloneQuizId: lmsLessons.standaloneQuizId,
-    type: lmsLessons.type,
-    previewMode: lmsLessons.previewMode,
-    isPreview: lmsLessons.isPreview,
-  }).from(lmsLessons).where(and(
-    eq(lmsLessons.id, input.sourceLessonId),
-    eq(lmsLessons.standaloneQuizId, input.quizId),
-  )).limit(1);
-  if (!lesson || !["quiz", "exam"].includes(lesson.type) || !lesson.courseId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "This quiz is not assigned to the selected course lesson." });
-  }
-
-  const [course] = await connection.select({
-    id: lmsCourses.id,
-    orgId: lmsCourses.orgId,
-    slug: lmsCourses.slug,
-  }).from(lmsCourses).where(and(
-    eq(lmsCourses.id, lesson.courseId),
-    eq(lmsCourses.slug, input.courseSlug),
-  )).limit(1);
-  if (!course || course.orgId !== quiz.orgId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "This quiz is not available in the selected course." });
-  }
-
-  // A staff member may preview unpublished quizzes only with administrator-level
-  // access to the specific owning organization. Do not rely on their global role.
-  let isStaffPreview = false;
-  try {
-    await requireActiveQuizOrgAdmin(ctx, course.orgId);
-    isStaffPreview = true;
-  } catch {
-    // Learners proceed through the published-course and enrollment checks below.
-  }
-  const previewMode = lesson.previewMode ?? (lesson.isPreview ? "preview" : "none");
-  const [enrollment] = await connection.select({
-    status: lmsEnrollments.status,
-    enrollmentType: lmsEnrollments.enrollmentType,
-    accessExpiresAt: lmsEnrollments.accessExpiresAt,
-  }).from(lmsEnrollments).where(and(
-    eq(lmsEnrollments.userId, ctx.user.id),
-    eq(lmsEnrollments.courseId, course.id),
-  )).limit(1);
-  const isPublished = isPublishedForLearners(quiz);
-  const canOpen = canOpenEmbeddedLearnerQuiz({
-    lessonType: lesson.type,
-    isStaffPreview,
-    isPublished,
-    isPreviewLesson: previewMode === "preview" || previewMode === "preview_hide_after_purchase",
-    enrollmentStatus: enrollment?.status,
-    enrollmentType: enrollment?.enrollmentType,
-    accessExpiresAt: enrollment?.accessExpiresAt ?? null,
-  });
-  if (!canOpen && !isPublished) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found." });
-  }
-  if (!canOpen) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Course enrollment is required to access this quiz." });
-  }
-
-  return { quiz, course, lesson, isStaffPreview };
+  return resolveCourse360QuizLessonAccess(ctx, input, await db());
 }
 
 async function getConfiguredQuestionCount(quizId: number) {
@@ -230,11 +138,14 @@ async function requireQuizBankInOrg(bankId: number, orgId: number) {
 }
 
 export const quizRouter = router({
+  ...course360NativeCourseQuizProcedures,
   // ─── Embedded Course Learner Playback ──────────────────────────────────────
   getLearnerQuizInfo: protectedProcedure
     .input(embeddedLearnerQuizInput)
     .query(async ({ input, ctx }) => {
-      const { quiz, isStaffPreview } = await resolveEmbeddedLearnerQuizAccess(ctx, input);
+      const access = await resolveEmbeddedLearnerQuizAccess(ctx, input);
+      const { quiz, isStaffPreview } = access;
+      if (isCourse360NativeQuiz(quiz)) return nativeCourseInfo(access, ctx, await db());
       const [{ count }] = await (await db()).select({ count: sql<number>`count(*)` })
         .from(quizAttempts)
         .where(and(
@@ -247,6 +158,7 @@ export const quizRouter = router({
       const configuredQuestionCount = await getConfiguredQuestionCount(quiz.id);
 
       return {
+        kind: "bank" as const,
         title: quiz.title,
         description: quiz.description,
         questionCount: configuredQuestionCount,
@@ -268,6 +180,7 @@ export const quizRouter = router({
     .query(async ({ input, ctx }) => {
       const access = await resolveEmbeddedLearnerQuizAccess(ctx, input);
       if (access.isStaffPreview) return [];
+      if (isCourse360NativeQuiz(access.quiz)) return nativeCourseAttemptHistory(access, ctx, await db());
       return (await db()).select({
         id: quizAttempts.id,
         attemptNumber: quizAttempts.attemptNumber,
@@ -286,6 +199,7 @@ export const quizRouter = router({
     .input(embeddedLearnerQuizInput)
     .mutation(async ({ input, ctx }) => {
       const { quiz, isStaffPreview } = await resolveEmbeddedLearnerQuizAccess(ctx, input);
+      if (isCourse360NativeQuiz(quiz)) throw new TRPCError({ code: "BAD_REQUEST", message: "Use the native course quiz player." });
       const connection = await db();
       const [{ count: completedCount }] = await connection.select({ count: sql<number>`count(*)` })
         .from(quizAttempts)
@@ -352,6 +266,7 @@ export const quizRouter = router({
       const [attempt] = await connection.select().from(quizAttempts)
         .where(and(eq(quizAttempts.id, input.attemptId), eq(quizAttempts.userId, ctx.user.id)))
         .limit(1);
+      rejectNativeCourseLegacyAccess(attempt);
       if (!attempt || attempt.quizId !== access.quiz.id || attempt.status !== "in_progress") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Quiz attempt is not available." });
       }
@@ -412,6 +327,7 @@ export const quizRouter = router({
       const [attempt] = await connection.select().from(quizAttempts)
         .where(and(eq(quizAttempts.id, input.attemptId), eq(quizAttempts.userId, ctx.user.id)))
         .limit(1);
+      rejectNativeCourseLegacyAccess(attempt);
       if (!attempt || attempt.quizId !== access.quiz.id || attempt.status !== "in_progress") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Quiz attempt is not available." });
       }
@@ -482,6 +398,7 @@ export const quizRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Quiz result not found." });
       }
 
+      rejectNativeCourseLegacyAccess(attempt);
       const responses = await connection.select({
         questionId: quizAttemptResponses.questionId,
         selectedChoiceIds: quizAttemptResponses.selectedChoiceIds,
@@ -721,6 +638,7 @@ export const quizRouter = router({
     .mutation(async ({ input, ctx }) => {
       const [quiz] = await (await db()).select().from(quizzes).where(eq(quizzes.id, input.quizId));
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (isCourse360NativeQuiz(quiz)) throw new TRPCError({ code: "FORBIDDEN", message: "Open this native quiz from its assigned course lesson." });
 
       // Check max attempts
       if (quiz.maxAttempts) {
@@ -773,6 +691,7 @@ export const quizRouter = router({
     .mutation(async ({ input, ctx }) => {
       const [attempt] = await (await db()).select().from(quizAttempts).where(eq(quizAttempts.id, input.attemptId));
       if (!attempt || attempt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      rejectNativeCourseLegacyAccess(attempt);
       if (attempt.status !== "in_progress") throw new TRPCError({ code: "BAD_REQUEST", message: "Attempt is not in progress" });
 
       // Get question and choices to grade
@@ -840,6 +759,7 @@ export const quizRouter = router({
     .mutation(async ({ input, ctx }) => {
       const [attempt] = await (await db()).select().from(quizAttempts).where(eq(quizAttempts.id, input.attemptId));
       if (!attempt || attempt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      rejectNativeCourseLegacyAccess(attempt);
 
       const [quiz] = await (await db()).select().from(quizzes).where(eq(quizzes.id, attempt.quizId));
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
@@ -884,6 +804,7 @@ export const quizRouter = router({
     .query(async ({ input, ctx }) => {
       const [attempt] = await (await db()).select().from(quizAttempts).where(eq(quizAttempts.id, input.attemptId));
       if (!attempt || attempt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      rejectNativeCourseLegacyAccess(attempt);
 
       const [quiz] = await (await db()).select().from(quizzes).where(eq(quizzes.id, attempt.quizId));
       const responses = await (await db()).select().from(quizAttemptResponses)
@@ -900,9 +821,10 @@ export const quizRouter = router({
   listAttempts: protectedProcedure
     .input(z.object({ quizId: z.number() }))
     .query(async ({ input, ctx }) => {
-      return (await db()).select().from(quizAttempts)
+      const attempts = await (await db()).select().from(quizAttempts)
         .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.userId, ctx.user.id)))
         .orderBy(desc(quizAttempts.startedAt));
+      return attempts.filter(attempt => !nativeCourseSnapshot(attempt.questionSnapshot));
     }),
 
   // ─── Analytics (admin) ────────────────────────────────────────────────────

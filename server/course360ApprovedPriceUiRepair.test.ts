@@ -22,6 +22,7 @@ vi.mock("@/lib/trpc", () => {
     useQuery: () => ({ data, isLoading: false, error: null }),
     useMutation: () => ({ mutate: state.checkout, isPending: false }),
   });
+  const exchange = () => ({ useMutation: () => ({ mutateAsync: vi.fn(async () => { throw new Error("Unexpected AI/PPTX operation in approved-price tests"); }), isPending: false }) });
   const invalidation = new Proxy({}, { get: () => ({ invalidate: vi.fn() }) });
   return { trpc: {
     billing: new Proxy({}, { get: (_target, key) => key === "getSubscription"
@@ -30,6 +31,7 @@ vi.mock("@/lib/trpc", () => {
     authoring: {
       listProjects: endpoint([]), getMyCreatorRole: endpoint({ isPaid: false, isInTrial: false }),
       createProject: endpoint(), deleteProject: endpoint(), duplicateProject: endpoint(),
+      generateAiDraft: exchange(), importPptxDraft: exchange(), previewExchangeDraft: exchange(), applyExchangeDraft: exchange(), exportPptx: exchange(),
     },
     useUtils: () => ({ billing: invalidation, authoring: invalidation }),
   } };

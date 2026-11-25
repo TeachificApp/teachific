@@ -48,6 +48,7 @@ function conditionalAnswerOptions(question: QuizQuestion) {
 
 export function QuestionEditor() {
   const { quiz, activeQuestionId, updateQuestion, deleteQuestion } = useQuizStore();
+  const [showMediaPanel, setShowMediaPanel] = useState(false);
   const question = quiz.questions.find((q) => q.id === activeQuestionId);
 
   if (!question) {
@@ -74,8 +75,6 @@ export function QuestionEditor() {
     (candidate) => candidate.id === question.showWhen?.parentQuestionId,
   );
   const conditionalAnswers = selectedConditionalParent ? conditionalAnswerOptions(selectedConditionalParent) : [];
-
-  const [showMediaPanel, setShowMediaPanel] = useState(false);
 
   const uploadFile = (accept: string, callback: (url: string, name: string) => void) => {
     const input = document.createElement("input");
@@ -145,6 +144,9 @@ export function QuestionEditor() {
         </button>
       </div>
 
+      {["mcq", "image_choice", "hotspot", "matching", "fill_blank", "dropdown", "drag_words", "drag_drop", "image_labeling"].includes(question.type) && <fieldset className="rounded-xl border p-3 text-sm"><legend>Scoring policy</legend><label><input type="checkbox" checked={question.scoring?.partialCredit === true} onChange={e => update({ scoring: { ...question.scoring, partialCredit: e.target.checked } })} /> Enable partial credit for this question</label><label className="ml-3">Wrong choices <select value={question.scoring?.wrongChoicePolicy || "zero"} onChange={e => update({ scoring: { ...question.scoring, wrongChoicePolicy: e.target.value as "zero" | "subtract" } })}><option value="zero">Any wrong choice: zero</option><option value="subtract">Subtract wrong selections</option></select></label><p className="text-xs text-muted-foreground">Exact historical scoring is retained unless explicitly enabled.</p></fieldset>}
+      {question.type === "fill_blank" && <fieldset className="rounded border p-3 text-sm"><legend>Blank answer matching</legend>{((question.data as any).blanks || []).map((blank: any) => <label key={blank.id} className="block">{blank.id} <select value={blank.gradingMode || "exact"} onChange={e => updateData({ ...question.data, blanks: (question.data as any).blanks.map((b: any) => b.id === blank.id ? { ...b, gradingMode: e.target.value } : b) } as any)}><option value="exact">Exact accepted answers</option><option value="keyword">All accepted answer keywords</option></select></label>)}</fieldset>}
+      {question.type === "hotspot" && <fieldset className="rounded border p-3 text-sm"><legend>Per-zone feedback and weight</legend>{((question.data as any).regions || []).map((region: any) => <div key={region.id}><label>{region.label || region.id} feedback <input value={region.feedback || ""} onChange={e => updateData({ ...question.data, regions: (question.data as any).regions.map((z: any) => z.id === region.id ? { ...z, feedback: e.target.value } : z) } as any)} /></label><label> Weight <input type="number" min="0.01" step="0.01" value={region.scoreWeight ?? 1} onChange={e => updateData({ ...question.data, regions: (question.data as any).regions.map((z: any) => z.id === region.id ? { ...z, scoreWeight: Number(e.target.value) } : z) } as any)} /></label></div>)}</fieldset>}
       {/* Media attachments */}
       <div className="space-y-3">
         {/* Image */}

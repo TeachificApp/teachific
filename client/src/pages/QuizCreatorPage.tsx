@@ -17,6 +17,9 @@ import { BranchingFlowVisualizer } from "@/quiz-creator/components/BranchingFlow
 import { toast } from "sonner";
 import { getCourse360MediaLibraryHref } from "@/lib/course360MediaLibrary";
 
+import { useQuizCurrentCloudSave } from "@/quiz-creator/lib/useQuizCurrentCloudSave";
+import { QuizDraftRecoveryRuntime } from "@/quiz-creator/components/QuizDraftRecoveryRuntime";
+
 type RightPanel = null | "branding" | "analytics";
 
 export default function QuizCreatorPage() {
@@ -30,6 +33,7 @@ export default function QuizCreatorPage() {
   const [showBranchingViz, setShowBranchingViz] = useState(false);
 
   const { quiz } = useQuizStore();
+  const { saveCurrent } = useQuizCurrentCloudSave();
   const { user } = useAuth();
 
   // Get the cloud ID from the quiz meta (set when saving to cloud)
@@ -55,12 +59,12 @@ export default function QuizCreatorPage() {
     },
   });
 
-  const handleExport = (format: "scorm12" | "scorm2004", saveToMediaLibrary = false) => {
+  const handleExport = async (format: "scorm12" | "scorm2004", saveToMediaLibrary = false) => {
     if (!cloudId) {
       toast.error("Save your quiz to cloud first before exporting.");
       return;
     }
-    exportScorm.mutate({ quizId: cloudId, format, saveToMediaLibrary });
+    try { const currentId = await saveCurrent(); exportScorm.mutate({ quizId: currentId, format, saveToMediaLibrary }); } catch (error) { toast.error((error as Error).message); }
   };
 
   return (
@@ -74,6 +78,7 @@ export default function QuizCreatorPage() {
         isPublished={isPublished}
       />
 
+      <QuizDraftRecoveryRuntime />
       <div className="flex flex-1 overflow-hidden">
         <QuestionList />
         <QuestionEditor />

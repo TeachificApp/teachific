@@ -22,6 +22,9 @@ import { useOrgScope } from "@/hooks/useOrgScope";
 import { usePlanLimits } from "@/hooks/usePlanLimits";
 import { useLocation } from "wouter";
 import { useUploadQueue } from "@/contexts/UploadQueueContext";
+import { StudioCaptureSession } from "@/lib/studioCaptureSession";
+import { studioLocalRecording, useStudioRecordingLibrary, type StudioLocalRecording } from "@/lib/studioCapturePersistence";
+import { readStudioTranscript, transcriptWords, literalReplace, fillerWordIds, deletedStudioRegions, segmentsFromStudioWords, serializeStudioSubtitles, makeStudioTranscriptEnvelope, downloadStudioBlob, normalizeStudioMediaList, validStudioClip, type StudioTranscriptWord } from "@/lib/studioCaptionDocument";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +85,7 @@ interface CCStyle {
   shadow: boolean;
   fontSize: number;        // px, 14-40
   emojiEnabled: boolean;
+  fontFamily: string;
 }
 
 const CC_DEFAULT_STYLE: CCStyle = {
@@ -93,6 +97,7 @@ const CC_DEFAULT_STYLE: CCStyle = {
   shadow: true,
   fontSize: 22,
   emojiEnabled: false,
+  fontFamily: "Arial",
 };
 
 const CC_PRESETS: { id: string; label: string; emoji: string; style: Partial<CCStyle> }[] = [
@@ -147,40 +152,42 @@ function hexToRgba(hex: string, alpha: number): string {
 
 // ─── VideoEditor Sub-component ───────────────────────────────────────────────
 
-function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number; onSaved?: () => void }) {
+function VideoEditor({ item, orgId, onSaved, onDirtyChange }: { item: MediaItem; orgId: number; onSaved?: () => void; onDirtyChange?: (dirty: boolean) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const transcriptPanelRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(item.durationSeconds ?? 0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showCaptions, setShowCaptions] = useState(true);
-  const [ccStyle, setCCStyle] = useState<CCStyle>(CC_DEFAULT_STYLE);
+  const originalDocument = useRef(readStudioTranscript(item.transcriptJson));
+  const [showCaptions, setShowCaptions] = useState(originalDocument.current.studioEdit?.showCaptions ?? true);
+  const [ccStyle, setCCStyle] = useState<CCStyle>({ ...CC_DEFAULT_STYLE, ...originalDocument.current.studioEdit?.captionStyle });
+  const [presetId, setPresetId] = useState(originalDocument.current.studioEdit?.presetId ?? "classic");
+  const revisionRef = useRef(originalDocument.current.studioEdit?.revision ?? 0);
+  const dirtyRef = useRef(false);
+  const setDirty = (dirty: boolean) => { dirtyRef.current = dirty; onDirtyChange?.(dirty); };
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
+  const [history, setHistory] = useState<StudioTranscriptWord[][]>([]);
+  const [redoHistory, setRedoHistory] = useState<StudioTranscriptWord[][]>([]);
+  const previewClipEndRef = useRef<number | null>(null);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; requestRef.current++; }; }, []);
+  useEffect(() => { const warn = (event: BeforeUnloadEvent) => { if (dirtyRef.current) { event.preventDefault(); event.returnValue = "Caption edits are not saved."; } }; window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn); }, []);
   const [showStylePanel, setShowStylePanel] = useState(false);
   // Word-level transcript (Opus Clip style)
-  interface TranscriptWord { id: number; word: string; start: number; end: number; deleted?: boolean; }
-  const [words, setWords] = useState<TranscriptWord[]>(() => {
-    if (item.transcriptJson) {
-      try {
-        const parsed = JSON.parse(item.transcriptJson);
-        if (parsed.words && Array.isArray(parsed.words)) return parsed.words;
-        // Fallback: convert segments to pseudo-words
-        if (parsed.segments || Array.isArray(parsed)) {
-          const segs = parsed.segments ?? parsed;
-          const ws: TranscriptWord[] = [];
-          let id = 0;
-          for (const seg of segs) {
-            const tokens = (seg.text || "").split(/\s+/).filter(Boolean);
-            const segDur = (seg.end - seg.start) / Math.max(tokens.length, 1);
-            for (let i = 0; i < tokens.length; i++) {
-              ws.push({ id: id++, word: tokens[i], start: seg.start + i * segDur, end: seg.start + (i + 1) * segDur });
-            }
-          }
-          return ws;
-        }
-      } catch {}
-    }
-    return [];
-  });
+  type TranscriptWord = StudioTranscriptWord;
+  const [words, setWords] = useState<TranscriptWord[]>(() => transcriptWords(originalDocument.current));
+  const editWords = (transform: (previous: TranscriptWord[]) => TranscriptWord[]) => {
+    setHistory(previous => [...previous.slice(-49), words]); setRedoHistory([]);
+    setWords(transform(words)); setDirty(true); revisionRef.current++;
+  };
+  const undoWords = () => {
+    const previous = history[history.length - 1]; if (!previous) return;
+    setRedoHistory(redos => [...redos, words]); setWords(previous); setFindResults([]); setHistory(history.slice(0, -1)); setDirty(true); revisionRef.current++;
+  };
+  const redoWords = () => {
+    const next = redoHistory[redoHistory.length - 1]; if (!next) return;
+    setHistory(previous => [...previous, words]); setWords(next); setFindResults([]); setRedoHistory(redoHistory.slice(0, -1)); setDirty(true); revisionRef.current++;
+  };
   const [segments, setSegments] = useState<TranscriptSegment[]>(() => {
     if (item.transcriptJson) {
       try {
@@ -218,54 +225,66 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
   const generateCaptionsMutation = trpc.lms.media.generateCaptions.useMutation();
   const updateCaptionsMutation = trpc.lms.media.updateCaptions.useMutation();
   const saveClipMutation = trpc.lms.media.saveClip.useMutation();
-  const saveRecordingMutation = trpc.lms.media.saveRecording.useMutation();
+  const importVideoMutation = trpc.lms.media.importFromUrl.useMutation();
   const listClipsQuery = trpc.lms.media.listClips.useQuery(
     { orgId, mediaItemId: item.id },
     { enabled: !!item.id }
   );
   const deleteClipMutation = trpc.lms.media.deleteClip.useMutation();
-  const extractClipMutation = trpc.lms.media.extractClip.useMutation();
+  const renderEditedVideoMutation = trpc.lms.media.renderEditedVideo.useMutation();
+  const generateHighlightsMutation = trpc.lms.media.generateHighlights.useMutation();
 
-  // Prevent double-firing in React StrictMode
   const hasAutoTriggeredRef = useRef(false);
-  // Auto-generate transcript when Edit tab opens and no transcript exists
-  useEffect(() => { hasAutoTriggeredRef.current = false; }, [item.id]);
   useEffect(() => {
-    if (!item.transcriptJson && item.url && item.id && !hasAutoTriggeredRef.current) {
-      hasAutoTriggeredRef.current = true;
-      setGeneratingCaptions(true);
-      generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id, fileUrl: item.url })
-        .then((result) => {
-          if (result.words) setWords(result.words as TranscriptWord[]);
-          if (result.segments) setSegments(result.segments as TranscriptSegment[]);
-          setCaptionsUrl(result.captionsUrl);
-          onSaved?.();
-        })
-        .catch((err: any) => toast.error("Auto-transcription failed: " + (err?.message ?? "Unknown error")))
-        .finally(() => setGeneratingCaptions(false));
+    if (dirtyRef.current || !item.transcriptJson) return;
+    const incoming = readStudioTranscript(item.transcriptJson);
+    const incomingRevision = Number(incoming.studio?.revision ?? 0);
+    const currentRevision = Number(originalDocument.current.studio?.revision ?? 0);
+    if (incomingRevision > currentRevision) {
+      originalDocument.current = incoming; setWords(transcriptWords(incoming)); setSegments(incoming.segments ?? []);
+      setCCStyle({ ...CC_DEFAULT_STYLE, ...incoming.studioEdit?.captionStyle });
+      setShowCaptions(incoming.studioEdit?.showCaptions ?? true); setPresetId(incoming.studioEdit?.presetId ?? "classic");
+      revisionRef.current = Number(incoming.studioEdit?.revision ?? revisionRef.current);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.transcriptJson]);
+  const applyGeneratedTranscript = (result: any) => {
+    const document = { ...originalDocument.current, ...result };
+    revisionRef.current = Number(document.studioEdit?.revision ?? revisionRef.current);
+    setWords(transcriptWords(document)); setSegments(result.segments ?? []); setCaptionsUrl(result.captionsUrl);
+    originalDocument.current = document; setHistory([]); setRedoHistory([]); setDirty(false);
+  };
+  useEffect(() => {
+    if (!item.transcriptJson && !hasAutoTriggeredRef.current && item.id) {
+      hasAutoTriggeredRef.current = true;
+      const request = ++requestRef.current; const revision = revisionRef.current;
+      setGeneratingCaptions(true);
+      generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id })
+        .then(result => { if (mountedRef.current && request === requestRef.current && revision === revisionRef.current) { applyGeneratedTranscript(result); onSaved?.(); } })
+        .catch(error => { if (mountedRef.current) toast.error("Auto-transcription failed: " + error.message); })
+        .finally(() => { if (mountedRef.current) setGeneratingCaptions(false); });
+    }
   }, [item.id]);
 
   // Load saved clips from DB
   useEffect(() => {
     if (listClipsQuery.data) {
-      setClips(listClipsQuery.data.map((c: any) => ({
+      setClips(previous => [...listClipsQuery.data.map((c: any) => ({
         id: `db-${c.id}`, label: c.label, startSec: c.startSec, endSec: c.endSec, savedId: c.id,
-      })));
+      })), ...previous.filter(clip => !clip.savedId)]);
     }
   }, [listClipsQuery.data]);
 
-  // Count filler words
-  useEffect(() => {
-    const count = words.filter((w) => !w.deleted && FILLER_WORDS.includes(w.word.toLowerCase().replace(/[.,!?;:]/g, ""))).length;
-    setFillerCount(count);
-  }, [words]);
+  const fillerIds = fillerWordIds(words, FILLER_WORDS);
+  useEffect(() => { setFillerCount(fillerIds.size); }, [words]);
+  useEffect(() => { setFindResults([]); setFindIndex(0); }, [findText]);
 
   // Video event handlers
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const t = videoRef.current.currentTime;
+    if (previewClipEndRef.current !== null && t >= previewClipEndRef.current) {
+      videoRef.current.pause(); videoRef.current.currentTime = previewClipEndRef.current; setCurrentTime(previewClipEndRef.current); setIsPlaying(false); previewClipEndRef.current = null; return;
+    }
     setCurrentTime(t);
     // Skip deleted word regions during playback
     if (isPlaying && words.length > 0) {
@@ -278,32 +297,15 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
       }
     }
   };
-  const handleLoadedMetadata = () => { if (videoRef.current) setDuration(videoRef.current.duration); };
+  const handleLoadedMetadata = () => { if (videoRef.current && Number.isFinite(videoRef.current.duration)) setDuration(videoRef.current.duration); };
   const handlePlayPause = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); }
     else { videoRef.current.pause(); setIsPlaying(false); }
   };
-  const seekTo = (sec: number) => { if (videoRef.current) { videoRef.current.currentTime = sec; setCurrentTime(sec); } };
+  const seekTo = (sec: number) => { previewClipEndRef.current = null; if (videoRef.current) { videoRef.current.currentTime = sec; setCurrentTime(sec); } };
 
-  // Get merged deleted regions for skip logic
-  const getDeletedRegions = useCallback(() => {
-    const deleted = words.filter((w) => w.deleted);
-    if (deleted.length === 0) return [];
-    // Merge adjacent deleted words into contiguous regions
-    const regions: { start: number; end: number }[] = [];
-    let current = { start: deleted[0].start, end: deleted[0].end };
-    for (let i = 1; i < deleted.length; i++) {
-      if (deleted[i].start - current.end < 0.1) {
-        current.end = deleted[i].end;
-      } else {
-        regions.push(current);
-        current = { start: deleted[i].start, end: deleted[i].end };
-      }
-    }
-    regions.push(current);
-    return regions;
-  }, [words]);
+  const getDeletedRegions = useCallback(() => deletedStudioRegions(words), [words]);
 
   // Active word for CC overlay
   const activeWord = words.find((w) => !w.deleted && currentTime >= w.start && currentTime <= w.end);
@@ -318,72 +320,59 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     return visibleWords.slice(start, end).map((w) => w.word).join(" ");
   }, [activeWord, words]);
 
-  // Generate captions via Whisper
   const handleGenerateCaptions = async () => {
+    if (dirtyRef.current && !window.confirm("Regenerate the transcript? Unsaved caption edits will be replaced.")) return;
+    const request = ++requestRef.current; const revision = revisionRef.current;
     setGeneratingCaptions(true);
     try {
-      const result = await generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id, fileUrl: item.url });
-      if (result.words) setWords(result.words as TranscriptWord[]);
-      if (result.segments) setSegments(result.segments as TranscriptSegment[]);
-      setCaptionsUrl(result.captionsUrl);
-      toast.success("Captions generated successfully");
-      onSaved?.();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to generate captions");
-    } finally {
-      setGeneratingCaptions(false);
-    }
+      const result = await generateCaptionsMutation.mutateAsync({ orgId, mediaItemId: item.id });
+      if (!mountedRef.current || request !== requestRef.current || revision !== revisionRef.current) return;
+      applyGeneratedTranscript(result); toast.success("Captions generated successfully"); onSaved?.();
+    } catch (error: any) { if (mountedRef.current) toast.error(error.message ?? "Failed to generate captions"); }
+    finally { if (mountedRef.current) setGeneratingCaptions(false); }
   };
 
-  // Save edited captions (words → VTT + JSON)
-  const handleSaveCaptions = async () => {
-    if (words.length === 0) { toast.error("No captions to save"); return; }
-    setSavingCaptions(true);
-    try {
-      // Build segments from non-deleted words (group into ~8 word chunks)
-      const visibleWords = words.filter((w) => !w.deleted);
-      const newSegments: TranscriptSegment[] = [];
-      const chunkSize = 8;
-      for (let i = 0; i < visibleWords.length; i += chunkSize) {
-        const chunk = visibleWords.slice(i, i + chunkSize);
-        newSegments.push({
-          id: Math.floor(i / chunkSize),
-          start: chunk[0].start,
-          end: chunk[chunk.length - 1].end,
-          text: chunk.map((w) => w.word).join(" "),
-        });
-      }
-      const result = await updateCaptionsMutation.mutateAsync({
-        mediaItemId: item.id,
-        orgId,
-        segments: newSegments,
-        words: words,
-        language: "en",
-        duration,
-      });
-      setCaptionsUrl(result.captionsUrl);
-      setSegments(newSegments);
-      toast.success("Captions saved");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save captions");
-    } finally {
-      setSavingCaptions(false);
+  const persistCaptions = async () => {
+    if (!words.length) return revisionRef.current;
+    const newSegments = segmentsFromStudioWords(words);
+    const revision = revisionRef.current;
+    const persistedRevision = Number(originalDocument.current.studioEdit?.revision ?? -1);
+    const nextRevision = Math.max(revision, persistedRevision + 1);
+    const transcriptJson = makeStudioTranscriptEnvelope(originalDocument.current, words, newSegments,
+      { version: 1, sourceMediaItemId: item.id, revision: nextRevision, captionStyle: ccStyle, showCaptions, presetId }, duration);
+    const input = { mediaItemId: item.id, orgId, words, segments: newSegments,
+      captionsVtt: serializeStudioSubtitles(newSegments, "vtt"),
+      language: originalDocument.current.language ?? "en", ...(duration > 0 && Number.isFinite(duration) ? { duration } : {}), transcriptJson,
+      expectedRevision: Number(originalDocument.current.studio?.revision ?? 0) };
+    const result = await updateCaptionsMutation.mutateAsync(input);
+    if (mountedRef.current && revision === revisionRef.current) {
+      originalDocument.current = readStudioTranscript((result as any).transcriptJson ?? transcriptJson);
+      revisionRef.current = nextRevision; setCaptionsUrl(result.captionsUrl); setSegments(newSegments); setDirty(false);
+      return nextRevision;
     }
+    // Local changes made during persistence must not be exported as if they were saved.
+    return revision;
+  };
+  const handleSaveCaptions = async () => {
+    setSavingCaptions(true);
+    try { await persistCaptions(); if (mountedRef.current) { toast.success("Captions saved"); onSaved?.(); } }
+    catch (error: any) { toast.error(error.message ?? "Failed to save captions"); }
+    finally { if (mountedRef.current) setSavingCaptions(false); }
   };
 
   // Word-level operations
   const toggleWordDeleted = (wordId: number) => {
-    setWords((prev) => prev.map((w) => w.id === wordId ? { ...w, deleted: !w.deleted } : w));
+    editWords((prev) => prev.map((w) => w.id === wordId ? { ...w, deleted: !w.deleted } : w));
   };
   const deleteWordRange = (startId: number, endId: number) => {
     const startIdx = words.findIndex((w) => w.id === startId);
     const endIdx = words.findIndex((w) => w.id === endId);
     if (startIdx === -1 || endIdx === -1) return;
     const [lo, hi] = startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
-    setWords((prev) => prev.map((w, i) => i >= lo && i <= hi ? { ...w, deleted: true } : w));
+    editWords((prev) => prev.map((w, i) => i >= lo && i <= hi ? { ...w, deleted: true } : w));
   };
   const restoreAllDeleted = () => {
-    setWords((prev) => prev.map((w) => ({ ...w, deleted: false })));
+    editWords((prev) => prev.map((w) => ({ ...w, deleted: false })));
     toast.success("All deleted words restored");
   };
 
@@ -400,7 +389,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
   const handleReplaceOne = () => {
     if (findResults.length === 0) return;
     const targetId = findResults[findIndex];
-    setWords((prev) => prev.map((w) => w.id === targetId ? { ...w, word: w.word.replace(new RegExp(findText, "i"), replaceText) } : w));
+    editWords((prev) => prev.map((w) => w.id === targetId ? { ...w, word: literalReplace(w.word, findText, replaceText, false) } : w));
     // Move to next result
     const newResults = findResults.filter((id) => id !== targetId);
     setFindResults(newResults);
@@ -410,10 +399,10 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
   const handleReplaceAll = () => {
     if (!findText.trim()) return;
     let count = 0;
-    setWords((prev) => prev.map((w) => {
+    editWords((prev) => prev.map((w) => {
       if (!w.deleted && w.word.toLowerCase().includes(findText.toLowerCase())) {
         count++;
-        return { ...w, word: w.word.replace(new RegExp(findText, "gi"), replaceText) };
+        return { ...w, word: literalReplace(w.word, findText, replaceText, true) };
       }
       return w;
     }));
@@ -423,7 +412,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
   const handleDeleteAllOccurrences = () => {
     if (!findText.trim()) return;
     let count = 0;
-    setWords((prev) => prev.map((w) => {
+    editWords((prev) => prev.map((w) => {
       if (!w.deleted && w.word.toLowerCase().includes(findText.toLowerCase())) {
         count++;
         return { ...w, deleted: true };
@@ -434,53 +423,30 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     toast.success(`Deleted ${count} occurrence${count !== 1 ? "s" : ""}`);
   };
 
-  // Filler word cleanup
   const handleRemoveFillers = () => {
-    let count = 0;
-    setWords((prev) => prev.map((w) => {
-      const clean = w.word.toLowerCase().replace(/[.,!?;:]/g, "");
-      if (!w.deleted && FILLER_WORDS.includes(clean)) {
-        count++;
-        return { ...w, deleted: true };
-      }
-      return w;
-    }));
-    toast.success(`Removed ${count} filler word${count !== 1 ? "s" : ""}`);
+    const ids = fillerWordIds(words, FILLER_WORDS);
+    editWords(previous => previous.map(word => ids.has(word.id) ? { ...word, deleted: true } : word));
+    toast.success(`Removed ${ids.size} filler words`);
   };
 
   // Clip handlers (preserved from original)
   const handleAutoGenerateClips = async () => {
-    if (words.length < 20) { toast.error("Need more transcript words to auto-generate clips"); return; }
     setAutoGeneratingClips(true);
     try {
-      const visibleWords = words.filter((w) => !w.deleted);
-      const totalDur = duration;
-      const windowSize = Math.max(15, totalDur / 12);
-      const step = totalDur / 10;
-      const generated: ClipSelection[] = [];
-      for (let i = 0; i < 10; i++) {
-        const windowStart = parseFloat((i * step).toFixed(2));
-        const windowEnd = parseFloat(Math.min(windowStart + windowSize, totalDur).toFixed(2));
-        const windowWords = visibleWords.filter((w) => w.end >= windowStart && w.start <= windowEnd);
-        if (windowWords.length === 0) continue;
-        const clipStart = parseFloat(windowWords[0].start.toFixed(2));
-        const clipEnd = parseFloat(windowWords[windowWords.length - 1].end.toFixed(2));
-        const labelWords = windowWords.slice(0, 4).map((w) => w.word).join(" ");
-        generated.push({ id: `auto-${Date.now()}-${i}`, label: `Highlight ${i + 1}: ${labelWords}...`, startSec: clipStart, endSec: Math.min(clipEnd, clipStart + windowSize) });
-      }
-      if (generated.length === 0) { toast.error("Could not generate clips"); return; }
-      setClips((prev) => [...prev, ...generated]);
-      toast.success(`Generated ${generated.length} highlight clips`);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to auto-generate clips");
-    } finally {
-      setAutoGeneratingClips(false);
-    }
+      if (dirtyRef.current) await persistCaptions();
+      const result = await generateHighlightsMutation.mutateAsync({ mediaItemId: item.id });
+      if (!mountedRef.current) return;
+      const generated = result.clips.filter(clip => validStudioClip(clip.startSec, clip.endSec, duration)).map((clip, i) => ({ ...clip, id: `auto-${crypto.randomUUID()}-${i}` }));
+      if (!generated.length) throw new Error("No valid highlights returned. Try a recording with more transcript material.");
+      setClips(previous => [...previous, ...generated]); toast.success(`Generated ${generated.length} highlight clips`);
+      if (generated.length < 10) toast.info("This source returned fewer than ten valid highlights; no empty clips were fabricated.");
+    } catch (error: any) { toast.error(error.message ?? "Failed to generate highlights"); }
+    finally { if (mountedRef.current) setAutoGeneratingClips(false); }
   };
   const handleAddClip = () => {
     const start = clipStart ?? 0;
     const end = clipEnd ?? duration;
-    if (end <= start) { toast.error("End must be after start"); return; }
+    if (!validStudioClip(start, end, duration)) { toast.error("Clip must be within the source duration, with end after start"); return; }
     setClips((prev) => [...prev, { id: `local-${Date.now()}`, label: clipLabel || "Highlight", startSec: start, endSec: end }]);
     setClipStart(null); setClipEnd(null); setClipLabel("Highlight");
   };
@@ -495,23 +461,44 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     finally { setSavingClip(false); }
   };
   const handleDeleteClip = async (clip: ClipSelection) => {
-    if (clip.savedId) { try { await deleteClipMutation.mutateAsync({ id: clip.savedId, orgId }); } catch {} }
+    if (clip.savedId) { try { await deleteClipMutation.mutateAsync({ id: clip.savedId, orgId }); } catch (error: any) { toast.error(error.message ?? "Could not delete clip"); return; } }
     setClips((prev) => prev.filter((c) => c.id !== clip.id));
   };
+  const downloadOutput = (result: { url: string; mimeType: string }, filename: string) => {
+    if (!result.url || !result.mimeType) throw new Error("Export did not return a rendered media output");
+    const extension = result.mimeType.includes("mp4") ? "mp4" : result.mimeType.includes("webm") ? "webm" : "bin";
+    const anchor = document.createElement("a"); anchor.href = result.url; anchor.download = `${filename.replace(/\.[^.]+$/, "")}.${extension}`; anchor.target = "_blank"; anchor.rel = "noopener noreferrer"; anchor.click();
+  };
   const handleDownloadClip = async (clip: ClipSelection) => {
+    if (!validStudioClip(clip.startSec, clip.endSec, duration)) { toast.error("Invalid clip boundaries"); return; }
     setDownloadingClipId(clip.id);
     try {
-      toast.info(`Exporting "${clip.label}"…`);
-      const result = await extractClipMutation.mutateAsync({ orgId, mediaItemId: item.id, clipId: clip.savedId, label: clip.label, startSec: clip.startSec, endSec: clip.endSec, sourceUrl: item.url });
-      const a = document.createElement("a"); a.href = (result as any).url; a.download = `${clip.label.replace(/[^a-z0-9]/gi, "-")}.mp4`; a.target = "_blank"; a.click();
-      toast.success(`Clip exported`);
-    } catch (err: any) { toast.error(err?.message ?? "Failed to export clip"); }
-    finally { setDownloadingClipId(null); }
+      const revision = await persistCaptions();
+      if (revision !== revisionRef.current) throw new Error("Edits changed while saving. Retry export with the latest edits.");
+      const result = await renderEditedVideoMutation.mutateAsync({ mediaItemId: item.id, startSec: clip.startSec, endSec: clip.endSec, burnCaptions: showCaptions });
+      if (mountedRef.current && revision === revisionRef.current) { downloadOutput(result, clip.label.replace(/[^a-z0-9]/gi, "-")); toast.success("Clip exported"); }
+    } catch (error: any) { toast.error(error.message ?? "Failed to export clip"); }
+    finally { if (mountedRef.current) setDownloadingClipId(null); }
   };
-  const handleDownloadFull = () => { setDownloadingFull(true); const a = document.createElement("a"); a.href = item.url; a.download = item.filename; a.click(); setTimeout(() => setDownloadingFull(false), 1000); };
-  const handleDownloadCaptions = () => {
-    if (!captionsUrl) { toast.error("No captions available"); return; }
-    const a = document.createElement("a"); a.href = captionsUrl; a.download = item.filename.replace(/\.[^.]+$/, "") + ".vtt"; a.click();
+  const handleDownloadFull = async () => {
+    setDownloadingFull(true);
+    try {
+      const revision = await persistCaptions();
+      if (revision !== revisionRef.current) throw new Error("Edits changed while saving. Retry export with the latest edits.");
+      const result = await renderEditedVideoMutation.mutateAsync({ mediaItemId: item.id, burnCaptions: showCaptions });
+      if (mountedRef.current && revision === revisionRef.current) { downloadOutput(result, item.filename); toast.success("Edited video exported"); }
+    } catch (error: any) { toast.error(error.message ?? "Failed to export edited video"); }
+    finally { if (mountedRef.current) setDownloadingFull(false); }
+  };
+  const handleDownloadOriginal = () => { const anchor = document.createElement("a"); anchor.href = item.url; anchor.download = item.filename; anchor.click(); };
+  const handleDownloadCaptions = (format: "srt" | "vtt" = "vtt", editedTimeline = false) => {
+    if (!words.length) { if (format === "vtt" && captionsUrl) { const anchor = document.createElement("a"); anchor.href = captionsUrl; anchor.download = item.filename.replace(/\.[^.]+$/, "") + ".vtt"; anchor.click(); } else toast.error("No captions available"); return; }
+    downloadStudioBlob(serializeStudioSubtitles(segmentsFromStudioWords(words, editedTimeline), format), `${item.filename.replace(/\.[^.]+$/, "")}${editedTimeline ? "-edited" : ""}.${format}`, format === "srt" ? "application/x-subrip;charset=utf-8" : "text/vtt;charset=utf-8");
+  };
+  const previewClip = (clip: ClipSelection) => {
+    if (!validStudioClip(clip.startSec, clip.endSec, duration)) return;
+    seekTo(clip.startSec); previewClipEndRef.current = clip.endSec;
+    void videoRef.current?.play().catch(() => toast.error("Could not play clip preview"));
   };
   const setClipStartToCurrent = () => setClipStart(parseFloat(currentTime.toFixed(2)));
   const setClipEndToCurrent = () => setClipEnd(parseFloat(currentTime.toFixed(2)));
@@ -521,13 +508,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
     if (!urlInput.trim()) { toast.error("Enter a video URL"); return; }
     setDownloadingUrl(true);
     try {
-      // Use the saveRecording mutation to download and save the URL
-      await saveRecordingMutation.mutateAsync({
-        orgId,
-        url: urlInput.trim(),
-        filename: urlInput.split("/").pop()?.split("?")[0] || "video.mp4",
-        mimeType: "video/mp4",
-      });
+      await importVideoMutation.mutateAsync({ orgId, url: urlInput.trim() });
       toast.success("Video downloaded and saved to media library");
       setVideoSourceMode("current");
       onSaved?.();
@@ -540,12 +521,12 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
 
   // CC overlay style
   const ccOverlayStyle: React.CSSProperties = {
-    fontSize: ccStyle.fontSize, fontWeight: ccStyle.bold ? "bold" : "normal", fontStyle: ccStyle.italic ? "italic" : "normal",
+    fontFamily: ccStyle.fontFamily, fontSize: ccStyle.fontSize, fontWeight: ccStyle.bold ? "bold" : "normal", fontStyle: ccStyle.italic ? "italic" : "normal",
     color: ccStyle.textColor, backgroundColor: hexToRgba(ccStyle.bgColor, ccStyle.bgOpacity),
     textShadow: ccStyle.shadow ? "0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7)" : "none",
     padding: "4px 14px", borderRadius: "6px", maxWidth: "90%", textAlign: "center" as const, lineHeight: 1.3, letterSpacing: "0.01em", transition: "all 0.15s ease",
   };
-  const patchCCStyle = (patch: Partial<CCStyle>) => setCCStyle((prev) => ({ ...prev, ...patch }));
+  const patchCCStyle = (patch: Partial<CCStyle>) => { setDirty(true); revisionRef.current++; setCCStyle((prev) => ({ ...prev, ...patch })); };
 
   // Deleted word count
   const deletedCount = words.filter((w) => w.deleted).length;
@@ -632,7 +613,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
             )}
             {/* CC toggle */}
             {words.length > 0 && (
-              <button onClick={() => setShowCaptions((v) => !v)} className={cn("absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all", showCaptions ? "bg-primary text-primary-foreground" : "bg-black/60 text-white/70 hover:bg-black/80")}>
+              <button onClick={() => { setDirty(true); revisionRef.current++; setShowCaptions((v) => !v); }} className={cn("absolute bottom-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all", showCaptions ? "bg-primary text-primary-foreground" : "bg-black/60 text-white/70 hover:bg-black/80")}>
                 <Subtitles className="h-3 w-3" /> {showCaptions ? "CC On" : "CC Off"}
               </button>
             )}
@@ -680,12 +661,13 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Presets</p>
                   <div className="flex flex-wrap gap-2">
                     {CC_PRESETS.map((preset) => (
-                      <button key={preset.id} onClick={() => patchCCStyle(preset.style)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:border-primary hover:bg-primary/5 transition-all" style={{ color: preset.style.textColor, backgroundColor: hexToRgba(preset.style.bgColor ?? "#000000", preset.style.bgOpacity ?? 0.8) }}>
+                      <button key={preset.id} onClick={() => { setPresetId(preset.id); patchCCStyle({ ...CC_DEFAULT_STYLE, ...preset.style }); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:border-primary hover:bg-primary/5 transition-all" style={{ color: preset.style.textColor, backgroundColor: hexToRgba(preset.style.bgColor ?? "#000000", preset.style.bgOpacity ?? 0.8) }}>
                         <span>{preset.emoji}</span><span>{preset.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
+                <div><Label className="text-xs" htmlFor="studio-caption-font">Font Family</Label><Select value={ccStyle.fontFamily} onValueChange={fontFamily => patchCCStyle({ fontFamily })}><SelectTrigger id="studio-caption-font"><SelectValue /></SelectTrigger><SelectContent>{["Arial", "Verdana", "Georgia", "Times New Roman", "Courier New"].map(font => <SelectItem key={font} value={font}>{font}</SelectItem>)}</SelectContent></Select></div>
                 {/* Colors */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -741,6 +723,8 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
                 )}
               </div>
               <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={undoWords} disabled={!history.length}>Undo</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={redoWords} disabled={!redoHistory.length}>Redo</Button>
                 {fillerCount > 0 && (
                   <Button size="sm" variant="outline" className="h-7 text-xs text-orange-600 border-orange-300" onClick={handleRemoveFillers} title="Remove filler words (uh, um, like, you know...)">
                     <Sparkles className="h-3 w-3 mr-1" /> Clean Fillers ({fillerCount})
@@ -760,7 +744,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
                   </Button>
                 )}
                 {captionsUrl && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleDownloadCaptions}>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleDownloadCaptions()}>
                     <Download className="h-3 w-3 mr-1" /> VTT
                   </Button>
                 )}
@@ -802,7 +786,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
                 <div className="flex flex-wrap gap-x-1 gap-y-1.5 leading-relaxed">
                   {words.map((w) => {
                     const isActive = !w.deleted && currentTime >= w.start && currentTime <= w.end;
-                    const isFiller = FILLER_WORDS.includes(w.word.toLowerCase().replace(/[.,!?;:]/g, ""));
+                    const isFiller = fillerIds.has(w.id);
                     const isFound = findResults.includes(w.id);
                     const isCurrentFind = findResults[findIndex] === w.id;
                     return (
@@ -889,7 +873,7 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
                 <div className="divide-y divide-border">
                   {clips.map((clip) => (
                     <div key={clip.id} className="flex items-center gap-2 px-4 py-2.5 group hover:bg-muted/30 transition-colors">
-                      <button className="flex-1 text-left" onClick={() => seekTo(clip.startSec)}>
+                      <button className="flex-1 text-left" onClick={() => previewClip(clip)}>
                         <p className="text-xs font-medium truncate max-w-[140px]">{clip.label}</p>
                         <p className="text-xs text-muted-foreground font-mono">{formatTime(clip.startSec)} → {formatTime(clip.endSec)} <span className="ml-1.5 text-muted-foreground/60">({formatTime(clip.endSec - clip.startSec)})</span></p>
                       </button>
@@ -920,10 +904,12 @@ function VideoEditor({ item, orgId, onSaved }: { item: MediaItem; orgId: number;
               <Download className="h-4 w-4" /> Download Full Video
             </Button>
             {captionsUrl && (
-              <Button variant="outline" onClick={handleDownloadCaptions} className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => handleDownloadCaptions()} className="flex items-center gap-2">
                 <Subtitles className="h-4 w-4" /> Download Captions (.vtt)
               </Button>
             )}
+            <Button variant="outline" onClick={handleDownloadOriginal}>Download Original</Button>
+            {words.length > 0 && <><Button variant="outline" onClick={() => handleDownloadCaptions("srt")}>SRT (source timing)</Button><Button variant="outline" onClick={() => handleDownloadCaptions("srt", true)}>SRT (edited timing)</Button></>}
             <span className="text-xs text-muted-foreground ml-auto">{formatFileSize(item.fileSize)} · {item.mimeType}</span>
           </div>
         </>
@@ -942,252 +928,114 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
   const [elapsed, setElapsed] = useState(0);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
-  const [recordings, setRecordings] = useState<{ url: string; name: string; size: number; duration: number }[]>([]);
+  const [recordings, setRecordings] = useState<StudioLocalRecording[]>([]);
   const [cameraPos, setCameraPos] = useState({ x: 20, y: 20 });
   const [isDraggingCamera, setIsDraggingCamera] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [cameraSize, setCameraSize] = useState(160);
   const [showSettings, setShowSettings] = useState(false);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedMic, setSelectedMic] = useState<string>("");
+  const [selectedMic, setSelectedMic] = useState("");
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState<string>("");
+  const [selectedCamera, setSelectedCamera] = useState("");
   const [outputDevices, setOutputDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedOutput, setSelectedOutput] = useState<string>("");
+  const [selectedOutput, setSelectedOutput] = useState("");
   const [videoQuality, setVideoQuality] = useState<"720p" | "1080p" | "4k">("1080p");
   const [frameRate, setFrameRate] = useState<"24" | "30" | "60">("30");
-  const [savingIdx, setSavingIdx] = useState<number | null>(null);
-  const [savedItems, setSavedItems] = useState<Record<number, MediaItem>>({});
-  const [autoSaving, setAutoSaving] = useState(false);
-
+  const [captureDetails, setCaptureDetails] = useState("");
   const screenVideoRef = useRef<HTMLVideoElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const screenStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const elapsedRef = useRef<number>(0);
-
+  const sessionRef = useRef<StudioCaptureSession | null>(null);
+  const liveRef = useRef(true);
+  const recordStateRef = useRef(recordState); recordStateRef.current = recordState;
+  const pipRef = useRef({ cameraPos, cameraSize }); pipRef.current = { cameraPos, cameraSize };
+  const urlsRef = useRef(new Set<string>());
   const saveMediaItem = trpc.lms.media.saveMediaItem.useMutation();
-  // Stable ref for onSaved to avoid stale closures in useCallback
-  const onSavedRef = useRef(onSaved);
-  useEffect(() => { onSavedRef.current = onSaved; }, [onSaved]);
-  const saveMediaItemRef = useRef(saveMediaItem);
-  useEffect(() => { saveMediaItemRef.current = saveMediaItem; }, [saveMediaItem]);
-  // Stable ref for autoSaveRecording to avoid stale closure in recorder.onstop
-  const autoSaveRecordingRef = useRef<((rec: { url: string; name: string; size: number; duration: number }) => void) | null>(null);
-
-  const autoSaveRecording = useCallback(async (rec: { url: string; name: string; size: number; duration: number }) => {
-    setAutoSaving(true);
-    try {
-      const blob = await fetch(rec.url).then((r) => r.blob());
-      const contentType = blob.type || "video/webm";
-      const formData = new FormData();
-      formData.append("file", blob, rec.name);
-      formData.append("orgId", String(orgId));
-      formData.append("folder", "lms-media");
-      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData, credentials: "include" });
-      if (!uploadRes.ok) throw new Error("Upload failed");
-      const uploadData = await uploadRes.json();
-      const saved = await saveMediaItemRef.current.mutateAsync({
-        orgId,
-        fileName: rec.name,
-        mimeType: contentType,
-        fileSize: blob.size,
-        fileKey: uploadData.key,
-        url: uploadData.url,
-        durationSeconds: rec.duration,
-        tags: ["recording"],
-        source: "direct",
-      });
-      const item: MediaItem = {
-        id: (saved as any).id,
-        url: uploadData.url,
-        filename: rec.name,
-        mimeType: contentType,
-        fileSize: blob.size,
-        durationSeconds: rec.duration,
-      };
-      setSavedItems((prev) => ({ ...prev, [0]: item }));
-      toast.success("Recording auto-saved to Media Library");
-      onSavedRef.current(item);
-    } catch (err: any) {
-      console.error("[autoSave] Error:", err);
-      toast.warning("Auto-save failed — use the save button to save manually");
-    } finally {
-      setAutoSaving(false);
-    }
-  }, [orgId]);
-  // Keep the ref in sync with the latest autoSaveRecording callback
-  useEffect(() => { autoSaveRecordingRef.current = autoSaveRecording; }, [autoSaveRecording]);
-
-  useEffect(() => {
-    const refreshDevices = () => {
-      navigator.mediaDevices.enumerateDevices().then((devices) => {
-        // Filter out devices with empty deviceId (returned before permission is granted)
-        setAudioDevices(devices.filter((d) => d.kind === "audioinput" && d.deviceId !== ""));
-        setVideoDevices(devices.filter((d) => d.kind === "videoinput" && d.deviceId !== ""));
-        setOutputDevices(devices.filter((d) => d.kind === "audiooutput" && d.deviceId !== ""));
-      }).catch(() => {});
-    };
-    refreshDevices();
-    navigator.mediaDevices.addEventListener("devicechange", refreshDevices);
-    return () => navigator.mediaDevices.removeEventListener("devicechange", refreshDevices);
-  }, []);
-
-  // Route video preview playback to selected speaker output device
-  useEffect(() => {
-    const el = previewRef.current as any;
-    if (!el) return;
-    if (typeof el.setSinkId === "function") {
-      el.setSinkId(selectedOutput || "").catch(() => {});
-    }
-  }, [selectedOutput]);
-
-  // Derive resolution from quality setting
+  const library = useStudioRecordingLibrary(orgId, input => saveMediaItem.mutateAsync(input), onSaved);
+  const libraryRef = useRef(library); libraryRef.current = library;
+  const savedItems = library.savedItems;
+  const autoSaving = library.hasPending;
+  const isRecording = recordState === "recording" || recordState === "paused";
+  const busy = isRecording || recordState === "countdown";
   const qualityDimensions = { "720p": { w: 1280, h: 720 }, "1080p": { w: 1920, h: 1080 }, "4k": { w: 3840, h: 2160 } };
 
   useEffect(() => {
-    if (mode !== "screen" && cameraEnabled) {
-      // Request 16:9 aspect ratio explicitly to prevent black bars from 4:3 camera streams
-      const { w, h } = qualityDimensions[videoQuality];
-      const fps = parseInt(frameRate, 10);
-      const videoConstraints: MediaTrackConstraints = selectedCamera
-        ? { deviceId: { exact: selectedCamera }, width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: fps } }
-        : { width: { ideal: w }, height: { ideal: h }, aspectRatio: { ideal: 16 / 9 }, frameRate: { ideal: fps } };
-      const constraints: MediaStreamConstraints = { video: videoConstraints, audio: false };
-      navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
-        cameraStreamRef.current = stream;
-        if (cameraVideoRef.current) cameraVideoRef.current.srcObject = stream;
-      }).catch(() => {
-        toast.error("Could not access camera");
-        setCameraEnabled(false);
-      });
-    }
-    return () => {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((t) => t.stop());
-        cameraStreamRef.current = null;
-      }
-    };
-  }, [mode, cameraEnabled, selectedCamera, videoQuality, frameRate]);
-
-  // Re-attach camera stream whenever the video element is swapped (full-size ↔ bubble)
-  useEffect(() => {
-    if (cameraVideoRef.current && cameraStreamRef.current) {
-      cameraVideoRef.current.srcObject = cameraStreamRef.current;
-    }
-  }, [mode, recordState]);
-
-  const startRecording = useCallback(async (preAcquiredScreenStream?: MediaStream) => {
-    try {
-      const streams: MediaStream[] = [];
-      if (mode === "screen" || mode === "screen+camera") {
-        const screenStream = preAcquiredScreenStream ??
-          await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true });
-        screenStreamRef.current = screenStream;
-        streams.push(screenStream);
-        if (screenVideoRef.current) screenVideoRef.current.srcObject = screenStream;
-      }
-      if (micEnabled) {
-        try {
-          const micStream = await navigator.mediaDevices.getUserMedia({
-            audio: selectedMic ? { deviceId: selectedMic } : true,
-            video: false,
-          });
-          streams.push(micStream);
-        } catch {
-          toast.warning("Could not access microphone — recording without audio");
-        }
-      }
-      const combinedTracks: MediaStreamTrack[] = [];
-      streams.forEach((s) => s.getTracks().forEach((t) => combinedTracks.push(t)));
-      const combined = new MediaStream(combinedTracks);
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus" : "video/webm";
-      const recorder = new MediaRecorder(combined, { mimeType });
-      mediaRecorderRef.current = recorder;
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const name = `Recording-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.webm`;
-        const dur = Math.round((Date.now() - (timerRef.current ? 0 : 0)) / 1000);
-        const newRec = { url, name, size: blob.size, duration: elapsedRef.current };
-        setRecordings((prev) => [newRec, ...prev]);
-        if (previewRef.current) previewRef.current.src = url;
-        setRecordState("stopped");
-        streams.forEach((s) => s.getTracks().forEach((t) => t.stop()));
-        // Auto-save to Media Library (use ref to avoid stale closure)
-        autoSaveRecordingRef.current?.(newRec);
-      };
-      if (screenStreamRef.current) {
-        screenStreamRef.current.getVideoTracks()[0]?.addEventListener("ended", () => stopRecording());
-      }
-      recorder.start(1000);
-      setRecordState("recording");
-      setElapsed(0);
-      elapsedRef.current = 0;
-      timerRef.current = setInterval(() => {
-        setElapsed((e) => { elapsedRef.current = e + 1; return e + 1; });
-      }, 1000);
-    } catch (err: any) {
-      if (err.name !== "NotAllowedError") toast.error("Could not start recording: " + err.message);
-      setRecordState("idle");
-    }
-  }, [mode, micEnabled, selectedMic]);
-
-  // For screen modes: acquire screen share first, then countdown, then record
-  const startCountdown = useCallback(async () => {
-    let preAcquiredScreen: MediaStream | undefined;
-    if (mode === "screen" || mode === "screen+camera") {
-      try {
-        preAcquiredScreen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: true });
-        screenStreamRef.current = preAcquiredScreen;
-        if (screenVideoRef.current) screenVideoRef.current.srcObject = preAcquiredScreen;
-      } catch (err: any) {
-        if (err.name !== "NotAllowedError") toast.error("Screen share cancelled");
-        return;
-      }
-    }
-    setRecordState("countdown");
-    setCountdown(3);
-    let c = 3;
-    const interval = setInterval(() => {
-      c -= 1;
-      setCountdown(c);
-      if (c <= 0) { clearInterval(interval); startRecording(preAcquiredScreen); }
-    }, 1000);
-  }, [mode, startRecording]);
-
-  const pauseRecording = () => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.pause();
-      setRecordState("paused");
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-  };
-  const resumeRecording = () => {
-    if (mediaRecorderRef.current?.state === "paused") {
-      mediaRecorderRef.current.resume();
-      setRecordState("recording");
-      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    }
-  };
-  const stopRecording = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach((t) => t.stop());
-      screenStreamRef.current = null;
-    }
+    const devices = navigator.mediaDevices;
+    if (!devices?.enumerateDevices) return;
+    const refresh = () => devices.enumerateDevices().then(all => {
+      setAudioDevices(all.filter(d => d.kind === "audioinput" && d.deviceId));
+      setVideoDevices(all.filter(d => d.kind === "videoinput" && d.deviceId));
+      setOutputDevices(all.filter(d => d.kind === "audiooutput" && d.deviceId));
+    }).catch(() => {});
+    refresh(); devices.addEventListener("devicechange", refresh);
+    return () => devices.removeEventListener("devicechange", refresh);
   }, []);
+  useEffect(() => {
+    const el = previewRef.current as any;
+    if (el?.setSinkId) el.setSinkId(selectedOutput || "").catch(() => {});
+  }, [selectedOutput, recordings]);
+  useEffect(() => {
+    let cancelled = false; let acquired: MediaStream | null = null;
+    if (mode !== "screen" && cameraEnabled && navigator.mediaDevices?.getUserMedia) {
+      const { w, h } = qualityDimensions[videoQuality];
+      navigator.mediaDevices.getUserMedia({ video: { width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: Number(frameRate) }, ...(selectedCamera ? { deviceId: { exact: selectedCamera } } : {}) }, audio: false })
+        .then(stream => {
+          if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+          acquired = stream; cameraStreamRef.current = stream;
+          if (cameraVideoRef.current) cameraVideoRef.current.srcObject = stream;
+        }).catch(() => { if (!cancelled) { toast.error("Could not access camera"); setCameraEnabled(false); } });
+    }
+    return () => { cancelled = true; acquired?.getTracks().forEach(t => t.stop()); if (cameraStreamRef.current === acquired) cameraStreamRef.current = null; };
+  }, [mode, cameraEnabled, selectedCamera, videoQuality, frameRate]);
+  useEffect(() => { if (cameraVideoRef.current) cameraVideoRef.current.srcObject = cameraStreamRef.current; }, [mode, recordState]);
+  useEffect(() => { sessionRef.current?.setMicEnabled(micEnabled); }, [micEnabled]);
+  useEffect(() => {
+    liveRef.current = true;
+    return () => { liveRef.current = false; sessionRef.current?.dispose(); urlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+  }, [orgId]);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (["countdown", "recording", "paused"].includes(recordStateRef.current) || libraryRef.current.hasPending) { event.preventDefault(); event.returnValue = "Recording or saving is still active."; }
+    };
+    window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
+  }, []);
+  const startCountdown = async () => {
+    if (busy || orgId <= 0) { if (orgId <= 0) toast.error("Select an active school before recording"); return; }
+    if (mode === "camera" && !cameraEnabled) { toast.error("Enable the camera before camera-only recording"); return; }
+    sessionRef.current?.dispose();
+    const { w, h } = qualityDimensions[videoQuality];
+    setRecordState("countdown"); setCountdown(3);
+    const session = new StudioCaptureSession({ mode: mode === "screen+camera" && !cameraEnabled ? "screen" : mode,
+      width: w, height: h, frameRate: Number(frameRate), cameraStream: cameraStreamRef.current,
+      cameraDeviceId: selectedCamera, micDeviceId: selectedMic, micEnabled,
+      pip: () => { const rect = containerRef.current?.getBoundingClientRect(); const p = pipRef.current;
+        return { x: p.cameraPos.x, y: p.cameraPos.y, size: p.cameraSize, width: rect?.width || 960, height: rect?.height || 540 }; },
+      onScreen: stream => { if (screenVideoRef.current) screenVideoRef.current.srcObject = stream; },
+      onState: state => { if (liveRef.current) setRecordState(state); },
+      onCountdown: value => { if (liveRef.current) setCountdown(value); },
+      onElapsed: seconds => { if (liveRef.current) setElapsed(seconds); },
+      onWarning: message => toast.warning(message), onError: error => toast.error(error.message),
+      onResult: result => {
+        const rec = studioLocalRecording(result);
+        if (liveRef.current) {
+          urlsRef.current.add(rec.url); setRecordings(previous => [rec, ...previous]);
+          setCaptureDetails(`${result.width}×${result.height} · ${result.frameRate} fps · ${result.mimeType}`);
+        } else URL.revokeObjectURL(rec.url);
+        libraryRef.current.save(rec);
+      },
+    });
+    sessionRef.current = session; await session.start();
+  };
+  const pauseRecording = () => sessionRef.current?.pause();
+  const resumeRecording = () => sessionRef.current?.resume();
+  const stopRecording = () => sessionRef.current?.stop();
+  const cancelCountdown = () => sessionRef.current?.cancel();
+  const handleSaveToLibrary = (rec: StudioLocalRecording) => library.save(rec);
 
-  const handleCameraMouseDown = (e: React.MouseEvent) => {
+  const handleCameraMouseDown = (e: React.PointerEvent) => {
     e.preventDefault();
     setIsDraggingCamera(true);
     setDragOffset({ x: e.clientX - cameraPos.x, y: e.clientY - cameraPos.y });
@@ -1195,7 +1043,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
   useEffect(() => {
     if (!isDraggingCamera) return;
     const PADDING = 12;
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       const container = containerRef.current;
       if (!container) return;
       const rect = container.getBoundingClientRect();
@@ -1212,104 +1060,16 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
       const rect = container.getBoundingClientRect();
       const cx = cameraPos.x + cameraSize / 2;
       const cy = cameraPos.y + cameraSize / 2;
-      const snapX = cx < rect.width / 2 ? PADDING : rect.width - cameraSize - PADDING;
-      const snapY = cy < rect.height / 2 ? PADDING : rect.height - cameraSize - PADDING;
+      const snapX = cx < rect.width / 2 ? Math.min(PADDING, Math.max(0, rect.width - cameraSize)) : Math.max(0, rect.width - cameraSize - PADDING);
+      const snapY = cy < rect.height / 2 ? Math.min(PADDING, Math.max(0, rect.height - cameraSize)) : Math.max(0, rect.height - cameraSize - PADDING);
       setCameraPos({ x: snapX, y: snapY });
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
   }, [isDraggingCamera, dragOffset, cameraSize, cameraPos]);
 
-  const handleSaveToLibrary = async (rec: typeof recordings[0], idx: number) => {
-    setSavingIdx(idx);
-    try {
-      const blob = await fetch(rec.url).then((r) => r.blob());
-      const ext = rec.name.split(".").pop() ?? "webm";
-      const contentType = blob.type || `video/${ext}`;
-
-      // Upload via server-side proxy
-      const formData = new FormData();
-      formData.append("file", blob, rec.name);
-      formData.append("orgId", String(orgId));
-      formData.append("folder", "lms-media");
-      const uploadRes = await fetch("/api/media-upload", { method: "POST", body: formData, credentials: "include" });
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json().catch(() => ({}));
-        throw new Error(errData.error ?? "Upload failed");
-      }
-      const uploadData = await uploadRes.json();
-
-      const saved = await saveMediaItem.mutateAsync({
-        orgId,
-        fileName: rec.name,
-        mimeType: contentType,
-        fileSize: blob.size,
-        fileKey: uploadData.key,
-        url: uploadData.url,
-        durationSeconds: rec.duration,
-        tags: ["recording"],
-        source: "direct",
-      });
-      const item: MediaItem = {
-        id: (saved as any).id,
-        url: uploadData.url,
-        filename: rec.name,
-        mimeType: contentType,
-        fileSize: blob.size,
-        durationSeconds: rec.duration,
-      };
-      setSavedItems((prev) => ({ ...prev, [idx]: item }));
-      toast.success("Saved to Media Library");
-      onSaved(item);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to save recording");
-    } finally {
-      setSavingIdx(null);
-    }
-  };
-
-  const isRecording = recordState === "recording" || recordState === "paused";
-
-  // Keep a ref to recordState so event handlers always see the latest value
-  const recordStateRef = useRef(recordState);
-  useEffect(() => { recordStateRef.current = recordState; }, [recordState]);
-
-  // Warn user before closing tab if recording is active
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (recordStateRef.current === "recording" || recordStateRef.current === "paused" || recordStateRef.current === "countdown") {
-        e.preventDefault();
-        // Modern browsers show a generic message; setting returnValue triggers the dialog
-        e.returnValue = "You have an active recording. If you leave, your recording will be lost.";
-        return e.returnValue;
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
-
-  // Auto-stop and save when the tab becomes hidden (user switches tabs / navigates away)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden" &&
-        (recordStateRef.current === "recording" || recordStateRef.current === "paused")) {
-        // Stop the recorder — onstop will fire and autoSaveRecordingRef will handle the upload
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-          mediaRecorderRef.current.stop();
-        }
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (screenStreamRef.current) {
-          screenStreamRef.current.getTracks().forEach((t) => t.stop());
-          screenStreamRef.current = null;
-        }
-        setRecordState("stopped");
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
-
+  // Switching to the captured browser tab/window must not stop capture.
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Main recording area */}
@@ -1355,8 +1115,10 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
           {mode === "screen+camera" && cameraEnabled && (isRecording || recordState === "countdown") && (
             <div
               className="absolute rounded-full overflow-hidden border-2 border-white shadow-lg cursor-move select-none"
-              style={{ left: cameraPos.x, top: cameraPos.y, width: cameraSize, height: cameraSize }}
-              onMouseDown={handleCameraMouseDown}
+              style={{ left: cameraPos.x, top: cameraPos.y, width: cameraSize, height: cameraSize, touchAction: "none" }}
+              onPointerDown={handleCameraMouseDown}
+              role="button" tabIndex={0} aria-label="Camera picture-in-picture position"
+              onKeyDown={event => { const delta = event.shiftKey ? 20 : 5; const directions: Record<string, { x: number; y: number }> = { ArrowLeft: { x: -delta, y: 0 }, ArrowRight: { x: delta, y: 0 }, ArrowUp: { x: 0, y: -delta }, ArrowDown: { x: 0, y: delta } }; const direction = directions[event.key]; if (direction) { event.preventDefault(); const rect = containerRef.current?.getBoundingClientRect(); setCameraPos(p => ({ x: Math.max(0, Math.min((rect?.width || 960) - cameraSize, p.x + direction.x)), y: Math.max(0, Math.min((rect?.height || 540) - cameraSize, p.y + direction.y)) })); } }}
             >
               <video ref={cameraVideoRef} autoPlay muted playsInline
                 style={{ transform: "scaleX(-1)", width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
@@ -1395,12 +1157,12 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
         {/* Controls */}
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <Button variant="outline" size="icon" className={cn("h-11 w-11 rounded-full", !micEnabled && "border-destructive text-destructive")}
-            onClick={() => setMicEnabled((v) => !v)} disabled={isRecording} title={micEnabled ? "Mute microphone" : "Unmute microphone"}>
+            onClick={() => setMicEnabled((v) => !v)} title={micEnabled ? "Mute microphone" : "Unmute microphone"}>
             {micEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
           </Button>
           {mode !== "screen" && (
             <Button variant="outline" size="icon" className={cn("h-11 w-11 rounded-full", !cameraEnabled && "border-destructive text-destructive")}
-              onClick={() => setCameraEnabled((v) => !v)} disabled={isRecording}>
+              onClick={() => setCameraEnabled((v) => !v)} disabled={busy}>
               {cameraEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
             </Button>
           )}
@@ -1410,7 +1172,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             </Button>
           )}
           {recordState === "countdown" && (
-            <Button size="lg" variant="outline" className="h-14 w-14 rounded-full" onClick={() => setRecordState("idle")}>
+            <Button size="lg" variant="outline" className="h-14 w-14 rounded-full" onClick={cancelCountdown}>
               <Square className="h-5 w-5" />
             </Button>
           )}
@@ -1443,7 +1205,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
                 </div>
               )}
               <Button size="lg" className="h-14 px-6 rounded-full bg-primary text-primary-foreground"
-                onClick={() => { setRecordState("idle"); setElapsed(0); setSavedItems({}); setAutoSaving(false); if (screenVideoRef.current) screenVideoRef.current.srcObject = null; }}>
+                onClick={() => { setRecordState("idle"); setElapsed(0); if (screenVideoRef.current) screenVideoRef.current.srcObject = null; }}>
                 <Circle className="h-5 w-5 fill-current mr-2" /> Record Again
               </Button>
             </div>
@@ -1468,7 +1230,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             {/* Camera */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Camera className="h-3 w-3" /> Camera</label>
-              <Select value={selectedCamera || "__default__"} onValueChange={(v) => setSelectedCamera(v === "__default__" ? "" : v)}>
+              <Select disabled={busy} value={selectedCamera || "__default__"} onValueChange={(v) => setSelectedCamera(v === "__default__" ? "" : v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Default camera" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">Default camera</SelectItem>
@@ -1480,7 +1242,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             {/* Video Quality */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Monitor className="h-3 w-3" /> Video Quality</label>
-              <Select value={videoQuality} onValueChange={(v) => setVideoQuality(v as "720p" | "1080p" | "4k")}>
+              <Select disabled={busy} value={videoQuality} onValueChange={(v) => setVideoQuality(v as "720p" | "1080p" | "4k")}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="720p">720p HD</SelectItem>
@@ -1493,7 +1255,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             {/* Frame Rate */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Film className="h-3 w-3" /> Frame Rate</label>
-              <Select value={frameRate} onValueChange={(v) => setFrameRate(v as "24" | "30" | "60")}>
+              <Select disabled={busy} value={frameRate} onValueChange={(v) => setFrameRate(v as "24" | "30" | "60")}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="24">24 fps — Cinematic</SelectItem>
@@ -1506,7 +1268,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             {/* Microphone */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Mic className="h-3 w-3" /> Microphone</label>
-              <Select value={selectedMic || "__default__"} onValueChange={(v) => setSelectedMic(v === "__default__" ? "" : v)}>
+              <Select disabled={busy} value={selectedMic || "__default__"} onValueChange={(v) => setSelectedMic(v === "__default__" ? "" : v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Default microphone" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">Default microphone</SelectItem>
@@ -1534,7 +1296,9 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             {/* Current settings summary */}
             <div className="rounded-lg bg-muted/40 px-3 py-2 flex flex-col gap-1">
               <p className="text-xs font-medium text-muted-foreground">Active settings</p>
-              <p className="text-xs text-foreground">{videoQuality.toUpperCase()} · {frameRate} fps</p>
+              <p className="text-xs text-foreground">{videoQuality.toUpperCase()} · {frameRate} fps (requested)</p>
+              {captureDetails && <p className="text-xs text-foreground">Captured: {captureDetails}</p>}
+              {busy && <p className="text-xs text-muted-foreground">Device and quality changes apply to the next recording.</p>}
             </div>
           </div>
         )}
@@ -1555,7 +1319,7 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {recordings.map((rec, idx) => (
-                <div key={idx} className="p-3 hover:bg-muted/30 transition-colors">
+                <div key={rec.id} className="p-3 hover:bg-muted/30 transition-colors">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{rec.name}</p>
@@ -1572,19 +1336,20 @@ function RecordTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
                       </Button>
                       <Button
                         variant="ghost" size="icon"
-                        className={cn("h-7 w-7", savedItems[idx] ? "text-teal-500" : "")}
-                        onClick={() => handleSaveToLibrary(rec, idx)}
-                        disabled={savingIdx === idx || !!savedItems[idx]}
-                        title={savedItems[idx] ? "Saved to Library" : "Save to Media Library"}
+                        className={cn("h-7 w-7", savedItems[rec.id] ? "text-teal-500" : "")}
+                        onClick={() => handleSaveToLibrary(rec)}
+                        disabled={library.status(rec.id)?.status === "uploading" || library.status(rec.id)?.status === "saving" || library.status(rec.id)?.status === "queued" || !!savedItems[rec.id]}
+                        title={savedItems[rec.id] ? "Saved to Library" : "Save to Media Library"}
                       >
-                        {savingIdx === idx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
+                        {library.status(rec.id)?.status === "uploading" || library.status(rec.id)?.status === "saving" || library.status(rec.id)?.status === "queued" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
                   </div>
                   {idx === 0 && recordState === "stopped" && (
-                    <video ref={previewRef} controls className="mt-2 w-full rounded-lg aspect-video bg-black" />
+                    <video ref={previewRef} src={rec.url} controls className="mt-2 w-full rounded-lg aspect-video bg-black" />
                   )}
-                  {savedItems[idx] && (
+                  {library.status(rec.id)?.status === "error" && <Button variant="outline" size="sm" className="mt-2 text-xs" onClick={() => library.save(rec)}>Retry save: {library.status(rec.id)?.errorMessage}</Button>}
+                  {savedItems[rec.id] && (
                     <div className="mt-2 flex items-center gap-1.5 text-xs text-teal-600">
                       <CheckCircle className="h-3 w-3" />
                       Saved — click Edit tab to add captions &amp; clips
@@ -1677,6 +1442,7 @@ function UploadTab({ orgId, onSaved }: { orgId: number; onSaved: (item: MediaIte
             onSaved(item);
           } catch (err: any) {
             toast.error(`Failed to save "${result.fileName}": ${err?.message ?? "Unknown error"}`);
+            throw err;
           }
         },
         onError: (message) => {
@@ -1819,6 +1585,8 @@ function EditTab({ orgId, initialItem }: { orgId: number; initialItem?: MediaIte
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(initialItem ?? null);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const dirtyEditorRef = useRef(false);
+  const initialItemIdRef = useRef(initialItem?.id);
 
   const listMediaQuery = trpc.forms.media.list.useQuery(
     { orgId, pageSize: 200 },
@@ -1841,21 +1609,24 @@ function EditTab({ orgId, initialItem }: { orgId: number; initialItem?: MediaIte
     }
   }, [listMediaQuery.data]);
   useEffect(() => {
-    if (initialItem) setSelectedItem(initialItem);
+    if (initialItem && initialItem.id !== initialItemIdRef.current) {
+      initialItemIdRef.current = initialItem.id;
+      if (!dirtyEditorRef.current || window.confirm("Switch to the new recording? Unsaved caption edits will be discarded.")) { dirtyEditorRef.current = false; setSelectedItem(initialItem); }
+    }
   }, [initialItem]);
 
   if (selectedItem) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-3 border-b border-border shrink-0">
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5" onClick={() => setSelectedItem(null)}>
+          <Button variant="ghost" size="sm" className="h-7 gap-1.5" onClick={() => { if (!dirtyEditorRef.current || window.confirm("Leave the editor? Unsaved caption edits will be discarded.")) { dirtyEditorRef.current = false; setSelectedItem(null); } }}>
             <ArrowLeft className="h-3.5 w-3.5" /> Back to library
           </Button>
           <div className="h-4 w-px bg-border" />
           <p className="text-sm font-medium truncate">{selectedItem.filename}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-6">
-          <VideoEditor item={selectedItem} orgId={orgId} onSaved={() => listMediaQuery.refetch()} />
+          <VideoEditor key={`${orgId}-${selectedItem.id}`} item={selectedItem} orgId={orgId} onDirtyChange={dirty => { dirtyEditorRef.current = dirty; }} onSaved={() => listMediaQuery.refetch()} />
         </div>
       </div>
     );
@@ -1942,7 +1713,7 @@ function AudioTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaIte
         ))}
       </div>
       <div className="flex-1 min-h-0 overflow-auto">
-        {subTab === "record" && <RecordAudioSubTab orgId={orgId} onSaved={onSaved} />}
+        <div hidden={subTab !== "record"} className="h-full"><RecordAudioSubTab key={orgId} orgId={orgId} onSaved={onSaved} /></div>
         {subTab === "upload" && <UploadAudioSubTab orgId={orgId} onSaved={onSaved} />}
       </div>
     </div>
@@ -1952,44 +1723,45 @@ function AudioTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaIte
 // ── Record Audio ─────────────────────────────────────────────────────────────
 
 function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item: MediaItem) => void }) {
-  const [recordState, setRecordState] = useState<"idle" | "countdown" | "recording" | "paused" | "stopped">("idle");
+  const [recordState, setRecordState] = useState<RecordState>("idle");
   const [countdown, setCountdown] = useState(3);
   const [elapsed, setElapsed] = useState(0);
-  const [recordings, setRecordings] = useState<{ name: string; url: string; blob: Blob; duration: number; size: number }[]>([]);
-  const [savingIdx, setSavingIdx] = useState<number | null>(null);
-  const [savedItems, setSavedItems] = useState<Record<number, boolean>>({});
-  // Device selection
+  const [recordings, setRecordings] = useState<StudioLocalRecording[]>([]);
   const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedAudioInput, setSelectedAudioInput] = useState<string>("");
-  const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>("");
+  const [selectedAudioInput, setSelectedAudioInput] = useState("");
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState("");
   const [sampleRate, setSampleRate] = useState<"44100" | "48000">("48000");
   const [audioQuality, setAudioQuality] = useState<"standard" | "high">("high");
   const [showAudioSettings, setShowAudioSettings] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startTimeRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animFrameRef = useRef<number>(0);
+  const animFrameRef = useRef(0);
+  const sessionRef = useRef<StudioCaptureSession | null>(null);
+  const liveRef = useRef(true); const urlsRef = useRef(new Set<string>());
   const saveMediaItem = trpc.lms.media.saveMediaItem.useMutation();
-
+  const library = useStudioRecordingLibrary(orgId, input => saveMediaItem.mutateAsync(input), onSaved);
+  const libraryRef = useRef(library); libraryRef.current = library;
+  const savedItems = library.savedItems;
   const isRecording = recordState === "recording";
-
-  // Enumerate audio devices on mount and on device change
+  const busy = isRecording || recordState === "paused" || recordState === "countdown";
+  const busyRef = useRef(busy); busyRef.current = busy;
   useEffect(() => {
-    const refreshAudioDevices = () => {
-      navigator.mediaDevices.enumerateDevices().then((devices) => {
-        setAudioInputDevices(devices.filter((d) => d.kind === "audioinput" && d.deviceId !== ""));
-        setAudioOutputDevices(devices.filter((d) => d.kind === "audiooutput" && d.deviceId !== ""));
-      }).catch(() => {});
-    };
-    refreshAudioDevices();
-    navigator.mediaDevices.addEventListener("devicechange", refreshAudioDevices);
-    return () => navigator.mediaDevices.removeEventListener("devicechange", refreshAudioDevices);
+    const devices = navigator.mediaDevices; if (!devices?.enumerateDevices) return;
+    const refresh = () => devices.enumerateDevices().then(all => {
+      setAudioInputDevices(all.filter(d => d.kind === "audioinput" && d.deviceId));
+      setAudioOutputDevices(all.filter(d => d.kind === "audiooutput" && d.deviceId));
+    }).catch(() => {});
+    refresh(); devices.addEventListener("devicechange", refresh); return () => devices.removeEventListener("devicechange", refresh);
   }, []);
-
+  useEffect(() => {
+    liveRef.current = true;
+    return () => { liveRef.current = false; sessionRef.current?.dispose(); cancelAnimationFrame(animFrameRef.current); urlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+  }, [orgId]);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => { if (busyRef.current || libraryRef.current.hasPending) { event.preventDefault(); event.returnValue = "Recording or saving is still active."; } };
+    window.addEventListener("beforeunload", warn); return () => window.removeEventListener("beforeunload", warn);
+  }, []);
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
@@ -2017,121 +1789,26 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
     animFrameRef.current = requestAnimationFrame(drawWaveform);
   }, []);
 
-  const startCountdown = () => {
-    setCountdown(3);
-    setRecordState("countdown");
-    let c = 3;
-    const iv = setInterval(() => {
-      c--;
-      setCountdown(c);
-      if (c <= 0) {
-        clearInterval(iv);
-        startRecording();
-      }
-    }, 1000);
-  };
 
-  const startRecording = async () => {
-    try {
-      const audioConstraints: MediaTrackConstraints = {
-        ...(selectedAudioInput ? { deviceId: { exact: selectedAudioInput } } : {}),
-        sampleRate: parseInt(sampleRate, 10),
-        echoCancellation: true,
-        noiseSuppression: audioQuality === "high",
-        autoGainControl: audioQuality === "high",
-      };
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-      const audioCtx = new AudioContext();
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-      animFrameRef.current = requestAnimationFrame(drawWaveform);
-
-      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      mediaRecorderRef.current = mr;
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        cancelAnimationFrame(animFrameRef.current);
-        analyserRef.current = null;
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
-        const url = URL.createObjectURL(blob);
-        const dur = Math.round((Date.now() - startTimeRef.current) / 1000);
-        const name = `audio-${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.webm`;
-        setRecordings((prev) => [{ name, url, blob, duration: dur, size: blob.size }, ...prev]);
-        setRecordState("stopped");
-      };
-      mr.start(250);
-      startTimeRef.current = Date.now();
-      setElapsed(0);
-      setRecordState("recording");
-      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    } catch (err: any) {
-      toast.error(err?.message ?? "Microphone access denied");
-      setRecordState("idle");
-    }
+  const startCountdown = async () => {
+    if (busy || orgId <= 0) { if (orgId <= 0) toast.error("Select an active school before recording"); return; }
+    sessionRef.current?.dispose(); setRecordState("countdown"); setCountdown(3);
+    const session = new StudioCaptureSession({ mode: "audio", micDeviceId: selectedAudioInput,
+      sampleRate: Number(sampleRate), highQualityAudio: audioQuality === "high",
+      onState: state => { if (liveRef.current) setRecordState(state); },
+      onCountdown: value => { if (liveRef.current) setCountdown(value); },
+      onElapsed: value => { if (liveRef.current) setElapsed(value); },
+      onAnalyser: analyser => { analyserRef.current = analyser; if (analyser) animFrameRef.current = requestAnimationFrame(drawWaveform); else cancelAnimationFrame(animFrameRef.current); },
+      onError: error => toast.error(error.message),
+      onResult: result => { const rec = studioLocalRecording(result, true); if (liveRef.current) { urlsRef.current.add(rec.url); setRecordings(previous => [rec, ...previous]); } else URL.revokeObjectURL(rec.url); libraryRef.current.save(rec); },
+    });
+    sessionRef.current = session; await session.start();
   };
-
-  const pauseRecording = () => {
-    mediaRecorderRef.current?.pause();
-    if (timerRef.current) clearInterval(timerRef.current);
-    cancelAnimationFrame(animFrameRef.current);
-    setRecordState("paused");
-  };
-
-  const resumeRecording = () => {
-    mediaRecorderRef.current?.resume();
-    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    animFrameRef.current = requestAnimationFrame(drawWaveform);
-    setRecordState("recording");
-  };
-
-  const stopRecording = () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    mediaRecorderRef.current?.stop();
-  };
-
-  const handleSaveToLibrary = async (rec: typeof recordings[0], idx: number) => {
-    setSavingIdx(idx);
-    try {
-      const formData = new FormData();
-      formData.append("file", rec.blob, rec.name);
-      formData.append("orgId", String(orgId));
-      formData.append("folder", "lms-media");
-      const result = await new Promise<{ key: string; url: string; fileName: string; fileSize: number; fileType: string }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-          else reject(new Error(`Upload failed: ${xhr.status}`));
-        });
-        xhr.addEventListener("error", () => reject(new Error("Upload failed")));
-        xhr.open("POST", "/api/media-upload");
-        xhr.send(formData);
-      });
-      const saved = await saveMediaItem.mutateAsync({
-        orgId,
-        fileName: result.fileName,
-        mimeType: "audio/webm",
-        fileSize: result.fileSize,
-        fileKey: result.key,
-        url: result.url,
-        source: "direct",
-        tags: ["audio", "recording"],
-        durationSeconds: rec.duration,
-      });
-      setSavedItems((prev) => ({ ...prev, [idx]: true }));
-      const item: MediaItem = { id: (saved as any).id, url: result.url, filename: result.fileName, mimeType: "audio/webm", fileSize: result.fileSize };
-      onSaved?.(item);
-      toast.success("Audio saved to Media Library");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Save failed");
-    } finally {
-      setSavingIdx(null);
-    }
-  };
+  const pauseRecording = () => { sessionRef.current?.pause(); cancelAnimationFrame(animFrameRef.current); };
+  const resumeRecording = () => { sessionRef.current?.resume(); animFrameRef.current = requestAnimationFrame(drawWaveform); };
+  const stopRecording = () => sessionRef.current?.stop();
+  const cancelCountdown = () => sessionRef.current?.cancel();
+  const handleSaveToLibrary = (rec: StudioLocalRecording) => library.save(rec);
 
   return (
     <div className="flex gap-0 h-full">
@@ -2178,7 +1855,7 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
             </Button>
           )}
           {recordState === "countdown" && (
-            <Button size="lg" variant="outline" className="h-14 w-14 rounded-full" onClick={() => setRecordState("idle")}>
+            <Button size="lg" variant="outline" className="h-14 w-14 rounded-full" onClick={cancelCountdown}>
               <Square className="h-5 w-5" />
             </Button>
           )}
@@ -2219,7 +1896,7 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
             {/* Microphone */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Mic className="h-3 w-3" /> Microphone</label>
-              <Select value={selectedAudioInput || "__default__"} onValueChange={(v) => setSelectedAudioInput(v === "__default__" ? "" : v)}>
+              <Select disabled={busy} value={selectedAudioInput || "__default__"} onValueChange={(v) => setSelectedAudioInput(v === "__default__" ? "" : v)}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Default microphone" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">Default microphone</SelectItem>
@@ -2247,7 +1924,7 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
             {/* Sample Rate */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><SlidersHorizontal className="h-3 w-3" /> Sample Rate</label>
-              <Select value={sampleRate} onValueChange={(v) => setSampleRate(v as "44100" | "48000")}>
+              <Select disabled={busy} value={sampleRate} onValueChange={(v) => setSampleRate(v as "44100" | "48000")}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="44100">44.1 kHz — CD Quality</SelectItem>
@@ -2259,7 +1936,7 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
             {/* Audio Quality */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Headphones className="h-3 w-3" /> Audio Quality</label>
-              <Select value={audioQuality} onValueChange={(v) => setAudioQuality(v as "standard" | "high")}>
+              <Select disabled={busy} value={audioQuality} onValueChange={(v) => setAudioQuality(v as "standard" | "high")}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="standard">Standard — Echo cancellation only</SelectItem>
@@ -2290,7 +1967,7 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {recordings.map((rec, idx) => (
-                <div key={idx} className="p-3 hover:bg-muted/30 transition-colors">
+                <div key={rec.id} className="p-3 hover:bg-muted/30 transition-colors">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{rec.name}</p>
@@ -2307,14 +1984,15 @@ function RecordAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
                       </Button>
                       <Button
                         variant="ghost" size="icon"
-                        className={cn("h-7 w-7", savedItems[idx] ? "text-teal-500" : "")}
-                        onClick={() => handleSaveToLibrary(rec, idx)}
-                        disabled={savingIdx === idx || !!savedItems[idx]}
+                        className={cn("h-7 w-7", savedItems[rec.id] ? "text-teal-500" : "")}
+                        onClick={() => handleSaveToLibrary(rec)}
+                        disabled={library.status(rec.id)?.status === "uploading" || library.status(rec.id)?.status === "saving" || library.status(rec.id)?.status === "queued" || !!savedItems[rec.id]}
                       >
-                        {savingIdx === idx ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
+                        {library.status(rec.id)?.status === "uploading" || library.status(rec.id)?.status === "saving" || library.status(rec.id)?.status === "queued" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
                       </Button>
                     </div>
                   </div>
+                  {library.status(rec.id)?.status === "error" && <Button variant="outline" size="sm" className="mt-2 text-xs" onClick={() => library.save(rec)}>Retry save: {library.status(rec.id)?.errorMessage}</Button>}
                   <audio
                     src={rec.url}
                     controls
@@ -2373,6 +2051,7 @@ function UploadAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
             onSaved?.(item);
           } catch (err: any) {
             toast.error(`Failed to save "${result.fileName}": ${err?.message ?? "Unknown error"}`);
+            throw err;
           }
         },
         onError: (message) => { toast.error(`Upload failed: ${message}`); },
@@ -2439,10 +2118,16 @@ function UploadAudioSubTab({ orgId, onSaved }: { orgId: number; onSaved?: (item:
 
 export default function RecordEditPage() {
   const [activeTab, setActiveTab] = useState<StudioTab>("record");
+  const [visitedTabs, setVisitedTabs] = useState<StudioTab[]>(["record"]);
   const [lastSavedItem, setLastSavedItem] = useState<MediaItem | undefined>(undefined);
   const { user } = useAuth();
   const { orgId } = useOrgScope();
   const { isBuilder, isPro, isLoading: planLoading } = usePlanLimits();
+  const { data: studioCapability, isLoading: capabilityLoading, error: capabilityError, refetch: refetchCapability } = trpc.billing.getStudioSubscription.useQuery(undefined, {
+    enabled: !!user, retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true,
+  });
+  // Browser school IDs are consistency hints only; no privileged role or fallback school bypass.
+  const captureAllowed = !capabilityLoading && !capabilityError && orgId > 0 && studioCapability?.orgId === orgId && studioCapability.isActive;
 
   const handleItemSaved = useCallback((item: MediaItem) => {
     setLastSavedItem(item);
@@ -2489,7 +2174,7 @@ export default function RecordEditPage() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); setVisitedTabs(previous => previous.includes(tab.id) ? previous : [...previous, tab.id]); }}
               className={cn(
                 "flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors",
                 activeTab === tab.id
@@ -2506,7 +2191,11 @@ export default function RecordEditPage() {
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {(activeTab === "record" || activeTab === "audio") && !planLoading && !isBuilder && user?.role !== "site_owner" && user?.role !== "site_admin" ? (
+        {(activeTab === "record" || activeTab === "audio") && capabilityLoading ? (
+          <div role="status" className="flex h-full items-center justify-center gap-2 p-10"><Loader2 className="h-5 w-5 animate-spin" /> Checking selected-school Studio access…</div>
+        ) : (activeTab === "record" || activeTab === "audio") && capabilityError ? (
+          <div role="alert" className="p-10">{capabilityError.message}<Button variant="outline" onClick={() => refetchCapability()}>Retry Studio access</Button></div>
+        ) : (activeTab === "record" || activeTab === "audio") && !captureAllowed ? (
           <div className="flex flex-col items-center justify-center h-full gap-6 p-10 text-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
               <Video className="h-8 w-8 text-white" />
@@ -2517,6 +2206,7 @@ export default function RecordEditPage() {
                 Browser-based recording is available on the <strong>Builder plan</strong> and above.
                 Upgrade to start recording video and audio directly in your browser.
               </p>
+              <p className="text-sm text-muted-foreground mt-2">{studioCapability?.reason ?? "Select the saved active school with authorized Studio Web access. Standalone Studio Web or Bundle access is also supported."}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
@@ -2530,17 +2220,17 @@ export default function RecordEditPage() {
           </div>
         ) : (
           <>
-            {activeTab === "record" && (
-              <RecordTab orgId={orgId} onSaved={handleItemSaved} />
+            {captureAllowed && visitedTabs.includes("record") && (
+              <div hidden={activeTab !== "record"} className="h-full"><RecordTab key={orgId} orgId={orgId} onSaved={handleItemSaved} /></div>
             )}
-            {activeTab === "upload" && (
-              <UploadTab orgId={orgId} onSaved={handleUploadSaved} />
+            {visitedTabs.includes("upload") && (
+              <div hidden={activeTab !== "upload"} className="h-full"><UploadTab key={orgId} orgId={orgId} onSaved={handleUploadSaved} /></div>
             )}
-            {activeTab === "edit" && (
-              <EditTab orgId={orgId} initialItem={lastSavedItem} />
+            {visitedTabs.includes("edit") && (
+              <div hidden={activeTab !== "edit"} className="h-full"><EditTab key={orgId} orgId={orgId} initialItem={lastSavedItem} /></div>
             )}
-            {activeTab === "audio" && (
-              <AudioTab orgId={orgId} onSaved={handleItemSaved} />
+            {captureAllowed && visitedTabs.includes("audio") && (
+              <div hidden={activeTab !== "audio"} className="h-full"><AudioTab key={orgId} orgId={orgId} onSaved={handleItemSaved} /></div>
             )}
           </>
         )}

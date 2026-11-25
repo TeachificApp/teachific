@@ -71,6 +71,7 @@ import {
   organizations,
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
+import { assertCourse360NativeCourseCompletion } from "../lib/course360NativeCompletionGate";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,10 @@ export async function recalcProgress(db: Awaited<ReturnType<typeof getDb>>, enro
   const pct = Math.round((completed / total) * 100);
   const wasCompleted = !!enrollRow.completedAt;
 
+  // Stored lesson progress alone must not release a course with an ungraded or
+  // unpassed assigned native quiz. Keep every existing progress row intact.
+  if (pct >= 100) await assertCourse360NativeCourseCompletion(db, enrollRow.userId, courseId, enrollmentId, countableIdSet);
+
   await db.update(lmsEnrollments).set({
     progressPct: pct,
     completedAt: pct >= 100 ? new Date() : null,
@@ -206,9 +211,12 @@ export async function issueCertificateIfEnabled(
     .where(and(eq(lmsCertificates.userId, userId), eq(lmsCertificates.courseId, courseId))).limit(1);
   if (existing) {
     if (!forceReissue) return;
+    await assertCourse360NativeCourseCompletion(db, userId, courseId, enrollmentId);
     // Force re-issue: delete the existing certificate so it regenerates with latest data
     await db.delete(lmsCertificates).where(and(eq(lmsCertificates.userId, userId), eq(lmsCertificates.courseId, courseId)));
   }
+
+  if (!existing) await assertCourse360NativeCourseCompletion(db, userId, courseId, enrollmentId);
 
   // Get user info
   const [user] = await db.select({ name: users.name, email: users.email, displayName: users.displayName, credentials: users.credentials }).from(users).where(eq(users.id, userId)).limit(1);

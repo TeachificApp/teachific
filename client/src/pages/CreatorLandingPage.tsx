@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { course360AppPurchaseLoginPath } from "@shared/course360AppPurchaseIntent";
+import { Course360AppSkuSelector } from "@/components/Course360AppSkuSelector";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -184,9 +186,9 @@ export default function CreatorLandingPage() {
       return;
     }
     if (user) {
-      checkout.mutate({ interval: billing, origin: window.location.origin });
+      checkout.mutate({ interval: billing, accessTier: "desktop", origin: window.location.origin });
     } else {
-      navigate("/register");
+      navigate(course360AppPurchaseLoginPath({ app: "creator", tier: "desktop", interval: billing }));
     }
   }
 
@@ -218,7 +220,7 @@ export default function CreatorLandingPage() {
                 <Button
                   size="sm"
                   className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"
-                  onClick={() => checkout.mutate({ interval: billing, origin: window.location.origin })}
+                  onClick={() => checkout.mutate({ interval: billing, accessTier: "desktop", origin: window.location.origin })}
                   disabled={checkout.isPending}
                 >
                   {checkout.isPending ? "Redirecting..." : "Subscribe Now"}
@@ -229,7 +231,7 @@ export default function CreatorLandingPage() {
                 <Link href="/login">
                   <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">Sign In</Button>
                 </Link>
-                <Link href="/register">
+                <Link href={course360AppPurchaseLoginPath({ app: "creator", tier: "desktop", interval: billing })}>
                   <Button size="sm" className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold">
                     Start Free Trial
                   </Button>
@@ -448,6 +450,7 @@ export default function CreatorLandingPage() {
 
       {/* ── Pricing ─────────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-24 px-6">
+        <div className="max-w-6xl mx-auto mb-8"><Course360AppSkuSelector app="creator" /></div>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <Badge className="mb-4 bg-[#24abbc]/20 text-[#4ad9e0] border-[#24abbc]/40">

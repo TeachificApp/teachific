@@ -49,7 +49,7 @@ export interface EnqueueOptions {
   file: File;
   orgId: number;
   folder?: string;
-  onComplete?: (result: UploadQueueItem["result"]) => void;
+  onComplete?: (result: UploadQueueItem["result"]) => void | Promise<void>;
   onError?: (message: string) => void;
 }
 
@@ -57,6 +57,7 @@ interface UploadQueueContextValue {
   items: UploadQueueItem[];
   enqueue: (opts: EnqueueOptions) => string; // returns item id
   remove: (id: string) => void;
+  retry: (id: string) => void;
   clearDone: () => void;
   isVisible: boolean;
   setVisible: (v: boolean) => void;
@@ -125,6 +126,14 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
       try {
+        // A metadata failure must retry the same stored object, never re-upload it.
+        if (item.result) {
+          updateItem(item.id, { status: "saving", phase: "saving", progress: 95 });
+          await callbacksRef.current.get(item.id)?.onComplete?.(item.result);
+          updateItem(item.id, { status: "done", progress: 100, errorMessage: undefined });
+          callbacksRef.current.delete(item.id);
+          return;
+        }
         // 1. Initiate chunked session
         const initiateRes = await fetch("/api/chunked/media/initiate", {
           method: "POST",
@@ -169,14 +178,15 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         }
         const result = await finalizeRes.json();
 
+        if (!result?.key || !result?.url) throw new Error("Upload did not return a stored media object");
+        updateItem(item.id, { status: "saving", progress: 95, result });
+        await callbacksRef.current.get(item.id)?.onComplete?.(result);
         updateItem(item.id, { status: "done", progress: 100, result });
-        callbacksRef.current.get(item.id)?.onComplete?.(result);
+        callbacksRef.current.delete(item.id);
       } catch (err: any) {
         const msg = err?.message ?? "Upload failed";
         updateItem(item.id, { status: "error", errorMessage: msg });
         callbacksRef.current.get(item.id)?.onError?.(msg);
-      } finally {
-        callbacksRef.current.delete(item.id);
       }
     },
     [updateItem]
@@ -192,8 +202,12 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       if (!queued) return;
 
       processingRef.current = true;
-      await uploadOne(queued);
-      processingRef.current = false;
+      try { await uploadOne(queued); }
+      finally {
+        processingRef.current = false;
+        // Ensure the next queued file runs even if React flushed the final status first.
+        setItems((prev) => [...prev]);
+      }
     };
 
     runNext();
@@ -226,17 +240,27 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   );
 
   const remove = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    callbacksRef.current.delete(id);
+    setItems((prev) => {
+      const item = prev.find((i) => i.id === id);
+      if (item?.status === "uploading" || item?.status === "saving" || item?.status === "queued") return prev;
+      callbacksRef.current.delete(id);
+      return prev.filter((i) => i.id !== id);
+    });
+  }, []);
+
+  const retry = useCallback((id: string) => {
+    setItems((prev) => prev.map((item) => item.id === id && item.status === "error"
+      ? { ...item, status: "queued", errorMessage: undefined } : item));
   }, []);
 
   const clearDone = useCallback(() => {
-    setItems((prev) => prev.filter((i) => i.status !== "done" && i.status !== "error"));
+    // Failed recordings retain their finalized object and retry callback.
+    setItems((prev) => prev.filter((i) => i.status !== "done"));
   }, []);
 
   return (
     <UploadQueueContext.Provider
-      value={{ items, enqueue, remove, clearDone, isVisible, setVisible }}
+      value={{ items, enqueue, remove, retry, clearDone, isVisible, setVisible }}
     >
       {children}
     </UploadQueueContext.Provider>

@@ -24,6 +24,12 @@ import {
   requiresFullLessonMinimum,
 } from "./lib/aiLessonContent";
 import { nanoid } from "nanoid";
+import { requireCourse360AppCapability } from "./lib/course360AppCapabilities";
+import { isStudioKeyForOrg, inspectStudioRegistration, storeStudioFile } from "./lib/course360StudioStorage";
+import { withStudioProcessing, withStudioSource, renderStudioLocal, extractStudioAudio } from "./lib/course360StudioRender";
+import { parseStudioTranscript, parseStudioVtt, segmentWords, studioWordSchema, studioSegmentSchema, studioStyleSchema, mergeStudioTranscript, remapStudioTranscript, studioRetainedRanges, serializeStudioCaptions, validateStudioRange } from "./lib/course360StudioTimeline";
+import { transcribeStudioSpeech, generateStudioSemanticHighlights } from "./lib/course360StudioIntelligence";
+
 import {
   getCoursesByOrg,
   getCourseById,
@@ -612,9 +618,8 @@ function isLegacyMediaStorageKeyForOrg(fileKey: string, orgId: number): boolean 
   // `org-<id>/` is the current legacy media prefix. The other two forms retain
   // compatibility for media created by earlier direct-upload and URL-import
   // flows, without accepting another organization's key.
-  return fileKey.startsWith(`org-${orgId}/`)
-    || fileKey.startsWith(`lms-media/${orgId}/`)
-    || new RegExp(`^[a-z0-9-]+/${orgId}/`, "i").test(fileKey);
+  // Retain every historical prefix while rejecting path traversal/URL-shaped keys.
+  return isStudioKeyForOrg(fileKey, orgId);
 }
 
 async function requireLegacyMediaItemInActiveOrg(
@@ -634,6 +639,79 @@ async function requireLegacyMediaItemInActiveOrg(
     throw new TRPCError({ code: "FORBIDDEN", message: "This media item belongs to another organization." });
   }
   return { db, mediaItem, orgId };
+}
+
+/** Expensive Studio work is app-gated; main-library readers/managers remain independent. */
+async function requireStudioMediaAccess(ctx: { user: { id: number; role: string } }, orgId: number) {
+  const access = await requireCourse360AppCapability(ctx.user.id, "studio", "web");
+  if (access.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "The active school changed; reload before processing media." });
+  return access;
+}
+
+async function renderStudioDerivative(ctx: { user: { id: number; role: string } }, mediaItemId: number,
+  options: { startSec?: number; endSec?: number; burnCaptions?: boolean; label?: string }, requestedOrgId?: number) {
+  const { db, mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, mediaItemId, requestedOrgId);
+  const access = await requireStudioMediaAccess(ctx, orgId);
+  const transcript = parseStudioTranscript(mediaItem.transcriptJson);
+  return withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (source, _probe, directory) => {
+    const result = await renderStudioLocal(source, directory, transcript, { ...options,
+      watermark: access.access.isInTrial && !access.isPaid && !access.hasManualGrant }, signal);
+    // Re-evaluate current selected school and entitlement immediately before output writes.
+    await requireActiveLegacyMediaOrg(ctx, orgId);
+    await requireStudioMediaAccess(ctx, orgId);
+    const key = `org-${orgId}/studio-derivatives/${mediaItemId}-${nanoid(16)}.mp4`;
+    const stored = await storeStudioFile(key, result.output, "video/mp4", signal);
+    let captionsUrl: string | null = null;
+    if (result.transcript.words.length) {
+      const { writeFile } = await import("node:fs/promises");
+      const { join } = await import("node:path");
+      const vttPath = join(directory, "derivative.vtt");
+      await writeFile(vttPath, serializeStudioCaptions(result.transcript, "vtt"), { mode: 0o600 });
+      captionsUrl = (await storeStudioFile(`${key}.vtt`, vttPath, "text/vtt", signal)).url;
+    }
+    const outputTranscript = { ...result.transcript, studio: { ...result.transcript.studio, sourceMediaItemId: mediaItemId,
+      sourceKey: mediaItem.fileKey, outputProbe: result.probe, captionsBaked: options.burnCaptions === true,
+      watermark: access.access.isInTrial && !access.isPaid && !access.hasManualGrant } };
+    const transcriptJson = JSON.stringify(outputTranscript);
+    if (Buffer.byteLength(transcriptJson) > 60_000) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "The derivative transcript exceeds the current schema limit; no library row was registered." });
+    await requireActiveLegacyMediaOrg(ctx, orgId);
+    const { orgMediaLibrary } = await import("../drizzle/schema");
+    const [created] = await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id,
+      filename: `${options.label ?? mediaItem.filename.replace(/\.[^.]+$/, "")}-edited.mp4`.slice(0, 500),
+      mimeType: "video/mp4", fileSize: result.size, fileKey: stored.key, url: stored.url,
+      source: "direct", folderId: mediaItem.folderId, durationSeconds: Math.round(result.probe.duration),
+      tags: JSON.stringify(["studio", "derivative", `source:${mediaItemId}`]), captionsUrl, transcriptJson,
+    }).$returningId();
+    return { url: stored.url, mediaItemId: created.id, mimeType: "video/mp4" as const };
+  }));
+}
+
+async function generateStudioCaptionsForItem(ctx: { user: { id: number; role: string } }, mediaItemId: number, requestedOrgId?: number) {
+  const { db, mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, mediaItemId, requestedOrgId);
+  await requireStudioMediaAccess(ctx, orgId);
+  // Existing persisted transcripts are returned without charging a provider on reopen.
+  if (mediaItem.transcriptJson) {
+    const transcript = parseStudioTranscript(mediaItem.transcriptJson);
+    if (transcript.words.length) return { ok: true, captionsUrl: mediaItem.captionsUrl, ...transcript };
+  }
+  return withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (source, _probe, directory) => {
+    const speech = await extractStudioAudio(source, directory, signal);
+    const provider = await transcribeStudioSpeech(speech.bytes, speech.duration, signal);
+    const original = parseStudioTranscript(mediaItem.transcriptJson);
+    const transcript = { ...original, ...provider, studio: { ...original.studio, ...provider.studio, sourceMediaItemId: mediaItemId } };
+    const transcriptJson = JSON.stringify(transcript);
+    if (Buffer.byteLength(transcriptJson) > 60_000) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Transcript exceeds the current schema-safe limit." });
+    const { writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const path = join(directory, "captions.vtt");
+    await writeFile(path, serializeStudioCaptions(transcript, "vtt"), { mode: 0o600 });
+    await requireActiveLegacyMediaOrg(ctx, orgId);
+    await requireStudioMediaAccess(ctx, orgId);
+    const { url: captionsUrl } = await storeStudioFile(`captions/org-${orgId}/${mediaItemId}-${nanoid(8)}.vtt`, path, "text/vtt", signal);
+    const { orgMediaLibrary } = await import("../drizzle/schema");
+    await db.update(orgMediaLibrary).set({ captionsUrl, transcriptJson }).where(and(eq(orgMediaLibrary.id, mediaItemId), eq(orgMediaLibrary.orgId, orgId)));
+    return { ok: true, captionsUrl, ...transcript };
+  }));
 }
 
 async function requireLegacyMediaFolderInActiveOrg(
@@ -3927,14 +4005,15 @@ export const lmsRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
         await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
+        const uploaded = await inspectStudioRegistration(input.fileKey, input.url);
         const [result] = await db.insert(orgMediaLibrary).values({
           orgId,
           uploadedBy: ctx.user.id,
           filename: resolvedFilename,
-          mimeType: input.mimeType,
-          fileSize: input.fileSize,
-          fileKey: input.fileKey,
-          url: input.url,
+          mimeType: uploaded.mimeType,
+          fileSize: uploaded.size,
+          fileKey: uploaded.key,
+          url: uploaded.url,
           folderId: input.folderId ?? null,
           altText: input.altText ?? null,
           source: input.source ?? "direct",
@@ -3956,48 +4035,50 @@ export const lmsRouter = router({
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
 
-        console.log(`[importFromUrl] User ${ctx.user.id} importing from: ${input.url}`);
-        let scraped;
-        try {
-          scraped = await scrapeVideoFromUrl(input.url);
-        } catch (err: any) {
-          console.error(`[importFromUrl] Scrape failed:`, err.message);
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: err.message || "Failed to extract video from URL",
-          });
-        }
-
-        try {
-          const suffix = `${Date.now()}-${nanoid(6)}`;
-          const safeFileName = scraped.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const fileKey = `lms-media/${orgId}/${suffix}-${safeFileName}`;
-
-          const { url: s3Url } = await storagePutStream(fileKey, scraped.filePath, scraped.mimeType);
-
-          const { orgMediaLibrary } = await import("../drizzle/schema");
-          const { eq } = await import("drizzle-orm");
-          const [result] = await db.insert(orgMediaLibrary).values({
-            orgId,
-            uploadedBy: ctx.user.id,
-            filename: scraped.title || scraped.fileName,
-            mimeType: scraped.mimeType,
-            fileSize: scraped.fileSize,
-            fileKey,
-            url: s3Url,
-            durationSeconds: scraped.durationSeconds ?? null,
-            source: "direct",
-            tags: JSON.stringify(["import", "url-import"]),
-            folderId: input.folderId ?? null,
-          });
-
-          const id = (result as any).insertId as number;
-          const rows = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, id)).limit(1);
-          console.log(`[importFromUrl] Success — mediaId=${id}, size=${(scraped.fileSize / 1024 / 1024).toFixed(1)}MB`);
-          return rows[0];
-        } finally {
-          await cleanupScrapedVideo(scraped.filePath);
-        }
+        // Main-library authority is school-owned, never tied to Studio entitlement.
+        // The legacy scraper's unchecked ytdl/fetch requests cannot be used here.
+        const { withStudioUrlImport, storeStudioImportFile, assertStudioImportQuota } = await import("./lib/course360StudioUrlImport");
+        const { getOrgStorageUsage } = await import("./db");
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const { eq, and, sql } = await import("drizzle-orm");
+        const authorizeSource = async (url: string) => {
+          const [foreignSource] = await db.select({ orgId: orgMediaLibrary.orgId }).from(orgMediaLibrary)
+            .where(and(eq(orgMediaLibrary.url, url), sql`${orgMediaLibrary.orgId} <> ${orgId}`)).limit(1);
+          if (foreignSource) throw new TRPCError({ code: "FORBIDDEN", message: "The source media belongs to another school." });
+        };
+        await authorizeSource(input.url);
+        const initialUsage = await getOrgStorageUsage(orgId);
+        assertStudioImportQuota(initialUsage, 1);
+        return withStudioUrlImport(input.url, orgId, async (media, signal) => {
+          await requireActiveLegacyMediaOrg(ctx, orgId);
+          await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
+          assertStudioImportQuota(await getOrgStorageUsage(orgId), media.size);
+          signal.throwIfAborted();
+          const fileKey = `org-${orgId}/media/url-imports/${nanoid(24)}.${media.extension}`;
+          const stored = await storeStudioImportFile(fileKey, media.path, media.mimeType, signal);
+          // Re-check persisted school selection/author authority after I/O, before saving.
+          await requireActiveLegacyMediaOrg(ctx, orgId);
+          await requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId);
+          assertStudioImportQuota(await getOrgStorageUsage(orgId), media.size);
+          signal.throwIfAborted();
+          const [created] = await db.insert(orgMediaLibrary).values({
+            orgId, uploadedBy: ctx.user.id, filename: media.filename,
+            mimeType: media.mimeType, fileSize: media.size, fileKey: stored.key, url: stored.url,
+            durationSeconds: Math.round(media.probe.duration), source: "direct",
+            tags: JSON.stringify(["import", "url-import"]), folderId: input.folderId ?? null,
+            // INT duration remains compatible; exact trusted probe metadata is additive.
+            transcriptJson: JSON.stringify({ words: [], segments: [], duration: media.probe.duration,
+              studio: { importProbe: media.probe, importVersion: 1 } }),
+          }).$returningId();
+          const [saved] = await db.select().from(orgMediaLibrary).where(and(
+            eq(orgMediaLibrary.id, created.id), eq(orgMediaLibrary.orgId, orgId),
+          )).limit(1);
+          if (!saved || saved.orgId !== orgId || saved.uploadedBy !== ctx.user.id || saved.fileKey !== stored.key || saved.url !== stored.url
+            || saved.fileSize !== media.size || saved.mimeType !== media.mimeType) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The saved import receipt is inconsistent; no successful import was reported." });
+          }
+          return saved;
+        }, authorizeSource);
       }),
     deleteOrgMedia: protectedProcedure
       .input(z.object({ id: z.number() }))
@@ -4129,7 +4210,13 @@ export const lmsRouter = router({
       .mutation(async ({ input, ctx }) => {
         const startSec = input.startSec ?? input.startSeconds ?? 0;
         const endSec = input.endSec ?? input.endSeconds ?? 0;
-        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        const { db, orgId, mediaItem } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        await requireStudioMediaAccess(ctx, orgId);
+        await withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (_source, probe) => {
+          validateStudioRange(startSec, endSec, probe.duration);
+        }));
+        await requireActiveLegacyMediaOrg(ctx, orgId);
+        await requireStudioMediaAccess(ctx, orgId);
         const { videoClips } = await import("../drizzle/schema");
         const [result] = await db.insert(videoClips).values({
           mediaItemId: input.mediaItemId,
@@ -4154,18 +4241,45 @@ export const lmsRouter = router({
         sourceUrl: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Server-side clip extraction is not supported (requires ffmpeg).
-        // Return the source URL so the frontend can download the full video.
-        // The frontend will handle trimming client-side or the user can download.
         const { mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
-        if (input.clipId) {
+        let startSec = input.startSec ?? input.startSeconds;
+        let endSec = input.endSec ?? input.endSeconds;
+        let label = input.label;
+        if (input.clipId !== undefined) {
           const { clip } = await requireLegacyMediaClipInActiveOrg(ctx, input.clipId, input.orgId);
-          if (clip.mediaItemId !== mediaItem.id || clip.orgId !== orgId) {
-            throw new TRPCError({ code: "FORBIDDEN", message: "This video clip does not belong to the selected media item." });
-          }
+          if (clip.mediaItemId !== mediaItem.id || clip.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "This video clip does not belong to the selected media item." });
+          if ((startSec !== undefined && startSec !== clip.startSec) || (endSec !== undefined && endSec !== clip.endSec)) throw new TRPCError({ code: "BAD_REQUEST", message: "Clip boundaries do not match the saved descriptor." });
+          startSec = clip.startSec; endSec = clip.endSec; label ??= clip.label;
         }
-        if (!mediaItem.url) throw new TRPCError({ code: "NOT_FOUND", message: "No source URL is available for this media item." });
-        return { ok: true, url: mediaItem.url };
+        // sourceUrl is a retained deprecated input hint only; never fetched or used.
+        if (startSec === undefined || endSec === undefined) throw new TRPCError({ code: "BAD_REQUEST", message: "An explicit clip range is required." });
+        const result = await renderStudioDerivative(ctx, input.mediaItemId, { startSec, endSec, label }, input.orgId);
+        return { ok: true, ...result };
+      }),
+    renderEditedVideo: protectedProcedure
+      .input(z.object({ mediaItemId: z.number().int().positive(), startSec: z.number().finite().nonnegative().optional(), endSec: z.number().finite().positive().optional(), burnCaptions: z.boolean().optional() }))
+      .mutation(async ({ ctx, input }) => renderStudioDerivative(ctx, input.mediaItemId, input)),
+    generateHighlights: protectedProcedure
+      .input(z.object({ mediaItemId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const { mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId);
+        await requireStudioMediaAccess(ctx, orgId);
+        const transcript = parseStudioTranscript(mediaItem.transcriptJson);
+        return withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (_source, probe) => {
+          return generateStudioSemanticHighlights(transcript, probe.duration, signal);
+        }));
+      }),
+    exportCaptions: protectedProcedure
+      .input(z.object({ mediaItemId: z.number().int().positive(), format: z.enum(["srt", "vtt"]), startSec: z.number().finite().nonnegative().optional(), endSec: z.number().finite().positive().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const { mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId);
+        await requireStudioMediaAccess(ctx, orgId);
+        const transcript = parseStudioTranscript(mediaItem.transcriptJson);
+        return withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (_source, probe) => {
+          const ranges = studioRetainedRanges(transcript, input.startSec ?? 0, input.endSec ?? probe.duration, probe.duration);
+          const edited = remapStudioTranscript(transcript, ranges);
+          return { content: serializeStudioCaptions(edited, input.format), mimeType: input.format === "vtt" ? "text/vtt" : "application/x-subrip", filename: `${mediaItem.filename}.${input.format}` };
+        }));
       }),
     deleteClip: protectedProcedure
       .input(z.object({ id: z.number(), orgId: z.number().optional() }))
@@ -4177,94 +4291,59 @@ export const lmsRouter = router({
       }),
     generateCaptions: protectedProcedure
       .input(z.object({ mediaItemId: z.number(), orgId: z.number().optional(), fileUrl: z.string().optional() }))
-      .mutation(async ({ input, ctx }) => {
-        const { db, mediaItem, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
-        const { orgMediaLibrary } = await import("../drizzle/schema");
-        const audioUrl = mediaItem.url;
-        if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL available" });
-        // Transcribe with word-level timestamps
-        const { transcribeAudio } = await import("./_core/voiceTranscription");
-        const result = await transcribeAudio({ audioUrl, wordTimestamps: true, prompt: "Transcribe accurately with proper punctuation" });
-        if ("error" in result) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error, cause: result.details });
-        }
-        // Build word-level transcript JSON
-        const words = (result.words ?? []).map((w, i) => ({ id: i, word: w.word.trim(), start: w.start, end: w.end }));
-        // Build segment-level transcript from Whisper segments
-        const segments = result.segments.map((s) => ({ id: s.id, start: s.start, end: s.end, text: s.text.trim() }));
-        // Generate VTT from segments
-        const vttLines = ["WEBVTT", ""];
-        const fmtVtt = (sec: number) => {
-          const h = Math.floor(sec / 3600);
-          const m = Math.floor((sec % 3600) / 60);
-          const s = sec % 60;
-          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
-        };
-        for (const seg of segments) {
-          vttLines.push(`${fmtVtt(seg.start)} --> ${fmtVtt(seg.end)}`);
-          vttLines.push(seg.text);
-          vttLines.push("");
-        }
-        const vttContent = vttLines.join("\n");
-        const key = `captions/org-${orgId}/${input.mediaItemId}-${nanoid(8)}.vtt`;
-        const { url: captionsUrl } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
-        // Store transcript JSON and captions URL on the media item
-        const transcriptJson = JSON.stringify({ words, segments, language: result.language, duration: result.duration });
-        await db.update(orgMediaLibrary).set({ captionsUrl, transcriptJson }).where(and(
-          eq(orgMediaLibrary.id, input.mediaItemId),
-          eq(orgMediaLibrary.orgId, orgId),
-        ));
-        return { ok: true, captionsUrl, segments, words, language: result.language, duration: result.duration };
-      }),
+      .mutation(async ({ input, ctx }) => generateStudioCaptionsForItem(ctx, input.mediaItemId, input.orgId)),
     updateCaptions: protectedProcedure
       .input(z.object({
-        mediaItemId: z.number(),
-        orgId: z.number().optional(),
-        captionsVtt: z.string().optional(),
-        segments: z.array(z.object({ id: z.number(), start: z.number(), end: z.number(), text: z.string() })).optional(),
-        words: z.array(z.object({ id: z.number(), word: z.string(), start: z.number(), end: z.number(), deleted: z.boolean().optional() })).optional(),
-        language: z.string().optional(),
-        duration: z.number().optional(),
+        mediaItemId: z.number().int().positive(), orgId: z.number().optional(),
+        captionsVtt: z.string().max(60_000).optional(), transcriptJson: z.string().max(60_000).optional(),
+        segments: z.array(studioSegmentSchema).max(2000).optional(), words: z.array(studioWordSchema).max(4000).optional(),
+        language: z.string().max(50).optional(), duration: z.number().finite().positive().optional(),
+        style: studioStyleSchema.optional(), expectedRevision: z.number().int().nonnegative().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        const { db, orgId } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
-        const { orgMediaLibrary } = await import("../drizzle/schema");
-        const fmtVtt = (sec: number) => {
-          const h = Math.floor(sec / 3600);
-          const m = Math.floor((sec % 3600) / 60);
-          const s = sec % 60;
-          return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
-        };
-        let vttContent = input.captionsVtt;
-        // If segments provided, generate VTT from them (only non-deleted words)
-        if (!vttContent && input.segments) {
-          const vttLines = ["WEBVTT", ""];
-          for (const seg of input.segments) {
-            if (!seg.text.trim()) continue;
-            vttLines.push(`${fmtVtt(seg.start)} --> ${fmtVtt(seg.end)}`);
-            vttLines.push(seg.text);
-            vttLines.push("");
-          }
-          vttContent = vttLines.join("\n");
-        }
-        if (!vttContent) throw new TRPCError({ code: "BAD_REQUEST", message: "No captions content provided" });
-        const key = `captions/org-${orgId}/${input.mediaItemId}-${nanoid(8)}.vtt`;
-        const { url } = await storagePut(key, Buffer.from(vttContent), "text/vtt");
-        // Also store transcriptJson if words/segments provided
-        const updateData: any = { captionsUrl: url };
-        if (input.words || input.segments) {
-          updateData.transcriptJson = JSON.stringify({
-            words: input.words ?? [],
-            segments: input.segments ?? [],
-            language: input.language ?? "en",
-            duration: input.duration ?? 0,
-          });
-        }
-        await db.update(orgMediaLibrary).set(updateData).where(and(
-          eq(orgMediaLibrary.id, input.mediaItemId),
-          eq(orgMediaLibrary.orgId, orgId),
-        ));
-        return { ok: true, captionsUrl: url };
+        const { db, orgId, mediaItem } = await requireLegacyMediaItemInActiveOrg(ctx, input.mediaItemId, input.orgId);
+        await requireStudioMediaAccess(ctx, orgId);
+        const original = parseStudioTranscript(mediaItem.transcriptJson);
+        const incoming = input.transcriptJson ? parseStudioTranscript(input.transcriptJson) :
+          input.captionsVtt && !input.words && !input.segments ? (() => {
+            const segments = parseStudioVtt(input.captionsVtt);
+            return { ...original, segments, words: segmentWords(segments) };
+          })() : undefined;
+        if (incoming?.studioEdit && (incoming.studioEdit.version !== 1 || incoming.studioEdit.sourceMediaItemId !== input.mediaItemId || !Number.isInteger(incoming.studioEdit.revision) || incoming.studioEdit.revision < 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "The edit envelope does not identify this owned source." });
+        if (incoming?.studioEdit?.captionStyle) studioStyleSchema.parse(incoming.studioEdit.captionStyle);
+        if (incoming?.studioEdit?.presetId) studioStyleSchema.parse({ preset: incoming.studioEdit.presetId });
+        if (incoming?.studioEdit?.showCaptions !== undefined && typeof incoming.studioEdit.showCaptions !== "boolean") throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid caption visibility." });
+        if (original.studioEdit && incoming?.studioEdit && incoming.studioEdit.revision <= original.studioEdit.revision) throw new TRPCError({ code: "CONFLICT", message: "This transcript changed; reload before saving edits." });
+        return withStudioProcessing(signal => withStudioSource(mediaItem.fileKey, signal, async (_source, probe, directory) => {
+          const transcript = mergeStudioTranscript(original, { ...incoming,
+            words: input.words ?? incoming?.words ?? original.words, segments: input.segments ?? incoming?.segments ?? original.segments,
+            language: input.language ?? incoming?.language ?? original.language, style: input.style,
+          }, probe.duration, input.expectedRevision);
+          if (incoming?.studioEdit) transcript.studioEdit = { ...original.studioEdit, ...incoming.studioEdit };
+          const ranges = studioRetainedRanges(transcript, 0, probe.duration, probe.duration);
+          const captionTranscript = remapStudioTranscript(transcript, ranges);
+          if (!captionTranscript.words.length) throw new TRPCError({ code: "BAD_REQUEST", message: "No timed captions content was provided." });
+          const transcriptJson = JSON.stringify(transcript);
+          if (Buffer.byteLength(transcriptJson) > 60_000) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Edit exceeds the current transcript schema limit." });
+          const { writeFile } = await import("node:fs/promises");
+          const { join } = await import("node:path");
+          const path = join(directory, "edited.vtt");
+          // Saved source captions remain on the source timeline; derivative captions are compressed/rebased.
+          const sourceCaptionTranscript = remapStudioTranscript(transcript, [{ startSec: 0, endSec: probe.duration }]);
+          await writeFile(path, serializeStudioCaptions(sourceCaptionTranscript, "vtt"), { mode: 0o600 });
+          await requireActiveLegacyMediaOrg(ctx, orgId);
+          await requireStudioMediaAccess(ctx, orgId);
+          const { url } = await storeStudioFile(`captions/org-${orgId}/${input.mediaItemId}-${nanoid(8)}.vtt`, path, "text/vtt", signal);
+          const { orgMediaLibrary } = await import("../drizzle/schema");
+          // Optimistic compare protects simultaneous edits without DDL or a new revision column.
+          const { sql } = await import("drizzle-orm");
+          const [updated] = await db.update(orgMediaLibrary).set({ captionsUrl: url, transcriptJson }).where(and(
+            eq(orgMediaLibrary.id, input.mediaItemId), eq(orgMediaLibrary.orgId, orgId),
+            sql`${orgMediaLibrary.transcriptJson} <=> ${mediaItem.transcriptJson}`,
+          ));
+          if (updated && typeof updated.affectedRows === "number" && updated.affectedRows === 0) throw new TRPCError({ code: "CONFLICT", message: "This transcript changed; reload before saving edits." });
+          return { ok: true, captionsUrl: url, revision: transcript.studio.revision, transcriptJson };
+        }));
       }),
     transcribe: protectedProcedure
       .input(z.object({
@@ -4273,30 +4352,11 @@ export const lmsRouter = router({
         fileUrl: z.string().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
-        // Delegate to generateCaptions which handles transcription + VTT generation
-        const { getDb } = await import("./db");
-        const db = await getDb();
-        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        const { orgMediaLibrary } = await import("../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const fallbackOrgId = await requireActiveLegacyMediaOrg(ctx, input.orgId);
-        let audioUrl = input.fileUrl ?? null;
-        if (!audioUrl && input.mediaItemId) {
-          const [item] = await db.select().from(orgMediaLibrary).where(and(
-            eq(orgMediaLibrary.id, input.mediaItemId),
-            eq(orgMediaLibrary.orgId, fallbackOrgId),
-          )).limit(1);
-          if (!item) throw new TRPCError({ code: "FORBIDDEN", message: "This media item belongs to another organization." });
-          audioUrl = item.url;
-        }
-        if (!audioUrl) throw new TRPCError({ code: "BAD_REQUEST", message: "No audio URL or media item ID provided" });
-        const { transcribeAudio } = await import("./_core/voiceTranscription");
-        const result = await transcribeAudio({ audioUrl, wordTimestamps: true });
-        if ("error" in result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
-        const transcript = result.segments?.map((s) => ({ start: s.start, end: s.end, text: s.text.trim() })) ?? [];
-        // Build a plain text version for callers that use result.text
-        const text = transcript.map((s) => s.text).join(" ");
-        return { ok: true, transcript, text };
+        await requireActiveLegacyMediaOrg(ctx, input.orgId);
+        if (!input.mediaItemId) throw new TRPCError({ code: "BAD_REQUEST", message: "Save the recording to the main library and provide its media item ID before transcription. Arbitrary file URLs are not accepted." });
+        const result = await generateStudioCaptionsForItem(ctx, input.mediaItemId, input.orgId);
+        return { ok: true, transcript: result.segments.map(s => ({ start: s.start, end: s.end, text: s.text })),
+          text: result.segments.map(s => s.text).join(" "), words: result.words, language: result.language, duration: result.duration, captionsUrl: result.captionsUrl };
       }),
     saveRecording: protectedProcedure
       .input(z.object({ orgId: z.number().optional(), url: z.string(), filename: z.string(), mimeType: z.string().optional(), fileSize: z.number().optional(), fileKey: z.string().optional(), durationSeconds: z.number().optional() }))
@@ -4309,7 +4369,9 @@ export const lmsRouter = router({
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
         const { orgMediaLibrary } = await import("../drizzle/schema");
-        await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: input.mimeType ?? "video/webm", fileSize: input.fileSize ?? 0, fileKey: input.fileKey ?? `org-${orgId}/recordings/${nanoid(16)}`, url: input.url, source: "direct", durationSeconds: input.durationSeconds });
+        if (!input.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "Upload the recording first and provide its server-issued storage key. URL-only registration is not a download." });
+        const uploaded = await inspectStudioRegistration(input.fileKey, input.url);
+        await db.insert(orgMediaLibrary).values({ orgId, uploadedBy: ctx.user.id, filename: input.filename, mimeType: uploaded.mimeType, fileSize: uploaded.size, fileKey: uploaded.key, url: uploaded.url, source: "direct", durationSeconds: input.durationSeconds });
         return { ok: true };
       }),
   }),

@@ -1,3 +1,5 @@
+import { Course360AppAccessNotice } from "@/components/Course360AppAccessNotice";
+import { useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -16,15 +18,13 @@ import QuizCreatorPage from "./QuizCreatorPage";
  */
 export default function QuizCreatorGate() {
   const { user, loading: authLoading } = useAuth();
-  const { data: roleData, isLoading: roleLoading } = trpc.quizCreator.getMyRole.useQuery(undefined, {
-    enabled: !!user,
+  const { data: roleData, isLoading: roleLoading, error: roleError, refetch: refetchAccess } = trpc.quizCreator.getMyRole.useQuery(undefined, {
+    enabled: !!user, retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true,
   });
+  useEffect(() => { if (!authLoading && !user) window.location.assign(getLoginUrl(window.location.pathname + window.location.search)); }, [authLoading, user]);
 
   // Not logged in
-  if (!authLoading && !user) {
-    window.location.href = getLoginUrl();
-    return null;
-  }
+  if (!authLoading && !user) return null;
 
   if (authLoading || (user && roleLoading)) {
     return (
@@ -37,13 +37,11 @@ export default function QuizCreatorGate() {
     );
   }
 
+  if (roleError) return <div className="min-h-screen bg-[#0b1d35] text-white p-6"><Course360AppAccessNotice app="quiz_creator" message={roleError.message} retry={() => { void refetchAccess(); }} /></div>;
   const qcRole = roleData?.role ?? "none";
-  const lmsRole = user?.role ?? "member";
-  const isEnterpriseUser = ["site_owner", "site_admin", "org_super_admin", "org_admin"].includes(lmsRole);
-  const hasQuizCreatorAccess = isEnterpriseUser || qcRole === "web" || qcRole === "desktop";
-
+  const hasQuizCreatorAccess = roleData?.isActive === true && (qcRole === "web" || qcRole === "bundle");
   if (!hasQuizCreatorAccess) {
-    return <QuizCreatorUpgradeWall />;
+    return <><Course360AppAccessNotice app="quiz_creator" message={roleData?.reason} /><QuizCreatorUpgradeWall /></>;
   }
 
   return <QuizCreatorPage />;

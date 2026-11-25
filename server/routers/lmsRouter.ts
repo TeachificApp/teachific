@@ -43,6 +43,7 @@ import { ensureInlineLessonQuizSchema } from "../lib/ensureInlineLessonQuizSchem
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
 import { getActiveEnrollment } from "../lib/enrollmentAccess";
 import { resolveCourseTheme } from "../../shared/courseTheme";
+import { assertCourse360NativeLessonCompletion } from "../lib/course360NativeCourseQuizRuntime";
 import {
   lmsCourses,
   lmsSections,
@@ -1660,6 +1661,8 @@ export const lmsLearnerRouter = router({
       }
       const enrollment = await getActiveEnrollment(db as any, ctx.user.id, course.id);
       if (!enrollment) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment required" });
+
+      await assertCourse360NativeLessonCompletion(db, ctx.user.id, course.id, input.lessonId, enrollment.id, { user: ctx.user, req: ctx.req, courseSlug: input.courseSlug });
 
       const [organization] = await db.select({ cmeEnabled: organizations.cmeEnabled })
         .from(organizations).where(eq(organizations.id, course.orgId)).limit(1);

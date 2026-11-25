@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2, BookOpen, Users, TrendingUp, Award, Mail, CheckCi
 import { CACHE_KEY } from "@/lib/authCache";
 import { getOrgSubdomainUrl, getSubdomain } from "@/hooks/useSubdomain";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
+import { getCourse360MainAppReturnUrl } from "@/lib/course360AppLoginReturn";
 
 const NAVY = "#0b1d35";
 const NAVY_MID = "#0f2847";
@@ -73,6 +74,15 @@ export default function LoginPage() {
       if (data.user) {
         utils.auth.me.setData(undefined, data.user as never);
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data.user)); } catch {}
+      }
+
+      // Studio/Creator/Quiz and the shared library live at the main account,
+      // not the owner's school portal. Preserve reviewed SKU/billing intent;
+      // the destination still checks saved school permissions and entitlement.
+      const appReturnUrl = getCourse360MainAppReturnUrl(returnTo, window.location.origin);
+      if (appReturnUrl) {
+        window.location.assign(appReturnUrl);
+        return;
       }
 
       if (data.user?.role === "site_owner" || data.user?.role === "site_admin") {

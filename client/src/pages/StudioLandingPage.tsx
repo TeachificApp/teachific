@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { course360AppPurchaseLoginPath } from "@shared/course360AppPurchaseIntent";
+import { Course360AppSkuSelector } from "@/components/Course360AppSkuSelector";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -147,9 +149,9 @@ export default function StudioLandingPage() {
       return;
     }
     if (user) {
-      checkout.mutate({ interval: billing, origin: window.location.origin });
+      checkout.mutate({ interval: billing, accessTier: "desktop", origin: window.location.origin });
     } else {
-      navigate("/register");
+      navigate(course360AppPurchaseLoginPath({ app: "studio", tier: "desktop", interval: billing }));
     }
   }
 
@@ -181,7 +183,7 @@ export default function StudioLandingPage() {
                 <Button
                   size="sm"
                   className="bg-violet-600 hover:bg-violet-700 text-white font-semibold"
-                  onClick={() => checkout.mutate({ interval: billing, origin: window.location.origin })}
+                  onClick={() => checkout.mutate({ interval: billing, accessTier: "desktop", origin: window.location.origin })}
                   disabled={checkout.isPending}
                 >
                   {checkout.isPending ? "Redirecting..." : "Subscribe Now"}
@@ -192,7 +194,7 @@ export default function StudioLandingPage() {
                 <Link href="/login">
                   <Button variant="ghost" size="sm" className="text-white/70 hover:text-white">Sign In</Button>
                 </Link>
-                <Link href="/register">
+                <Link href={course360AppPurchaseLoginPath({ app: "studio", tier: "desktop", interval: billing })}>
                   <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white font-semibold">
                     Start Free Trial
                   </Button>
@@ -228,7 +230,7 @@ export default function StudioLandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
+            <Link href={course360AppPurchaseLoginPath({ app: "studio", tier: "desktop", interval: billing })}>
               <Button size="lg" className="bg-violet-600 hover:bg-violet-700 text-white font-bold px-8 h-14 text-base">
                 Start Free Trial
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -396,6 +398,7 @@ export default function StudioLandingPage() {
 
       {/* ── Pricing ─────────────────────────────────────────────────────────── */}
       <section id="pricing" className="py-24 px-6">
+        <div className="max-w-6xl mx-auto mb-8"><Course360AppSkuSelector app="studio" /></div>
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <Badge className="mb-4 bg-violet-500/20 text-violet-300 border-violet-500/30">

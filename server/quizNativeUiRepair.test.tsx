@@ -1,0 +1,22 @@
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor, act } from "@testing-library/react";
+const state = vi.hoisted(() => ({ quiz: { meta: { id: "native", title: "Current", cloudId: 44 }, questions: [{ id: "q", type: "tf", data: { correct: false } }] } as any, isDirty: true, loaded: null as any, saved: null as any, saveInput: null as any, saveResolve: null as any }));
+vi.mock("../client/src/hooks/useOrgScope", () => ({ useOrgScope: () => ({ orgId: 9 }) }));
+vi.mock("wouter", () => ({ useLocation: () => ["/quiz", vi.fn()] }));
+vi.mock("../client/src/quiz-creator/store/quizStore", () => { const hook: any = () => ({ ...state, loadQuiz: (quiz: any) => { state.loaded = quiz; }, markSaved: (name: string) => { state.saved = name; state.isDirty = false; } }); hook.getState = () => hook(); hook.setState = (patch: any) => Object.assign(state, patch); return { useQuizStore: hook }; });
+vi.mock("../client/src/lib/trpc", () => ({ trpc: {
+ quizMaker: { listSchoolLessonQuizzes: { useQuery: () => ({ data: [] }) }, listQuizzes: { useQuery: () => ({ data: [{ id: 44, title: "Saved", instructions: "[]" }], isLoading: false }) }, listOrgAttemptResults: { useQuery: () => ({ data: { results: [] } }) }, deleteQuiz: { useMutation: () => ({ mutateAsync: vi.fn() }) }, saveQuiz: { useMutation: () => ({ isPending: false, mutateAsync: (input: any) => { state.saveInput = input; return new Promise(resolve => { state.saveResolve = resolve; }); } }) } },
+ lms: { quiz: { listOrgQuizzes: { useQuery: () => ({ data: [] }) } } },
+ useUtils: () => ({ quizMaker: { listSchoolLessonQuizzes: { useQuery: () => ({ data: [] }) }, listQuizzes: { invalidate: vi.fn(async () => {}) }, getQuiz: { fetch: vi.fn(async () => ({ builderConfig: { meta: { id: "saved-id", title: "Saved", author: "Retain", branding: { primaryColor: "#123456" } }, questions: [{ id: "q", type: "tf", points: 0.25 }] } })) } } }),
+} }));
+import { CloudQuizBrowser } from "../client/src/quiz-creator/components/CloudQuizBrowser";
+import { useQuizCurrentCloudSave } from "../client/src/quiz-creator/lib/useQuizCurrentCloudSave";
+beforeEach(() => { cleanup(); state.loaded = null; state.saved = null; state.isDirty = true; state.quiz = { meta: { id: "native", title: "Current", cloudId: 44, nativeRevision: 2 }, questions: [{ id: "q", type: "tf", data: { correct: false } }] }; vi.spyOn(window, "confirm").mockReturnValue(true); });
+describe("owned quiz UI actual component contracts", () => {
+ it("CloudQuizBrowser renders useMemo results tab and opens full server builder config", async () => { render(<CloudQuizBrowser onClose={vi.fn()} />); fireEvent.click(screen.getByText("Results")); expect(screen.getByText("No matching completed quiz attempts.")).toBeTruthy(); fireEvent.click(screen.getByText("Quiz Creator")); fireEvent.click(screen.getByText("Saved")); await waitFor(() => expect(state.loaded.meta.author).toBe("Retain")); expect(state.loaded.questions[0].points).toBe(0.25); });
+ it("dirty confirmation rejects opening without replacing workspace", async () => { vi.mocked(window.confirm).mockReturnValue(false); render(<CloudQuizBrowser onClose={vi.fn()} />); fireEvent.click(screen.getByText("Saved")); await act(async () => {}); expect(state.loaded).toBeNull(); });
+ it("current save uses actual state and leaves later edits dirty, refusing stale export", async () => { let save: any; const error: any[] = []; function Harness() { const hook = useQuizCurrentCloudSave(); save = hook.saveCurrent; return null; } render(<Harness />); const pending = save().catch((e: any) => error.push(e)); expect(state.saveInput.settingsJson).toContain('"nativeRevision":2'); state.quiz = { ...state.quiz, meta: { ...state.quiz.meta, title: "Edited while saving" } }; state.saveResolve({ id: 44, revision: 3 }); await pending; expect(state.isDirty).toBe(true); expect(state.saved).toBeNull(); expect(error[0].message).toContain("New edits"); expect(state.quiz.meta.title).toBe("Edited while saving"); });
+ it("successful save marks only captured unchanged revision saved", async () => { let save: any; function Harness() { save = useQuizCurrentCloudSave().saveCurrent; return null; } render(<Harness />); const pending = save(); state.saveResolve({ id: 44, revision: 3 }); await pending; expect(state.isDirty).toBe(false); expect(state.quiz.meta.nativeRevision).toBe(3); expect(state.saved).toBe("Current (cloud)"); });
+});

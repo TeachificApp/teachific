@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Course360AppAccessNotice } from "@/components/Course360AppAccessNotice";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -16,18 +17,16 @@ import { ProductSwitcher } from "@/components/ProductSwitcher";
  */
 export default function QuizCreatorDashboard() {
   const { user, loading: authLoading } = useAuth();
-  const { data: roleData, isLoading: roleLoading } = trpc.quizCreator.getMyRole.useQuery(undefined, {
-    enabled: !!user,
+  const { data: roleData, isLoading: roleLoading, error: roleError, refetch: refetchAccess } = trpc.quizCreator.getMyRole.useQuery(undefined, {
+    enabled: !!user, retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true,
   });
+  useEffect(() => { if (!authLoading && !user) window.location.assign(getLoginUrl(window.location.pathname + window.location.search)); }, [authLoading, user]);
   const logoutMutation = trpc.auth.logout.useMutation({
     onSuccess: () => { window.location.href = "/quiz-creator-pro"; },
   });
 
   // Not logged in
-  if (!authLoading && !user) {
-    window.location.href = getLoginUrl();
-    return null;
-  }
+  if (!authLoading && !user) return null;
 
   if (authLoading || (user && roleLoading)) {
     return (
@@ -40,16 +39,17 @@ export default function QuizCreatorDashboard() {
     );
   }
 
+  if (roleError) return <div className="min-h-screen bg-[#0b1d35] text-white p-6"><Course360AppAccessNotice app="quiz_creator" message={roleError.message} retry={() => { void refetchAccess(); }} /></div>;
   const qcRole = roleData?.role ?? "none";
   const qcTrialEndsAt = roleData?.trialEndsAt ?? null;
-  const qcIsTrialing = qcRole !== "none" && qcTrialEndsAt && new Date(qcTrialEndsAt) > new Date();
-  const qcIsPaid = qcRole !== "none" && !qcIsTrialing;
-  const showQcWatermarkBanner = qcRole !== "none" && !qcIsPaid;
+  const qcIsTrialing = roleData?.isInTrial ?? false;
+  const qcIsPaid = roleData?.isPaid ?? false;
+  const showQcWatermarkBanner = roleData?.isActive && !qcIsPaid && !roleData?.hasManualGrant && !roleData?.platformSupport;
   const qcTrialDaysLeft = qcTrialEndsAt
     ? Math.max(0, Math.ceil((new Date(qcTrialEndsAt).getTime() - Date.now()) / 86400000))
     : null;
 
-  if (qcRole === "none") {
+  if (!roleData?.isActive || !["web", "bundle"].includes(qcRole)) {
     // No access — redirect to sales page
     return (
       <div className="min-h-screen bg-[#0b1d35] flex items-center justify-center p-6">
@@ -66,6 +66,7 @@ export default function QuizCreatorDashboard() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-white mb-3">No Active Subscription</h1>
+          <Course360AppAccessNotice app="quiz_creator" message={roleData?.reason} />
           <p className="text-white/60 mb-8">
             You don't have an active QuizMaker subscription. View plans to get started.
           </p>
@@ -130,6 +131,7 @@ export default function QuizCreatorDashboard() {
 
         <div className="flex items-center gap-4">
           <ProductSwitcher current="quizCreator" variant="topbar" />
+          <a href="/quiz-creator-app/billing" className="text-sm text-teal-300 underline">App billing</a>
           <span className="text-white/50 text-sm hidden sm:block">{user?.name ?? user?.email}</span>
           <Button
             variant="outline"

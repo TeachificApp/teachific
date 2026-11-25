@@ -1,3 +1,4 @@
+import { gradeQuizQuestion, scoreNativeQuizAttempt } from "../../../../shared/quizScoring";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuizStore } from "../store/quizStore";
 import { X, ChevronLeft, ChevronRight, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
@@ -428,70 +429,12 @@ export function QuizPreview({ onClose }: Props) {
   const branchingEnabled = questions.some((qq) => qq.branchRules && qq.branchRules.length > 0);
 
   const q = questions[currentIdx];
-  const totalPoints = questions.reduce((s, q) => s + q.points, 0);
-
-  const calcScore = () => {
-    let earned = 0;
-    questions.forEach((q) => {
-      const ans = answers[q.id];
-      if (q.type === "mcq" || q.type === "image_choice") {
-        const data = q.data as McqData;
-        const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
-        const selected = (ans as string[]) ?? [];
-        if (JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort())) earned += q.points;
-      } else if (q.type === "tf") {
-        const data = q.data as TfData;
-        if (ans === data.correct) earned += q.points;
-      } else if (q.type === "matching") {
-        const data = q.data as MatchingData;
-        const a = (ans as Record<string, string>) ?? {};
-        const allCorrect = data.pairs.every((p) => a[p.id] === p.id);
-        if (allCorrect) earned += q.points;
-      } else if (q.type === "ordering") {
-        const data = q.data as OrderingData;
-        const a = (ans as string[]) ?? [];
-        if (a.length === data.items.length && a.every((id, i) => id === data.items[i].id)) earned += q.points;
-      } else if (q.type === "numeric") {
-        const data = q.data as NumericData;
-        const a = Number(ans);
-        if (data.allowRange && data.rangeMin != null && data.rangeMax != null) {
-          if (a >= data.rangeMin && a <= data.rangeMax) earned += q.points;
-        } else {
-          if (Math.abs(a - data.correctValue) <= data.tolerance) earned += q.points;
-        }
-      } else if (q.type === "fill_blank" || q.type === "short_answer") {
-        // Simple text match for preview
-        if (q.type === "fill_blank") {
-          const data = q.data as FillBlankData;
-          const a = (ans as Record<string, string>) ?? {};
-          const allCorrect = data.blanks.every((b) => b.acceptedAnswers.some((acc) => data.blanks.length > 0 && (b.caseSensitive ? a[b.id] === acc : (a[b.id] || "").toLowerCase() === acc.toLowerCase())));
-          if (allCorrect) earned += q.points;
-        }
-      } else if (q.type === "dropdown") {
-        const data = q.data as DropdownData;
-        const a = (ans as Record<string, string>) ?? {};
-        const allCorrect = data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
-        if (allCorrect) earned += q.points;
-      } else if (q.type === "image_labeling") {
-        if (gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans)) earned += q.points;
-      }
-    });
-    return earned;
-  };
-
+  const grading = scoreNativeQuizAttempt(questions, answers);
+  const totalPoints = grading.totalPoints;
+  const calcScore = () => grading.earnedPoints;
   if (!q) return null;
 
-  const isCorrect = (question: QuizQuestion, answer: Answer | undefined) => {
-    if (question.type === "mcq" || question.type === "image_choice") {
-      const data = question.data as McqData;
-      const correctIds = data.choices.filter((choice) => choice.correct).map((choice) => choice.id);
-      const selected = (answer as string[]) ?? [];
-      return JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
-    }
-    if (question.type === "tf") return answer === (question.data as TfData).correct;
-    if (question.type === "image_labeling") return gradeImageLabelingAnswer((question.data as ImageLabelingData).targets, answer);
-    return false;
-  };
+  const isCorrect = (question: QuizQuestion, answer: Answer | undefined) => gradeQuizQuestion(question, answer).correct;
 
   const feedback = feedbackQuestionId === q.id ? (() => {
     const correct = isCorrect(q, answers[q.id]);
@@ -518,15 +461,15 @@ export function QuizPreview({ onClose }: Props) {
 
   if (submitted) {
     const score = calcScore();
-    const pct = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = pct >= quiz.meta.passingScore;
+    const pct = totalPoints > 0 ? Math.round((score / totalPoints) * 10000) / 100 : 0;
+    const passed = !grading.pendingManual && totalPoints > 0 && score / totalPoints * 100 >= quiz.meta.passingScore;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 text-center">
           <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${passed ? "bg-teal-100" : "bg-red-100"}`}>
             {passed ? <CheckCircle2 className="w-10 h-10 text-teal-500" /> : <XCircle className="w-10 h-10 text-red-500" />}
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-1">{passed ? "Quiz Passed!" : "Not Quite"}</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-1">{grading.pendingManual ? "Pending instructor review" : passed ? "Quiz Passed!" : "Not Quite"}</h2>
           <p className="text-gray-500 mb-4">You scored {score}/{totalPoints} points ({pct}%)</p>
           <p className="text-sm text-gray-400 mb-6">Passing score: {quiz.meta.passingScore}%</p>
           <div className="flex gap-3 justify-center">
@@ -594,7 +537,7 @@ export function QuizPreview({ onClose }: Props) {
           {q.type === "matching" && <MatchingQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "hotspot" && (q.data as HotspotData).imageUrl && <HotspotQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "image_labeling" && <ImageLabelingInteraction data={q.data as ImageLabelingData} imageUrl={q.image?.url} imageAlt={q.image?.alt} answer={answers[q.id] as Record<string, string> | undefined} onChange={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
-          {q.type === "image_comparison" && <ImageComparisonPlayer question={q.data as ImageComparisonData} submitted={false} />}
+          {q.type === "image_comparison" && <ImageComparisonPlayer question={{ ...(q.data as ImageComparisonData), type: "image_comparison" }} submitted={false} />}
           {q.type === "fill_blank" && <FillBlankQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "short_answer" && <ShortAnswerQuestion answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} />}
           {q.type === "image_choice" && <ImageChoiceQuestion q={q} answer={answers[q.id]} setAnswer={(a) => setAnswers((p) => ({ ...p, [q.id]: a }))} shuffleChoices={quiz.meta.shuffleAnswers} />}
@@ -704,7 +647,7 @@ export function QuizPreview({ onClose }: Props) {
             };
 
             const handleNext = () => {
-              if (quiz.meta.feedbackMode === "immediate" && feedbackQuestionId !== q.id) {
+              if (quiz.meta.showFeedback === "immediate" && feedbackQuestionId !== q.id) {
                 setFeedbackQuestionId(q.id);
                 return;
               }
@@ -712,7 +655,7 @@ export function QuizPreview({ onClose }: Props) {
             };
 
             const isLast = currentIdx >= questions.length - 1;
-            const feedbackVisible = quiz.meta.feedbackMode === "immediate" && feedbackQuestionId === q.id;
+            const feedbackVisible = quiz.meta.showFeedback === "immediate" && feedbackQuestionId === q.id;
             const advanceLabel = feedbackVisible ? (isLast ? "Finish Quiz" : "Next") : (isLast ? "Check Answer" : "Check Answer");
             if (branchingEnabled) {
               return (

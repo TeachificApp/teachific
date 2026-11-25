@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { X, Cloud, Trash2, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
@@ -17,9 +17,9 @@ export function CloudQuizBrowser({ onClose }: Props) {
   const [resultQuizType, setResultQuizType] = useState("all");
   const [resultEmail, setResultEmail] = useState("");
   const { data: quizzes, isLoading } = trpc.quizMaker.listQuizzes.useQuery();
-  const { data: lessonQuizzes, isLoading: lessonQuizzesLoading } = trpc.lms.quiz.listOrgQuizzes.useQuery({ orgId }, { enabled: !!orgId });
+  const { data: lessonQuizzes, isLoading: lessonQuizzesLoading } = trpc.quizMaker.listSchoolLessonQuizzes.useQuery(undefined, { enabled: !!orgId });
   const resultInput = useMemo(() => ({
-    orgId,
+    orgId: orgId ?? 0,
     quizId: resultQuizId === "all" ? undefined : Number(resultQuizId),
     quizType: resultQuizType === "all" ? undefined : resultQuizType as "assessment" | "practice" | "survey" | "exam",
     learnerEmail: resultEmail.trim() || undefined,
@@ -33,35 +33,9 @@ export function CloudQuizBrowser({ onClose }: Props) {
   const handleOpen = async (quiz: any) => {
     setOpening(quiz.id);
     try {
-      // The questions are stored as JSON in the instructions field
-      const questionsJson = quiz.instructions || "[]";
-      const questions = JSON.parse(questionsJson);
-      const quizFile = {
-        meta: {
-          id: crypto.randomUUID(),
-          title: quiz.title,
-          description: quiz.description || "",
-          author: "",
-          authorEmail: "",
-          createdAt: quiz.createdAt?.toISOString?.() || new Date().toISOString(),
-          updatedAt: quiz.updatedAt?.toISOString?.() || new Date().toISOString(),
-          version: 1,
-          licenseKey: null,
-          teachificOrgId: orgId ?? null,
-          tags: [],
-          passingScore: quiz.passingScore || 70,
-          timeLimit: quiz.timeLimit || null,
-          shuffleQuestions: quiz.shuffleQuestions || false,
-          shuffleAnswers: quiz.shuffleAnswers || false,
-          showFeedback: "immediate" as const,
-          allowRetry: true,
-          maxAttempts: quiz.maxAttempts || 0,
-          mockExamEnabled: Boolean(quiz.mockExamEnabled),
-          cloudId: quiz.id,
-        },
-        questions,
-      };
-      loadQuiz(quizFile as any, quiz.title + " (cloud)");
+      if (useQuizStore.getState().isDirty && !confirm("Open this cloud quiz? Your current edits remain in the local recovery journal.")) return;
+      const saved = await utils.quizMaker.getQuiz.fetch({ quizId: quiz.id });
+      loadQuiz(saved.builderConfig as any, quiz.title + " (cloud)");
       onClose();
     } catch (err) {
       alert("Failed to open quiz: " + (err as Error).message);
@@ -119,10 +93,12 @@ export function CloudQuizBrowser({ onClose }: Props) {
           ) : (
             <div className="space-y-2">
               {quizzes.map((q: any) => (
-                <button
+                <div
                   key={q.id}
-                  onClick={() => handleOpen(q)}
-                  disabled={opening === q.id}
+                  role="button" tabIndex={0}
+                  onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void handleOpen(q); } }}
+                  onClick={() => { if (opening !== q.id) void handleOpen(q); }}
+                  aria-disabled={opening === q.id}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[color:color-mix(in_srgb,var(--org-primary)_40%,transparent)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_6%,transparent)] transition-all text-left group disabled:opacity-50"
                 >
                   <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)]">
@@ -146,7 +122,7 @@ export function CloudQuizBrowser({ onClose }: Props) {
                   >
                     <Trash2 className="w-4 h-4 text-red-400" />
                   </button>
-                </button>
+                </div>
               ))}
             </div>
           ))}

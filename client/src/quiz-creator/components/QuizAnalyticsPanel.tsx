@@ -16,12 +16,12 @@ export default function QuizAnalyticsPanel({ quizId }: QuizAnalyticsPanelProps) 
 
   const { data: analytics, isLoading: analyticsLoading } = trpc.quizMaker.getQuizAnalytics.useQuery(
     { quizId: quizId! },
-    { enabled: !!quizId }
+    { enabled: !!quizId, refetchInterval: 15000, refetchIntervalInBackground: false }
   );
 
   const { data: questionAnalytics, isLoading: questionLoading } = trpc.quizMaker.getQuestionAnalytics.useQuery(
     { quizId: quizId! },
-    { enabled: !!quizId }
+    { enabled: !!quizId, refetchInterval: 15000, refetchIntervalInBackground: false }
   );
 
   const { data: attemptsData, isLoading: attemptsLoading } = trpc.quizMaker.getAttempts.useQuery(
@@ -62,6 +62,7 @@ export default function QuizAnalyticsPanel({ quizId }: QuizAnalyticsPanelProps) 
         <BarChart3 className="w-4 h-4" /> Quiz Analytics
       </h3>
 
+      <p className="text-xs text-muted-foreground">Analytics refresh every 15 seconds while this view is active.</p>
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-gray-50 rounded-xl p-3">

@@ -171,7 +171,9 @@ describe("Course360 legacy Media Library active-organization scope", () => {
     expect(source).toContain("requireLegacyMediaFolderInActiveOrg(db, orgId, input.folderId)");
     expect(source).toContain("requireLegacyMediaClipInActiveOrg(ctx, input.id, input.orgId)");
     expect(source).toContain("captions/org-${orgId}/");
-    expect(source).toContain("const audioUrl = mediaItem.url;");
+    expect(source).toContain("withStudioSource(mediaItem.fileKey, signal");
+    expect(source).toContain("extractStudioAudio(source, directory, signal)");
+    expect(source).not.toContain("const audioUrl = mediaItem.url;");
     expect(source).toContain("Media storage key does not belong to the active organization.");
   });
 });

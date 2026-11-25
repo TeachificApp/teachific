@@ -203,6 +203,7 @@ import CreatorDashboardPage from "./pages/CreatorDashboardPage";
 import CreatorEditorPage from "./pages/CreatorEditorPage";
 import CreatorLandingPage from "./pages/CreatorLandingPage";
 import DesktopDownloadPage from "./pages/DesktopDownloadPage";
+import Course360AppBillingPage from "./pages/Course360AppBillingPage";
 
 import ThankYouPage from "./pages/ThankYouPage";
 import HostedCheckoutPage from "./pages/lms/HostedCheckoutPage";
@@ -289,17 +290,20 @@ function BareRouter() {
         <Route path="/quiz-creator/:quizId/preview" component={PublicQuizPlayerPage} />
         {/* QuizMaker standalone app for users without LMS access */}
         <Route path="/quiz-creator-app/download">{() => <DesktopDownloadPage app="quizCreator" />}</Route>
+        <Route path="/quiz-creator-app/billing">{() => <Course360AppBillingPage app="quiz_creator" />}</Route>
         <Route path="/quiz-creator-app" component={QuizCreatorDashboard} />
         {/* QuizMaker sales/marketing page */}
         <Route path="/quiz-creator-pro" component={QuizCreatorLandingPage} />
         {/* Course360 Studio standalone dashboard */}
         <Route path="/studio/download">{() => <DesktopDownloadPage app="studio" />}</Route>
+        <Route path="/studio/billing">{() => <Course360AppBillingPage app="studio" />}</Route>
         <Route path="/studio" component={StudioDashboard} />
         {/* Course360 Studio sales and marketing page */}
         <Route path="/studio-pro" component={StudioLandingPage} />
         {/* Course360 Creator — eLearning authoring tool */}
         <Route path="/creator-pro" component={CreatorLandingPage} />
         <Route path="/creator/download">{() => <DesktopDownloadPage app="creator" />}</Route>
+        <Route path="/creator/billing">{() => <Course360AppBillingPage app="creator" />}</Route>
         <Route path="/creator" component={CreatorDashboardPage} />
         <Route path="/creator/:projectId" component={CreatorEditorPage} />
         {/* Public quiz player — no auth required */}

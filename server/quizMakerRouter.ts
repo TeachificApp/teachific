@@ -1,8 +1,12 @@
 import { z } from "zod";
 import { router, protectedProcedure, publicProcedure } from "./_core/trpc";
-import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
+import { getDb } from "./db";
+import { requireSelectedQuizLearnerSchool } from "./lib/quizLearnerSelectedSchoolRuntime";
+import { randomBytes } from "node:crypto";
+import { requireCourse360AppCapability, requireCourse360AppOrganization } from "./lib/course360AppCapabilities";
+import { nativeQuizSaveFields, readNativeQuizConfig, nativeQuizPlayerSettings, nativeQuizRevision, redactNativeQuizQuestions } from "./lib/quizNativeConfigRuntime";
 import { TRPCError } from "@trpc/server";
-import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, orgSubscriptions, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags, quizWidgetLaunches } from "../drizzle/schema";
+import { quizzes, quizQuestions, quizAnswerChoices, organizations, orgMembers, orgSubscriptions, quizAttempts, quizBanks, quizBankFolders, quizBankQuestions, quizBankTags, quizQuestionTags, quizWidgetLaunches, lmsQuizzes, lmsCourses } from "../drizzle/schema";
 import { eq, and, asc, desc, gt, inArray, isNull, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { fetchPublicSourceText } from "./lib/publicSourceUrl";
@@ -11,7 +15,7 @@ import { validateImageLabelingQuestions } from "./lib/imageLabelingQuestion";
 import { validateImageComparisonQuestions } from "./lib/imageComparisonQuestion";
 import { getOrgBaseUrl, getOrgQuizUrl } from "./lib/orgUrl";
 import { assertPublicQuizDeliveryHost } from "./lib/publicQuizDeliveryScope";
-import { scorePublicQuizAttempt } from "../shared/quizScoring";
+import { gradeQuizQuestion, scoreNativeQuizAttempt } from "../shared/quizScoring";
 import { validateQuizQuestionDependencies } from "../shared/quizQuestionDependency";
 import {
   buildQuizWidgetEmbed,
@@ -46,7 +50,7 @@ async function getMockExamAvailability(
 }
 
 async function resolveQuizMakerOrg(ctx: QuizMakerContext) {
-  return requireOrgAdmin(ctx.user.id, ctx.user.role);
+  return (await requireCourse360AppCapability(ctx.user.id, "quiz_creator", "web")).orgId;
 }
 
 /** Resolve the active organization that owns a public QuizMaker delivery. */
@@ -73,17 +77,8 @@ async function getPublicQuizOrganization(
 }
 
 async function requireMockExamPlan(ctx: QuizMakerContext, quizOrgId: number) {
-  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-  if (!activeOrgId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before changing mock-exam settings." });
-  }
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
-  if (activeOrgId !== quizOrgId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Mock-exam settings can only be changed in the active organization.",
-    });
-  }
+  const activeOrgId = await resolveQuizMakerOrg(ctx);
+  if (activeOrgId !== quizOrgId) throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the quiz school before changing mock-exam settings." });
   const db = (await getDb())!;
   const availability = await getMockExamAvailability(db, quizOrgId);
   if (!availability.canUseMockExams) {
@@ -95,34 +90,13 @@ async function requireMockExamPlan(ctx: QuizMakerContext, quizOrgId: number) {
   return { db, activeOrgId, availability };
 }
 
-/**
- * Resolves a QuizMaker quiz into an organisation and verifies authoring access.
- * Legacy owner-only records with orgId 0 are adopted into the caller's active
- * authorised organisation on first access; they are never exposed to other users.
- */
+/** Ordinary authoring never adopts, rehomes or exposes unscoped legacy raw records. */
 async function requireQuizMakerAccess(ctx: QuizMakerContext, quizId: number) {
-  const db = (await getDb())!;
-  const [quiz] = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).limit(1);
-  if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
-
-  if (quiz.orgId && quiz.orgId > 0) {
-    const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-    if (!activeOrgId || activeOrgId !== quiz.orgId) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Switch to the quiz organization before managing this Quiz Creator item.",
-      });
-    }
-    await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
-    return quiz;
-  }
-
-  if (quiz.userId !== ctx.user.id) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this quiz" });
-  }
   const orgId = await resolveQuizMakerOrg(ctx);
-  await db.update(quizzes).set({ orgId }).where(eq(quizzes.id, quizId));
-  return { ...quiz, orgId };
+  const db = (await getDb())!;
+  const [quiz] = await db.select().from(quizzes).where(and(eq(quizzes.id, quizId), eq(quizzes.orgId, orgId))).limit(1);
+  if (!quiz || !quiz.orgId || quiz.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Quiz is not owned by the explicitly selected school. Legacy unscoped records require a separate reviewed recovery workflow." });
+  return quiz;
 }
 
 async function requireQuizMakerQuestionAccess(ctx: QuizMakerContext, questionId: number) {
@@ -160,7 +134,7 @@ async function resolveWidgetQuiz(ctx: PublicQuizContext, rawToken: string) {
   if (!launch) {
     throw new TRPCError({ code: "NOT_FOUND", message: "This quiz widget is unavailable." });
   }
-  const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  const activeOrgId = await requireSelectedQuizLearnerSchool(ctx.user.id);
   if (!activeOrgId || activeOrgId !== launch.orgId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "This quiz widget is not available in the active organization." });
   }
@@ -177,39 +151,8 @@ async function resolveWidgetQuiz(ctx: PublicQuizContext, rawToken: string) {
 }
 
 function buildVisualQuizConfig(quiz: typeof quizzes.$inferSelect, mockExamEnabled: boolean) {
-  let questions: unknown[] = [];
-  try {
-    const parsed = quiz.instructions ? JSON.parse(quiz.instructions) : [];
-    if (Array.isArray(parsed)) questions = parsed;
-  } catch {
-    // The existing editor can recover a saved quiz with no questions, but must
-    // never treat malformed server data as executable client configuration.
-  }
-  return {
-    meta: {
-      id: String(quiz.id),
-      title: quiz.title,
-      description: quiz.description ?? "",
-      author: "",
-      authorEmail: "",
-      createdAt: quiz.createdAt?.toISOString?.() ?? new Date().toISOString(),
-      updatedAt: quiz.updatedAt?.toISOString?.() ?? new Date().toISOString(),
-      version: 1,
-      licenseKey: null,
-      teachificOrgId: quiz.orgId,
-      tags: [],
-      passingScore: (quiz as any).passingScore ?? 70,
-      timeLimit: (quiz as any).timeLimit ?? null,
-      shuffleQuestions: Boolean((quiz as any).shuffleQuestions),
-      shuffleAnswers: Boolean((quiz as any).shuffleAnswers),
-      showFeedback: (quiz as any).showFeedbackImmediately === false ? "deferred" : "immediate",
-      allowRetry: true,
-      maxAttempts: (quiz as any).maxAttempts ?? 0,
-      cloudId: quiz.id,
-      mockExamEnabled,
-    },
-    questions,
-  };
+  const config = readNativeQuizConfig(quiz);
+  return { ...config, meta: { ...config.meta, mockExamEnabled } };
 }
 
 type SerializedQuizQuestion = {
@@ -333,6 +276,11 @@ function replaceQuizTextValue(value: unknown, find: string, replace: string): { 
 export const quizMakerRouter = router({
   // ── Quiz CRUD ──────────────────────────────────────────────────────────────
 
+  /** Course lesson records remain a distinct school-owned source, not native QuizMaker grading. */
+  listSchoolLessonQuizzes: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = await resolveQuizMakerOrg(ctx), db = (await getDb())!;
+    return db.select({ id: lmsQuizzes.id, title: lmsQuizzes.title, courseId: lmsQuizzes.courseId, courseTitle: lmsCourses.title, passingScore: lmsQuizzes.passingScore }).from(lmsQuizzes).innerJoin(lmsCourses, and(eq(lmsQuizzes.courseId, lmsCourses.id), eq(lmsCourses.orgId, orgId))).where(eq(lmsQuizzes.orgId, orgId));
+  }),
   /** List all quizzes owned by the current user */
   listQuizzes: protectedProcedure.query(async ({ ctx }) => {
     const db = (await getDb())!;
@@ -401,12 +349,13 @@ export const quizMakerRouter = router({
         title: input.title,
         description: input.description || null,
         orgId,
-        createdBy: ctx.user.id,
+        legacyCreatedBy: ctx.user.id,
         userId: ctx.user.id,
-        passingScore: 70,
-        shuffleQuestions: false,
-        shuffleAnswers: false,
-        showFeedbackImmediately: true,
+        legacyPassingScore: 70,
+        passScorePercent: 70,
+        legacyShuffleQuestions: false,
+        legacyShuffleAnswers: false,
+        legacyShowFeedbackImmediately: true,
         showCorrectAnswers: true,
         isPublished: false,
       });
@@ -440,12 +389,12 @@ export const quizMakerRouter = router({
       if (data.title !== undefined) updateData.title = data.title;
       if (data.description !== undefined) updateData.description = data.description;
       if (data.instructions !== undefined) updateData.instructions = data.instructions;
-      if (data.passingScore !== undefined) updateData.passingScore = data.passingScore;
-      if (data.timeLimit !== undefined) updateData.timeLimit = data.timeLimit;
+      if (data.passingScore !== undefined) { updateData.legacyPassingScore = data.passingScore; updateData.passScorePercent = Math.round(data.passingScore); }
+      if (data.timeLimit !== undefined) { updateData.timeLimitSeconds = data.timeLimit; }
       if (data.maxAttempts !== undefined) updateData.maxAttempts = data.maxAttempts;
-      if (data.shuffleQuestions !== undefined) updateData.shuffleQuestions = data.shuffleQuestions;
-      if (data.shuffleAnswers !== undefined) updateData.shuffleAnswers = data.shuffleAnswers;
-      if (data.showFeedbackImmediately !== undefined) updateData.showFeedbackImmediately = data.showFeedbackImmediately;
+      if (data.shuffleQuestions !== undefined) { updateData.legacyShuffleQuestions = data.shuffleQuestions; updateData.randomizeQuestions = data.shuffleQuestions; }
+      if (data.shuffleAnswers !== undefined) { updateData.legacyShuffleAnswers = data.shuffleAnswers; updateData.randomizeAnswers = data.shuffleAnswers; }
+      if (data.showFeedbackImmediately !== undefined) { updateData.legacyShowFeedbackImmediately = data.showFeedbackImmediately; updateData.feedbackMode = data.showFeedbackImmediately ? "immediate" : "end"; }
       if (data.showCorrectAnswers !== undefined) updateData.showCorrectAnswers = data.showCorrectAnswers;
       if (data.mockExamEnabled !== undefined) {
         if (data.mockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);
@@ -453,7 +402,12 @@ export const quizMakerRouter = router({
       }
 
       if (Object.keys(updateData).length > 0) {
-        await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
+        const config = readNativeQuizConfig(quiz);
+        const meta = { ...config.meta, ...data, timeLimit: data.timeLimit === undefined ? config.meta.timeLimit : data.timeLimit == null ? null : data.timeLimit / 60, showFeedback: data.showFeedbackImmediately === undefined ? config.meta.showFeedback : data.showFeedbackImmediately ? "immediate" : "deferred" };
+        let nativeQuestions = config.questions;
+        if (data.instructions !== undefined) { try { const parsed = JSON.parse(data.instructions); if (Array.isArray(parsed)) nativeQuestions = parsed; } catch { /* Raw legacy instructions are retained below. */ } }
+        const fields = nativeQuizSaveFields({ title: data.title ?? quiz.title, description: data.description ?? quiz.description ?? "", questionsJson: JSON.stringify(nativeQuestions), settingsJson: JSON.stringify(meta) }, quiz);
+        await db.update(quizzes).set({ ...fields, ...updateData }).where(and(eq(quizzes.id, quizId), eq(quizzes.orgId, quiz.orgId)));
       }
       return { success: true };
     }),
@@ -681,6 +635,7 @@ export const quizMakerRouter = router({
         description: z.string().optional(),
         questionsJson: z.string(), // JSON string of the full questions array
         settingsJson: z.string().optional(), // JSON string of quiz meta/settings
+        expectedRevision: z.number().int().nonnegative().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -691,68 +646,20 @@ export const quizMakerRouter = router({
       if (imageComparisonValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageComparisonValidation });
       const dependencyValidation = validateQuizQuestionDependencies(input.questionsJson);
       if (dependencyValidation) throw new TRPCError({ code: "BAD_REQUEST", message: dependencyValidation });
-      let requestedMockExamEnabled: boolean | undefined;
-      if (input.settingsJson) {
-        try {
-          const settings = JSON.parse(input.settingsJson);
-          if (typeof settings.mockExamEnabled === "boolean") {
-            requestedMockExamEnabled = settings.mockExamEnabled;
-          }
-        } catch {
-          // Existing settings parsing intentionally falls back to default values.
-        }
+      const previous = input.quizId ? await requireQuizMakerAccess(ctx, input.quizId) : null;
+      const orgId = previous?.orgId ?? await resolveQuizMakerOrg(ctx);
+      const fields = nativeQuizSaveFields(input, previous);
+      if (fields.mockExamEnabled) await requireMockExamPlan(ctx, orgId);
+      if (previous) {
+        if (input.expectedRevision !== undefined && input.expectedRevision !== nativeQuizRevision(previous)) throw new TRPCError({ code: "CONFLICT", message: "A newer quiz revision exists. Recover your local draft or reopen before saving." });
+        const result = await db.update(quizzes).set(fields).where(and(eq(quizzes.id, previous.id), eq(quizzes.orgId, orgId), sql`COALESCE(JSON_EXTRACT(${quizzes.themeConfig}, '$.course360QuizNativeV1.revision'), 0) = ${nativeQuizRevision(previous)}`));
+        const header = Array.isArray(result) ? result[0] : result;
+        if ((header as any)?.affectedRows === 0) throw new TRPCError({ code: "CONFLICT", message: "The quiz changed while saving. Your local draft is retained." });
+        return { id: previous.id, revision: nativeQuizRevision(previous) + 1 };
       }
+      const [result] = await db.insert(quizzes).values({ ...fields, orgId, legacyCreatedBy: ctx.user.id, userId: ctx.user.id, isPublished: false });
+      return { id: result.insertId, revision: 1 };
 
-      if (input.quizId) {
-        // Update existing
-        const quiz = await requireQuizMakerAccess(ctx, input.quizId);
-        if (requestedMockExamEnabled) await requireMockExamPlan(ctx, quiz.orgId);
-
-        // Parse settings to apply quiz-level fields
-        const updateFields: any = {
-          title: input.title,
-          description: input.description || null,
-          instructions: input.questionsJson,
-        };
-        if (input.settingsJson) {
-          try {
-            const settings = JSON.parse(input.settingsJson);
-            if (settings.passingScore !== undefined) updateFields.passingScore = settings.passingScore;
-            if (settings.timeLimit !== undefined) updateFields.timeLimit = settings.timeLimit || null;
-            if (settings.maxAttempts !== undefined) updateFields.maxAttempts = settings.maxAttempts || null;
-            if (settings.shuffleQuestions !== undefined) updateFields.shuffleQuestions = !!settings.shuffleQuestions;
-            if (settings.shuffleAnswers !== undefined) updateFields.shuffleAnswers = !!settings.shuffleAnswers;
-            if (settings.showFeedbackImmediately !== undefined) updateFields.showFeedbackImmediately = !!settings.showFeedbackImmediately;
-            if (settings.showCorrectAnswers !== undefined) updateFields.showCorrectAnswers = !!settings.showCorrectAnswers;
-            if (requestedMockExamEnabled !== undefined) {
-              updateFields.mockExamEnabled = requestedMockExamEnabled;
-            }
-          } catch (e) { /* ignore parse errors */ }
-        }
-        await db.update(quizzes).set(updateFields).where(eq(quizzes.id, input.quizId));
-
-        return { id: input.quizId };
-      } else {
-        // Create new
-        const orgId = await resolveQuizMakerOrg(ctx);
-        if (requestedMockExamEnabled) await requireMockExamPlan(ctx, orgId);
-        const [result] = await db.insert(quizzes).values({
-          title: input.title,
-          description: input.description || null,
-          instructions: input.questionsJson,
-          orgId,
-          createdBy: ctx.user.id,
-          userId: ctx.user.id,
-          passingScore: 70,
-          shuffleQuestions: false,
-          shuffleAnswers: false,
-          showFeedbackImmediately: true,
-          showCorrectAnswers: true,
-          mockExamEnabled: requestedMockExamEnabled ?? false,
-          isPublished: false,
-        });
-        return { id: result.insertId };
-      }
     }),
 
   /** Replace exact text in a saved quiz that the active organization may administer. */
@@ -778,7 +685,7 @@ export const quizMakerRouter = router({
       const updatedQuestions = result.value as unknown[];
       if (result.count > 0) {
         await db.update(quizzes)
-          .set({ instructions: JSON.stringify(updatedQuestions) })
+          .set(nativeQuizSaveFields({ title: quiz.title, description: quiz.description ?? "", questionsJson: JSON.stringify(updatedQuestions) }, quiz))
           .where(eq(quizzes.id, quiz.id));
       }
       return {
@@ -880,22 +787,11 @@ export const quizMakerRouter = router({
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
+      const config = readNativeQuizConfig(quiz);
+      const copyMeta = { ...config.meta, id: randomBytes(16).toString("hex"), cloudId: undefined, nativeRevision: undefined };
       const [newQuiz] = await db.insert(quizzes).values({
-        title: `${quiz.title} (Copy)`,
-        description: quiz.description,
-        instructions: quiz.instructions,
-        orgId: quiz.orgId,
-        createdBy: ctx.user.id,
-        userId: ctx.user.id,
-        passingScore: quiz.passingScore,
-        timeLimit: quiz.timeLimit,
-        maxAttempts: quiz.maxAttempts,
-        shuffleQuestions: quiz.shuffleQuestions,
-        shuffleAnswers: quiz.shuffleAnswers,
-        showFeedbackImmediately: quiz.showFeedbackImmediately,
-        showCorrectAnswers: quiz.showCorrectAnswers,
-        mockExamEnabled: quiz.mockExamEnabled,
-        isPublished: false,
+        ...nativeQuizSaveFields({ title: `${quiz.title} (Copy)`, description: quiz.description ?? "", questionsJson: JSON.stringify(config.questions), settingsJson: JSON.stringify(copyMeta) }, quiz),
+        orgId: quiz.orgId, legacyCreatedBy: ctx.user.id, userId: ctx.user.id, isPublished: false, visibility: "private",
       });
       const newQuizId = newQuiz.insertId;
 
@@ -949,10 +845,11 @@ export const quizMakerRouter = router({
 
   /** Publish a quiz and generate a share token */
   publish: protectedProcedure
-    .input(z.object({ quizId: z.number() }))
+    .input(z.object({ quizId: z.number(), visibility: z.enum(["published", "hidden"]).optional() }))
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      if (!input.visibility && !isPublicQuizDeliveryVisible(quiz)) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose public or unlisted visibility explicitly before sharing this private quiz." });
       const imageLabelingValidation = validateImageLabelingQuestions(quiz.instructions ?? "[]", true);
       if (imageLabelingValidation) throw new TRPCError({ code: "BAD_REQUEST", message: imageLabelingValidation });
       const imageComparisonValidation = validateImageComparisonQuestions(quiz.instructions ?? "[]", true);
@@ -971,6 +868,7 @@ export const quizMakerRouter = router({
         isPublished: true,
         shareToken: token,
         publishedAt: new Date(),
+        ...(input.visibility ? { visibility: input.visibility } : {}),
         orgId: quiz.orgId,
       }).where(eq(quizzes.id, input.quizId));
 
@@ -1096,19 +994,13 @@ export const quizMakerRouter = router({
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
       const db = (await getDb())!;
       const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
-      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const questions = readNativeQuizConfig(quiz).questions;
 
       return {
         id: quiz.id,
         title: quiz.title,
         description: quiz.description,
-        passingScore: quiz.passingScore,
-        timeLimit: quiz.timeLimit,
-        maxAttempts: quiz.maxAttempts,
-        shuffleQuestions: quiz.shuffleQuestions,
-        shuffleAnswers: quiz.shuffleAnswers,
-        showFeedbackImmediately: quiz.showFeedbackImmediately,
-        showCorrectAnswers: quiz.showCorrectAnswers,
+        ...nativeQuizPlayerSettings(quiz),
         mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
         questions,
         previewMode: "staff" as const,
@@ -1137,22 +1029,16 @@ export const quizMakerRouter = router({
       const organization = await getPublicQuizOrganization(db, quiz.orgId);
       assertPublicQuizDeliveryHost(ctx.req, organization);
       // Parse questions from the instructions JSON field
-      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const questions = readNativeQuizConfig(quiz).questions;
       const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
 
       return {
         id: quiz.id,
         title: quiz.title,
         description: quiz.description,
-        passingScore: quiz.passingScore,
-        timeLimit: quiz.timeLimit,
-        maxAttempts: quiz.maxAttempts,
-        shuffleQuestions: quiz.shuffleQuestions,
-        shuffleAnswers: quiz.shuffleAnswers,
-        showFeedbackImmediately: quiz.showFeedbackImmediately,
-        showCorrectAnswers: quiz.showCorrectAnswers,
+        ...nativeQuizPlayerSettings(quiz),
         mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
-        questions,
+        questions: redactNativeQuizQuestions(questions),
       };
     }),
 
@@ -1161,21 +1047,15 @@ export const quizMakerRouter = router({
     .input(z.object({ widgetToken: z.string().min(32).max(256) }))
     .query(async ({ ctx, input }) => {
       const { db, quiz } = await resolveWidgetQuiz(ctx, input.widgetToken);
-      const questions = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const questions = readNativeQuizConfig(quiz).questions;
       const mockExamAvailability = await getMockExamAvailability(db, quiz.orgId);
       return {
         id: quiz.id,
         title: quiz.title,
         description: quiz.description,
-        passingScore: quiz.passingScore,
-        timeLimit: quiz.timeLimit,
-        maxAttempts: quiz.maxAttempts,
-        shuffleQuestions: quiz.shuffleQuestions,
-        shuffleAnswers: quiz.shuffleAnswers,
-        showFeedbackImmediately: quiz.showFeedbackImmediately,
-        showCorrectAnswers: quiz.showCorrectAnswers,
+        ...nativeQuizPlayerSettings(quiz),
         mockExamEnabled: Boolean(quiz.mockExamEnabled && mockExamAvailability.canUseMockExams),
-        questions,
+        questions: redactNativeQuizQuestions(questions),
       };
     }),
 
@@ -1242,23 +1122,29 @@ export const quizMakerRouter = router({
       }
       let savedQuestions: any[];
       try {
-        const parsed = quiz.instructions ? JSON.parse(quiz.instructions) : [];
-        savedQuestions = Array.isArray(parsed) ? parsed : [];
+        savedQuestions = readNativeQuizConfig(quiz).questions;
       } catch {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This quiz needs to be resaved before attempts can be scored." });
       }
-      const scoring = scorePublicQuizAttempt(savedQuestions, submittedAnswers);
-      const passed = scoring.scorePercent >= Number(quiz.passingScore ?? 70);
+      for (const q of savedQuestions) if (q.type === "matching" && submittedAnswers[q.id] && typeof submittedAnswers[q.id] === "object") {
+        const mapped = { ...(submittedAnswers[q.id] as Record<string, unknown>) };
+        for (const pair of q.data?.pairs ?? []) { if (String(mapped[pair.id]).startsWith("response-text:")) mapped[pair.id] = mapped[pair.id] === `response-text:${pair.response ?? ""}|${pair.responseImageUrl ?? ""}` ? pair.id : "invalid"; }
+        submittedAnswers[q.id] = mapped;
+      }
+      const scoring = scoreNativeQuizAttempt(savedQuestions, submittedAnswers);
+      const passed = !scoring.pendingManual && scoring.totalPoints > 0 && scoring.earnedPoints / scoring.totalPoints * 100 >= Number(nativeQuizPlayerSettings(quiz).passingScore);
 
       const [result] = await db.insert(quizAttempts).values({
         quizId: quiz.id,
         userId: input.widgetToken ? ctx.user!.id : undefined,
-        totalPoints: Math.round(scoring.totalPoints),
-        earnedPoints: Math.round(scoring.earnedPoints),
+        // Existing canonical columns are INT: never truncate fractional authored scores into them.
+        ...(Number.isInteger(scoring.totalPoints) ? { totalPoints: scoring.totalPoints } : {}),
+        ...(Number.isInteger(scoring.earnedPoints) ? { earnedPoints: scoring.earnedPoints } : {}),
+        questionSnapshot: { version: 1, nativeConfig: readNativeQuizConfig(quiz), scoring, gradingStatus: scoring.pendingManual ? "pending_manual" : "graded" },
         scorePercent: String(scoring.scorePercent),
         passed,
-        status: "completed",
-        completedAt: new Date(),
+        status: scoring.pendingManual ? "in_progress" : "completed",
+        completedAt: scoring.pendingManual ? null : new Date(),
         timeSpentSeconds: input.timeTakenSeconds || undefined,
         guestEmail: normalizedTakerEmail || undefined,
         sourceType: "standalone",
@@ -1269,7 +1155,7 @@ export const quizMakerRouter = router({
         legacyScorePct: scoring.scorePercent,
         legacyTotalPoints: scoring.totalPoints,
         legacyIsPassed: passed,
-        legacyIsCompleted: true,
+        legacyIsCompleted: !scoring.pendingManual,
         legacyTimeTakenSeconds: input.timeTakenSeconds || undefined,
         legacyTakerName: input.takerName || undefined,
         legacyTakerEmail: normalizedTakerEmail || undefined,
@@ -1284,6 +1170,8 @@ export const quizMakerRouter = router({
         totalPoints: scoring.totalPoints,
         scorePercent: scoring.scorePercent,
         passed,
+        gradingStatus: scoring.pendingManual ? "pending_manual" as const : "graded" as const,
+        feedback: nativeQuizPlayerSettings(quiz).showFeedback === "never" ? {} : scoring.grades,
       };
     }),
 
@@ -1308,7 +1196,7 @@ export const quizMakerRouter = router({
 
       // Manual pagination since we need total count
       const total = attempts.length;
-      const paginated = attempts.slice(input.offset, input.offset + input.limit);
+      const paginated = attempts.slice(input.offset, input.offset + input.limit).map(attempt => { const snapshot = attempt.questionSnapshot as any; return { ...attempt, ...(snapshot?.scoring ? { earnedPoints: snapshot.scoring.earnedPoints, totalPoints: snapshot.scoring.totalPoints, gradingStatus: snapshot.gradingStatus } : {}) }; });
 
       return { attempts: paginated, total };
     }),
@@ -1325,7 +1213,7 @@ export const quizMakerRouter = router({
     }))
     .query(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, input.orgId);
+      if (await resolveQuizMakerOrg(ctx) !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the selected school before reading results." });
       const quizConditions = [eq(quizzes.orgId, input.orgId)];
       if (input.quizType) quizConditions.push(eq(quizzes.quizType, input.quizType));
       const quizRows = await db
@@ -1334,7 +1222,7 @@ export const quizMakerRouter = router({
         .where(and(...quizConditions));
       const allowedQuizIds = quizRows.map((quiz) => quiz.id);
       if (allowedQuizIds.length === 0) return { total: 0, results: [] };
-      const conditions = [eq(quizAttempts.legacyOrgId, input.orgId)];
+      const conditions = [eq(quizAttempts.legacyOrgId, input.orgId), eq(quizAttempts.status, "completed")];
       if (input.quizId) conditions.push(eq(quizAttempts.quizId, input.quizId));
       if (input.learnerEmail) conditions.push(eq(quizAttempts.guestEmail, input.learnerEmail));
       conditions.push(inArray(quizAttempts.quizId, allowedQuizIds));
@@ -1373,7 +1261,7 @@ export const quizMakerRouter = router({
       const attempts = await db
         .select()
         .from(quizAttempts)
-        .where(eq(quizAttempts.quizId, input.quizId));
+        .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.status, "completed")));
 
       const totalAttempts = attempts.length;
       if (totalAttempts === 0) {
@@ -1399,7 +1287,7 @@ export const quizMakerRouter = router({
         count: 0,
       }));
       for (const score of scores) {
-        const idx = Math.min(Math.floor(score / 10), 9);
+        const idx = Math.max(0, Math.min(Math.floor(score / 10), 9));
         buckets[idx].count++;
       }
 
@@ -1436,7 +1324,9 @@ export const quizMakerRouter = router({
         if (val !== undefined) updateData[key] = val;
       }
       if (Object.keys(updateData).length > 0) {
-        await db.update(quizzes).set(updateData).where(eq(quizzes.id, quizId));
+        const quiz = await requireQuizMakerAccess(ctx, quizId), config = readNativeQuizConfig(quiz);
+        const branding = { ...config.meta.branding, ...(data.brandPrimaryColor !== undefined ? { primaryColor: data.brandPrimaryColor } : {}), ...(data.brandBgColor !== undefined ? { backgroundColor: data.brandBgColor } : {}), ...(data.brandLogoUrl !== undefined ? { logoUrl: data.brandLogoUrl } : {}), ...(data.brandFontFamily !== undefined ? { fontFamily: data.brandFontFamily } : {}) };
+        await db.update(quizzes).set({ ...nativeQuizSaveFields({ title: quiz.title, description: quiz.description ?? "", questionsJson: JSON.stringify(config.questions), settingsJson: JSON.stringify({ ...config.meta, branding }) }, quiz), ...updateData }).where(eq(quizzes.id, quizId));
       }
       return { success: true };
     }),
@@ -1500,12 +1390,14 @@ export const quizMakerRouter = router({
       const db = (await getDb())!;
       let mediaOrgId: number | undefined;
       let quiz: Awaited<ReturnType<typeof requireQuizMakerAccess>>;
+      const exportCapability = await requireCourse360AppCapability(ctx.user.id, "quiz_creator", "web");
       if (input.saveToMediaLibrary) {
         // Never invoke legacy adoption for a library save. The source must
         // already belong to the main account's independently resolved school.
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
         const { requireActiveMediaOrganization } = await import("./formsRouter");
         const activeOrgId = await requireActiveMediaOrganization(ctx.user.id);
+        if (activeOrgId !== exportCapability.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Quiz Creator and Media Library school selection must agree." });
         const [sourceQuiz] = await db.select().from(quizzes).where(and(
           eq(quizzes.id, input.quizId),
           eq(quizzes.orgId, activeOrgId),
@@ -1518,6 +1410,7 @@ export const quizMakerRouter = router({
       } else {
         quiz = await requireQuizMakerAccess(ctx, input.quizId);
       }
+      if (quiz.orgId !== exportCapability.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Quiz Creator and export source school selection must agree." });
 
       let serializedQuestions: SerializedQuizQuestion[];
       try {
@@ -1534,9 +1427,11 @@ export const quizMakerRouter = router({
         title: quiz.title,
         description: quiz.description || "",
         questions: serializedQuestions,
-        passingScore: quiz.passingScore || 70,
-        timeLimit: quiz.timeLimit,
-        shuffleQuestions: quiz.shuffleQuestions,
+        passingScore: nativeQuizPlayerSettings(quiz).passingScore,
+        timeLimit: nativeQuizPlayerSettings(quiz).timeLimit,
+        shuffleQuestions: nativeQuizPlayerSettings(quiz).shuffleQuestions,
+        nativeConfig: readNativeQuizConfig(quiz),
+        watermark: exportCapability.access.isInTrial ? "Course360 trial" : undefined,
         format: input.format,
       });
 
@@ -1608,7 +1503,7 @@ export const quizMakerRouter = router({
       if (bank.orgId !== quiz.orgId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "The selected Question Bank belongs to another organisation." });
       }
-      await requireOrgAdmin(ctx.user.id, ctx.user.role, bank.orgId);
+      await requireCourse360AppOrganization(ctx.user.id, bank.orgId);
 
       if (input.folderId) {
         const [folder] = await db.select({ orgId: quizBankFolders.orgId, bankId: quizBankFolders.bankId })
@@ -1640,6 +1535,8 @@ export const quizMakerRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Image-labeling and image-comparison questions are delivered in Quiz Creator and cannot be exported to the Question Bank." });
       }
 
+      const existingCopies = await db.select({ id: quizBankQuestions.id }).from(quizBankQuestions).where(and(eq(quizBankQuestions.orgId, quiz.orgId), eq(quizBankQuestions.bankId, bank.id), eq(quizBankQuestions.sourceQuizId, quiz.id), inArray(quizBankQuestions.sourceQuestionId, selectedQuestions.map(q => String(q.id)))));
+      if (existingCopies.length) throw new TRPCError({ code: "CONFLICT", message: "Existing Question Bank content is retained; preview and approve a merge before resynchronizing these questions." });
       let exportedCount = 0;
       let updatedCount = 0;
       for (const question of selectedQuestions) {
@@ -1680,17 +1577,10 @@ export const quizMakerRouter = router({
             ))
             .limit(1)
           : [];
+        if (existingQuestion) throw new TRPCError({ code: "CONFLICT", message: "This Question Bank already contains a copy of this native question. Existing bank edits, choices and tags are retained. A reviewed merge is required before resynchronizing." });
         const questionId = existingQuestion?.id ?? (await db.insert(quizBankQuestions).values(values)).insertId;
 
-        if (existingQuestion) {
-          await db.update(quizBankQuestions).set(values).where(eq(quizBankQuestions.id, questionId));
-          await db.delete(quizAnswerChoices).where(eq(quizAnswerChoices.questionId, questionId));
-          await db.delete(quizQuestionTags).where(eq(quizQuestionTags.questionId, questionId));
-          updatedCount++;
-        } else {
-          exportedCount++;
-        }
-
+        exportedCount++;
         const choices = quizMakerChoicesForBank(question);
         if (choices.length > 0) {
           await db.insert(quizAnswerChoices).values(choices.map((choice) => ({ ...choice, questionId })));
@@ -1717,14 +1607,14 @@ export const quizMakerRouter = router({
       const quiz = await requireQuizMakerAccess(ctx, input.quizId);
 
       // Get questions from the quiz instructions JSON
-      const questions: any[] = quiz.instructions ? JSON.parse(quiz.instructions) : [];
+      const questions = readNativeQuizConfig(quiz).questions;
       if (questions.length === 0) return { questions: [] };
 
       // Get all attempts for this quiz
       const attempts = await db
         .select()
         .from(quizAttempts)
-        .where(eq(quizAttempts.quizId, input.quizId));
+        .where(and(eq(quizAttempts.quizId, input.quizId), eq(quizAttempts.status, "completed")));
 
       if (attempts.length === 0) {
         return {
@@ -1746,11 +1636,13 @@ export const quizMakerRouter = router({
         .map((a) => {
           try {
             const answers = (a as any).legacyAnswersJson ?? (a as any).answersJson;
-            return answers ? JSON.parse(answers) : null;
+            const snapshot = a.questionSnapshot as any;
+            const parsed = answers ? JSON.parse(answers) : null;
+            return parsed ? { answers: parsed, snapshot } : null;
           }
           catch { return null; }
         })
-        .filter(Boolean) as Record<string, any>[];
+        .filter(Boolean) as { answers: Record<string, any>; snapshot: any }[];
 
       // Compute per-question stats
       const questionStats = questions.map((q: any) => {
@@ -1760,40 +1652,14 @@ export const quizMakerRouter = router({
         const optionCounts: Record<string, number> = {};
 
         for (const attemptAnswers of parsedAttempts) {
-          const ans = attemptAnswers[qId];
+          const ans = attemptAnswers.answers[qId];
           if (ans === undefined || ans === null) continue;
 
-          // Determine correctness based on question type
-          let isCorrect = false;
-          if (q.type === "mcq" || q.type === "image_choice") {
-            const data = q.data;
-            const correctIds = (data?.choices || []).filter((c: any) => c.correct).map((c: any) => c.id);
-            const selected = Array.isArray(ans) ? ans : [];
-            isCorrect = JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
-            // Track option selections
-            for (const optId of selected) {
-              optionCounts[optId] = (optionCounts[optId] || 0) + 1;
-            }
-          } else if (q.type === "tf") {
-            const data = q.data;
-            isCorrect = ans === data?.correct;
-            // Track true/false selections
-            const key = String(ans);
-            optionCounts[key] = (optionCounts[key] || 0) + 1;
-          } else if (q.type === "matching") {
-            const data = q.data;
-            const a = (typeof ans === "object" && !Array.isArray(ans)) ? ans : {};
-            isCorrect = (data?.pairs || []).every((p: any) => a[p.id] === p.id);
-          } else if (q.type === "fill_blank") {
-            const data = q.data;
-            const a = (typeof ans === "object" && !Array.isArray(ans)) ? ans : {};
-            isCorrect = (data?.blanks || []).every((b: any) => {
-              const userAns = (a[b.id] ?? "").trim();
-              return (b.acceptedAnswers || []).some((accepted: string) =>
-                b.caseSensitive ? userAns === accepted : userAns.toLowerCase() === accepted.toLowerCase()
-              );
-            });
-          }
+          const grade = attemptAnswers.snapshot?.scoring?.grades?.[qId] ?? gradeQuizQuestion(attemptAnswers.snapshot?.nativeConfig?.questions?.find((question: any) => question.id === qId) ?? q, ans);
+          if (grade.status !== "graded") continue;
+          const isCorrect = grade.correct;
+          if (q.type === "mcq" || q.type === "image_choice") for (const id of Array.isArray(ans) ? ans : []) optionCounts[id] = (optionCounts[id] || 0) + 1;
+          if (q.type === "tf") optionCounts[String(ans)] = (optionCounts[String(ans)] || 0) + 1;
 
           if (isCorrect) correctCount++;
           else incorrectCount++;
@@ -1845,6 +1711,7 @@ export const quizMakerRouter = router({
 
       return {
         isPublished: quiz.isPublished,
+        visibility: quiz.visibility,
         shareToken: quiz.shareToken,
         publishedAt: quiz.publishedAt,
         orgSlug: organization.slug,
@@ -1863,10 +1730,5 @@ export const quizMakerRouter = router({
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function generateShareToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 16; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return randomBytes(24).toString("base64url");
 }

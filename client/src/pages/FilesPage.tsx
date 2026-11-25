@@ -31,6 +31,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { chunkedMediaUpload } from "@/lib/chunkedMediaUpload";
+import { normalizeStudioMediaList } from "@/lib/studioCaptionDocument";
 import {
   DndContext,
   DragOverlay,
@@ -402,11 +403,12 @@ export default function FilesPage() {
     orgId ? { orgId } : undefined,
   );
   const { data: foldersRaw = [], refetch: refetchFolders } = trpc.folders.list.useQuery({ orgId }, { enabled: orgId > 0 });
-  const { data: mediaData, isLoading: mediaLoading, refetch: refetchMedia } = trpc.lms.media.listOrgMedia.useQuery(
-    { orgId, typeFilter: "all", pageSize: 200 },
+  const { data: mediaData, isLoading: mediaLoading, error: mediaError, refetch: refetchMedia } = trpc.lms.media.listOrgMedia.useQuery(
+    { orgId },
     { enabled: orgId > 0 }
   );
-  const mediaItems = mediaData?.items ?? [];
+  // Current endpoint returns all rows (including beyond 200); retain older envelope readers.
+  const mediaItems = useMemo(() => normalizeStudioMediaList(mediaData), [mediaData]);
 
   // ── Folder helpers ─────────────────────────────────────────────────────────
   const folders: FolderItem[] = useMemo(() => {
@@ -772,6 +774,7 @@ export default function FilesPage() {
             </div>
           )}
 
+          {mediaError && <div role="alert" className="rounded-lg border border-destructive/40 p-3 text-sm">Media Library could not be loaded: {mediaError.message} <Button variant="outline" size="sm" onClick={() => refetchMedia()}>Retry</Button></div>}
           {/* Items list */}
           {isLoading ? (
             <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => (
@@ -782,7 +785,7 @@ export default function FilesPage() {
               <CardContent className="py-16 text-center">
                 <FileArchive className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="font-medium text-muted-foreground">
-                  {search || typeFilter !== "all" ? "No items match your filters" : selectedFolderId !== null ? "This folder is empty" : "No content yet"}
+                  {mediaError ? "Media Library is unavailable; retry before assuming this library is empty" : search || typeFilter !== "all" ? "No items match your filters" : selectedFolderId !== null ? "This folder is empty" : "No content yet"}
                 </p>
                 {!search && typeFilter === "all" && selectedFolderId === null && (
                   <Button size="sm" className="mt-4 gap-2" onClick={() => fileInputRef.current?.click()}>

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Course360AppAccessNotice } from "@/components/Course360AppAccessNotice";
+import { course360DesktopDownloadUrl } from "@/lib/course360DesktopReadiness";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -68,11 +70,13 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
   const meta = APP_META[app];
   const [downloading, setDownloading] = useState<"windows" | "mac" | null>(null);
 
-  const { data, isLoading, error } = trpc.billing.getDesktopDownloads.useQuery({ app });
+  const { data, isLoading, error, refetch } = trpc.billing.getDesktopDownloads.useQuery({ app }, { retry: false, refetchInterval: 30_000 });
 
-  const handleDownload = (platform: "windows" | "mac", url: string) => {
+  const handleDownload = (platform: "windows" | "mac", rawUrl: string | null | undefined) => {
+    const url = course360DesktopDownloadUrl(rawUrl);
+    if (!url) return;
     setDownloading(platform);
-    window.open(url, "_blank");
+    window.open(url, "_blank", "noopener,noreferrer");
     setTimeout(() => setDownloading(null), 3000);
   };
 
@@ -81,9 +85,9 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
         {/* Back link */}
         <Link href={meta.backPath}>
-          <a className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors">
+          <span className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors">
             <ArrowLeft className="w-4 h-4" /> {meta.backLabel}
-          </a>
+          </span>
         </Link>
 
         {/* Header */}
@@ -91,10 +95,11 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
           <h1 className={`text-3xl font-bold ${meta.color}`}>{meta.name}</h1>
           <p className="text-slate-600 text-lg">{meta.tagline}</p>
           <Badge variant="outline" className="border-slate-300 text-slate-600 text-xs">
-            Desktop App — v{data?.version ?? "1.0.0"}
+            Desktop App{data?.version ? ` — v${data.version}` : " — release not configured"}
           </Badge>
         </div>
 
+        <Course360AppAccessNotice app={app === "quizCreator" ? "quiz_creator" : app} message={error?.message} retry={() => { void refetch(); }} />
         {/* Download card */}
         {isLoading ? (
           <Card>
@@ -108,18 +113,18 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
               <Lock className="w-8 h-8 text-amber-500 shrink-0 mt-0.5" />
               <div className="space-y-3">
                 <div>
-                  <p className="font-semibold text-amber-900 text-lg">Pro or Enterprise Plan Required</p>
+                  <p className="font-semibold text-amber-900 text-lg">{error?.data?.code === "UNAUTHORIZED" ? "Sign in required" : error?.data?.code === "FORBIDDEN" ? "Desktop or Bundle Access Required" : "Download access service unavailable"}</p>
                   <p className="text-amber-800 text-sm mt-1">
                     The {meta.name} desktop app is available on <strong>Pro and Enterprise</strong> Course360 plans, or as a standalone purchase.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Link href="/settings/billing">
+                  <Link href={app === "quizCreator" ? "/quiz-creator-app/billing" : `/${app}/billing`}>
                     <Button className="bg-amber-600 hover:bg-amber-700 text-white gap-2">
                       Upgrade Plan <ExternalLink className="w-4 h-4" />
                     </Button>
                   </Link>
-                  <Link href="/apps">
+                  <Link href={meta.upgradePath}>
                     <Button variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100 gap-2">
                       Buy Standalone App
                     </Button>
@@ -135,18 +140,20 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
               <CardHeader className="pb-3">
                 <CardTitle className="text-slate-900 flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-500" />
-                  You're ready to download
+                  {data.readiness === "metadata_available" ? "Download links available" : "Desktop release unavailable"}
                 </CardTitle>
                 <CardDescription>
                   Choose your operating system below. The installer will open in a new tab.
+                  {!data.artifactVerified && <span className="block mt-1">Release metadata is not signing, installation, activation, or feature-parity verification.</span>}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Windows */}
                   <button
-                    onClick={() => handleDownload("windows", data.windows ?? "")}
-                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-teal-400 hover:bg-teal-50/50 transition-all text-left group"
+                    onClick={() => handleDownload("windows", data.windows)}
+                    disabled={!course360DesktopDownloadUrl(data.windows)}
+                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-teal-400 hover:bg-teal-50/50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="p-3 rounded-lg bg-blue-100 shrink-0">
                       <Monitor className="w-6 h-6 text-blue-600" />
@@ -165,7 +172,7 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                   {/* macOS */}
                   <button
                     onClick={() => data.mac ? handleDownload("mac", data.mac) : undefined}
-                    disabled={!data.mac}
+                    disabled={!course360DesktopDownloadUrl(data.mac)}
                     className="flex items-center gap-4 p-4 rounded-xl border-2 border-slate-200 hover:border-teal-400 hover:bg-teal-50/50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="p-3 rounded-lg bg-slate-100 shrink-0">

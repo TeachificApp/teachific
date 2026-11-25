@@ -30,6 +30,7 @@ import {
   nextSchoolBillingPeriodEnd,
 } from "./course360BillingState";
 import type Stripe from "stripe";
+import { requireCourse360AppOrganization, requireCourse360AppCapability, getCourse360AppCapabilityStatus, getCourse360AppBillingRecords, course360DesktopArtifactUrl } from "./lib/course360AppCapabilities";
 import { createCourse360PaymentCheckout, getCourse360PaymentAppAccess, claimCourse360PaymentSchoolOwner, listCourse360PaymentOwnerClaims, course360PaymentLedgerReady, setCourse360PaymentManualRole, course360PaymentAppTrialEligible } from "./lib/course360PaymentLedger";
 
 async function getDb() {
@@ -172,6 +173,20 @@ export async function resolveProductCheckoutReturnOrigin(
   return normalizedOrigin;
 }
 
+/** App checkout returns prove the same explicit school; legacy fallback is not authority. */
+async function resolveAppCapabilityCheckoutOrigin(origin: string, userId: number): Promise<string> {
+  const scope = await requireCourse360AppOrganization(userId);
+  const approved = parseApprovedPlatformCheckoutOrigin(origin);
+  if (approved) return approved;
+  const db = await getDb();
+  const { organizations } = await import("../drizzle/schema");
+  const [school] = await db.select().from(organizations).where(and(eq(organizations.id, scope.orgId), eq(organizations.isActive, true))).limit(1);
+  try {
+    const url = new URL(origin);
+    if (!school || url.protocol !== "https:" || url.username || url.password || url.port || !(url.hostname === `${school.slug}.course360.app` || matchesVerifiedMemberCustomDomain(url.hostname, [school]))) throw new Error("origin mismatch");
+    return url.origin;
+  } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "App checkout return URL is not permitted for the selected school." }); }
+}
 // ─── Helper: get org context for the current user ─────────────────────────────
 async function getOrgContext(userId: number, userRole = "org_admin") {
   const { getOrgIdForUserWithFallback } = await import("./db");
@@ -1149,17 +1164,13 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      const orgCtx = await requireCourse360AppOrganization(ctx.user.id);
       if (!orgCtx)
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "An active school membership is required for this purchase",
         });
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(
-        input.origin,
-        ctx.user.id,
-        ctx.user.role
-      );
+      const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const stripe = getStripe();
       const priceKey = `studio_${input.tier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
@@ -1196,28 +1207,14 @@ export const stripeRouter = router({
       return { checkoutUrl: session.url };
     }),
 
-  getAppSubscription: protectedProcedure.input(z.object({ product: z.enum(["studio", "creator", "quiz_creator"]) })).query(async ({ ctx, input }) => {
-    if (["site_owner", "site_admin"].includes(ctx.user.role)) return { tier: "bundle" as const, isActive: true, trialEndsAt: null, isInTrial: false, isPaid: true, hasManualGrant: true };
-    const org = await getOrgContext(ctx.user.id, ctx.user.role);
-    if (!org) return { tier: "none" as const, isActive: false, trialEndsAt: null, isInTrial: false, isPaid: false, hasManualGrant: false };
-    return getCourse360PaymentAppAccess(org.orgId, ctx.user.id, input.product);
+  getAppSubscription: protectedProcedure.input(z.object({ product: z.enum(["studio", "creator", "quiz_creator"]), mode: z.enum(["web", "desktop"]).default("web") })).query(async ({ ctx, input }) => {
+    const status = await getCourse360AppCapabilityStatus(ctx.user.id, input.product, input.mode);
+    return { ...status.access, orgId: status.orgId, platformSupport: status.platformSupport, schoolIncluded: status.schoolIncluded, reason: status.reason };
   }),
   // ── Studio subscription status ────────────────────────────────────────────
   getStudioSubscription: protectedProcedure.query(async ({ ctx }) => {
-    // Platform owners/admins always get full Studio access
-    const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
-    if (isPlatformAdmin) {
-      return {
-        tier: "bundle" as const,
-        isActive: true,
-        trialEndsAt: null,
-        isInTrial: false,
-        isPaid: true,
-      };
-    }
-    const org = await getOrgContext(ctx.user.id, ctx.user.role);
-    if (!org) return { tier: "none" as const, isActive: false, trialEndsAt: null, isInTrial: false, isPaid: false };
-    return getCourse360PaymentAppAccess(org.orgId, ctx.user.id, "studio");
+    const status = await getCourse360AppCapabilityStatus(ctx.user.id, "studio", "web");
+    return { ...status.access, orgId: status.orgId, platformSupport: status.platformSupport, schoolIncluded: status.schoolIncluded, reason: status.reason };
   }),
 
   // ── Admin: list all Studio users ────────────────────────────────────────
@@ -1246,7 +1243,7 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      const org = await requireCourse360AppOrganization(ctx.user.id);
       if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
       await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "studio", tier: input.role,
         actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: null });
@@ -1286,7 +1283,7 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      const org = await requireCourse360AppOrganization(ctx.user.id);
       if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
       await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "creator", tier: input.role,
         actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: input.trialDays ? new Date(Date.now() + (input.trialDays ?? 0) * 86400000) : null });
@@ -1326,7 +1323,7 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      const org = await requireCourse360AppOrganization(ctx.user.id);
       if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
       await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "quiz_creator", tier: input.role,
         actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: input.trialDays ? new Date(Date.now() + (input.trialDays ?? 0) * 86400000) : null });
@@ -1336,7 +1333,7 @@ export const stripeRouter = router({
   adminSetStudioTrial: adminProcedure
     .input(z.object({ userId: z.number(), trialDays: z.number().optional() }))
     .mutation(async ({ input, ctx }) => {
-      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      const org = await requireCourse360AppOrganization(ctx.user.id);
       if (!org) throw new TRPCError({ code: "FORBIDDEN" });
       const access = await getCourse360PaymentAppAccess(org.orgId, input.userId, "studio");
       if (!access.hasManualGrant || access.tier === "none") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Choose an explicit school-bound manual role before setting its expiry" });
@@ -1354,18 +1351,14 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      const orgCtx = await requireCourse360AppOrganization(ctx.user.id);
       if (!orgCtx)
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "An active school membership is required for this purchase",
         });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(
-        input.origin,
-        ctx.user.id,
-        ctx.user.role
-      );
+      const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Creator price not found. Please try again shortly." });
@@ -1411,18 +1404,14 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      const orgCtx = await requireCourse360AppOrganization(ctx.user.id);
       if (!orgCtx)
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "An active school membership is required for this purchase",
         });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(
-        input.origin,
-        ctx.user.id,
-        ctx.user.role
-      );
+      const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `studio_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Studio price not found. Please try again shortly." });
@@ -1468,18 +1457,14 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      const orgCtx = await requireCourse360AppOrganization(ctx.user.id);
       if (!orgCtx)
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "An active school membership is required for this purchase",
         });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(
-        input.origin,
-        ctx.user.id,
-        ctx.user.role
-      );
+      const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `quiz_creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Quiz Creator price not found. Please try again shortly." });
@@ -1554,77 +1539,58 @@ export const stripeRouter = router({
 
   // ── Get all product subscriptions for the current user (cross-product nav) ─────────
   getAllSubscriptions: protectedProcedure.query(async ({ ctx }) => {
-    const db = await getDb();
-    const { users, orgMembers, orgSubscriptions } = await import("../drizzle/schema");
-
-    // LMS organization is server-selected, never the first membership.
-    const orgRow = await getOrgContext(ctx.user.id, ctx.user.role);
-
-    let lmsPlan: string = "free";
-    let lmsIsActive = false;
-    if (orgRow) {
-      const [orgSub] = await db
-        .select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
-        .from(orgSubscriptions)
-        .where(eq(orgSubscriptions.orgId, orgRow.orgId))
-        .limit(1);
-      lmsPlan = orgSub?.plan ?? "free";
-      lmsIsActive = !!orgSub && ["active", "trialing"].includes(orgSub.status);
+    const [studio, creator, quizCreator] = await Promise.all([
+      getCourse360AppCapabilityStatus(ctx.user.id, "studio", "web"),
+      getCourse360AppCapabilityStatus(ctx.user.id, "creator", "web"),
+      getCourse360AppCapabilityStatus(ctx.user.id, "quiz_creator", "web"),
+    ]);
+    const orgId = studio.orgId;
+    let lmsPlan = "free", lmsIsActive = false;
+    if (orgId) {
+      const { orgSubscriptions } = await import("../drizzle/schema");
+      const db = await getDb();
+      const [sub] = await db.select().from(orgSubscriptions).where(eq(orgSubscriptions.orgId, orgId)).limit(1);
+      lmsPlan = sub?.plan ?? "free";
+      lmsIsActive = !!sub && (sub.status === "trialing" ? !!sub.trialEndsAt && sub.trialEndsAt > new Date() : sub.status === "active" && (!sub.stripeSubscriptionId || !!sub.currentPeriodEnd && sub.currentPeriodEnd > new Date()));
     }
-    const hasLms = lmsIsActive;
+    const surface = (s: typeof studio) => ({ ...s.access, orgId: s.orgId, platformSupport: s.platformSupport, schoolIncluded: s.schoolIncluded });
+    return { lms: { plan: lmsPlan, isActive: lmsIsActive }, studio: surface(studio), creator: surface(creator), quizCreator: surface(quizCreator) };
+  }),
 
-    const none = { tier: "none" as const, isActive: false, isInTrial: false };
-    const [studio, creator, quizCreator] = orgRow ? await Promise.all([
-      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "studio"),
-      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "creator"),
-      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "quiz_creator"),
-    ]) : [none, none, none];
-    return { lms: { plan: lmsPlan, isActive: hasLms }, studio, creator, quizCreator };
+  // App recovery uses exact app-ledger customer/subscription, never school billing.
+  getAppBillingRecovery: protectedProcedure.input(z.object({ product: z.enum(["studio", "creator", "quiz_creator"]) })).query(async ({ ctx, input }) => {
+    const rows = await getCourse360AppBillingRecords(ctx.user.id, input.product);
+    return { subscriptions: rows.map(r => ({ subscriptionId: r.subscriptionId, tier: r.tier, status: r.rawStatus, cancelAtPeriodEnd: r.cancelAtPeriodEnd, currentPeriodEnd: r.currentPeriodEnd, trialEndsAt: r.trialEnd })), hasBillingCustomer: rows.length > 0 };
+  }),
+  createAppPortalSession: protectedProcedure.input(z.object({ product: z.enum(["studio", "creator", "quiz_creator"]), subscriptionId: z.string().optional(), returnUrl: z.string().url() })).mutation(async ({ ctx, input }) => {
+    const rows = await getCourse360AppBillingRecords(ctx.user.id, input.product);
+    const candidates = input.subscriptionId ? rows.filter(r => r.subscriptionId === input.subscriptionId) : rows;
+    if (candidates.length !== 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: candidates.length ? "Choose the app subscription to manage." : "No app billing subscription is available in the selected school." });
+    const row = candidates[0];
+    const origin = await resolveAppCapabilityCheckoutOrigin(input.returnUrl, ctx.user.id);
+    const stripe = getStripe();
+    const live = await stripe.subscriptions.retrieve(row.subscriptionId);
+    const customer = typeof live.customer === "string" ? live.customer : live.customer.id;
+    if (customer !== row.customerId || live.id !== row.subscriptionId || live.livemode !== row.livemode || live.metadata?.product_type !== input.product || live.metadata?.org_id !== String(row.orgId) || live.metadata?.user_id !== String(ctx.user.id)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "App billing identity needs support reconciliation." });
+    const session = await stripe.billingPortal.sessions.create({ customer: row.customerId, return_url: `${origin}${input.product === "quiz_creator" ? "/quiz-creator-app/billing" : `/${input.product}/billing`}` });
+    return { url: session.url };
   }),
 
   // ── Desktop app download URLs (subscription-gated) ─────────────────────────
   getDesktopDownloads: protectedProcedure
     .input(z.object({ app: z.enum(["creator", "studio", "quizCreator"]) }))
     .query(async ({ ctx, input }) => {
-      const db = await getDb();
-      const org = await getOrgContext(ctx.user.id, ctx.user.role);
       const product = input.app === "quizCreator" ? "quiz_creator" : input.app;
-      const isPlatformAdmin = ["site_owner", "site_admin"].includes(ctx.user.role);
-      const access = org && !isPlatformAdmin ? await getCourse360PaymentAppAccess(org.orgId, ctx.user.id, product) : null;
-      const hasAccess = (!!access && ["desktop", "bundle"].includes(access.tier)) || isPlatformAdmin;
-
-      if (!hasAccess) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "An active subscription is required to download this app.",
-        });
-      }
-
-      // Pull latest download URLs from app_versions DB table
+      const capability = await requireCourse360AppCapability(ctx.user.id, product, "desktop");
+      const db = await getDb();
       const dbProduct = input.app === "quizCreator" ? "quizcreator" : input.app;
       const { appVersions } = await import("../drizzle/schema");
-      const { and: and2 } = await import("drizzle-orm");
-      const [latestRow] = await db
-        .select()
-        .from(appVersions)
-        .where(
-          and2(
-            eq(
-              appVersions.product,
-              dbProduct as "creator" | "studio" | "quizcreator"
-            ),
-            eq(appVersions.isLatest, true)
-          )
-        )
-        .limit(1);
-      return {
-        hasAccess: true,
-        app: input.app,
-        version: latestRow?.version ?? "1.0.0",
-        windows: latestRow?.windowsUrl ?? null,
-        mac: latestRow?.macUrl ?? null,
-        releasePage: null,
-      };
+      const [latestRow] = await db.select().from(appVersions).where(and(eq(appVersions.product, dbProduct), eq(appVersions.isLatest, true))).limit(1);
+      const windows = course360DesktopArtifactUrl(latestRow?.windowsUrl);
+      const mac = course360DesktopArtifactUrl(latestRow?.macUrl);
+      return { hasAccess: true, orgId: capability.orgId, app: input.app, version: latestRow?.version ?? null, windows, mac, releasePage: null,
+        readiness: !latestRow ? "not_configured" as const : windows || mac ? "metadata_available" as const : "artifact_unavailable" as const,
+        artifactVerified: false, releaseNotes: latestRow?.releaseNotes ?? null };
     }),
 
   // ── Platform Admin: Stripe integration status ─────────────────

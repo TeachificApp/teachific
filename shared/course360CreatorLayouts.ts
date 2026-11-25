@@ -1,0 +1,71 @@
+import { createCreatorAssessment, type CreatorBlock, type CreatorDocument } from "./course360CreatorModel";
+type Slot = ["text" | "image" | "shape" | "video" | "audio" | "button", number, number, number, number, string?];
+export interface CreatorLayout { id: string; label: string; slots: Slot[]; }
+/** Each recipe has distinct geometry/content roles, not color-only variants. All slots are editable. */
+export const CREATOR_LAYOUTS: CreatorLayout[] = [
+  { id: "title", label: "Centered title", slots: [["text",80,130,840,90,"Course title"],["text",140,250,720,65,"Course subtitle"]] },
+  { id: "title-content", label: "Title and body", slots: [["text",60,35,880,70,"Lesson title"],["text",60,135,880,350,"Explain your key ideas here."]] },
+  { id: "two-column", label: "Two equal columns", slots: [["text",60,35,880,70,"Compare two ideas"],["text",60,140,420,350,"First idea"],["text",520,140,420,350,"Second idea"]] },
+  { id: "image-text", label: "Image left, explanation right", slots: [["image",40,80,460,410],["text",540,80,400,70,"Visual lesson"],["text",540,180,400,300,"Explain what the image demonstrates."]] },
+  { id: "full-image", label: "Full image with caption", slots: [["image",0,0,1000,563],["shape",40,420,920,110],["text",60,435,880,80,"Image caption"]] },
+  { id: "title-left", label: "Editorial title left", slots: [["shape",40,80,12,400],["text",80,90,620,140,"Course title"],["text",80,280,620,120,"Subtitle and introduction"],["image",750,130,210,280]] },
+  { id: "title-right", label: "Image-led title right", slots: [["image",0,0,450,563],["text",500,100,440,140,"Course title"],["text",500,290,440,130,"Course introduction"]] },
+  { id: "title-banner", label: "Wide title banner", slots: [["shape",0,0,1000,190],["text",60,60,880,90,"Course title"],["text",100,250,800,180,"Introduction"],["button",370,460,260,50,"Begin lesson"]] },
+  { id: "section-divider", label: "Section divider", slots: [["text",70,70,160,110,"01"],["shape",250,90,4,370],["text",300,180,630,110,"Section title"],["text",300,320,630,80,"What comes next"]] },
+  { id: "agenda", label: "Agenda with visual", slots: [["text",50,35,900,70,"Today's agenda"],["text",50,140,520,350,"1. Introduction\n2. Practice\n3. Reflection"],["image",620,130,330,350]] },
+  { id: "three-column", label: "Three concepts", slots: [["text",50,35,900,70,"Three key concepts"],["text",50,145,280,350,"Concept one"],["text",360,145,280,350,"Concept two"],["text",670,145,280,350,"Concept three"]] },
+  { id: "four-column", label: "Four pillars", slots: [["text",40,30,920,70,"Four pillars"],["text",40,140,210,360,"Pillar one"],["text",280,140,210,360,"Pillar two"],["text",520,140,210,360,"Pillar three"],["text",760,140,200,360,"Pillar four"]] },
+  { id: "split-right-image", label: "Explanation left, image right", slots: [["text",50,70,420,100,"Key concept"],["text",50,220,420,260,"Explanation"],["image",520,50,430,460]] },
+  { id: "image-top", label: "Image above text", slots: [["image",50,40,900,280],["text",50,350,900,65,"Image title"],["text",50,440,900,85,"Interpretation"]] },
+  { id: "image-bottom", label: "Text above image", slots: [["text",50,35,900,70,"Lesson title"],["text",50,125,900,100,"Explanation"],["image",50,260,900,270]] },
+  { id: "image-center", label: "Central visual with side notes", slots: [["text",30,40,940,65,"Visual overview"],["text",30,160,230,320,"Left notes"],["image",290,130,420,370],["text",740,160,230,320,"Right notes"]] },
+  { id: "image-pair", label: "Two-image comparison", slots: [["text",50,30,900,65,"Before and after"],["image",50,120,430,320],["image",520,120,430,320],["text",50,460,430,65,"Before"],["text",520,460,430,65,"After"]] },
+  { id: "image-trio", label: "Three-image gallery", slots: [["text",50,30,900,65,"Examples"],["image",50,120,280,300],["image",360,120,280,300],["image",670,120,280,300],["text",50,450,280,65,"Example A"],["text",360,450,280,65,"Example B"],["text",670,450,280,65,"Example C"]] },
+  { id: "image-grid", label: "Four-image gallery", slots: [["image",40,40,440,210],["image",520,40,440,210],["image",40,285,440,210],["image",520,285,440,210],["text",40,510,920,40,"Gallery notes"]] },
+  { id: "image-mosaic", label: "Large image and two details", slots: [["image",40,40,560,470],["image",640,40,320,210],["image",640,285,320,225],["text",40,520,920,35,"Main view and details"]] },
+  { id: "quote", label: "Quote and attribution", slots: [["text",70,60,110,100,"“"],["text",180,110,720,250,"Add a meaningful quotation."],["shape",180,390,180,4],["text",180,420,720,65,"Author and context"]] },
+  { id: "quote-image", label: "Portrait and quotation", slots: [["image",50,80,300,400],["text",400,90,550,280,"Add a quotation."],["text",400,420,550,60,"Author"]] },
+  { id: "definition", label: "Term and definition", slots: [["shape",40,50,320,460],["text",65,180,270,150,"Key term"],["text",410,70,530,100,"Definition"],["text",410,210,530,270,"Explain the term and its practical use."]] },
+  { id: "statistic", label: "Statistic spotlight", slots: [["text",50,100,380,200,"75%"],["text",480,100,470,100,"What this means"],["text",480,240,470,200,"Explain the context and cite the source."],["text",50,485,900,40,"Source"]] },
+  { id: "statistics-three", label: "Three statistics", slots: [["text",40,30,920,60,"Evidence at a glance"],["text",40,140,280,120,"25%"],["text",360,140,280,120,"50%"],["text",680,140,280,120,"75%"],["text",40,300,280,180,"Context one"],["text",360,300,280,180,"Context two"],["text",680,300,280,180,"Context three"]] },
+  { id: "process-three", label: "Three-step process", slots: [["text",40,35,920,60,"Process"],["shape",40,155,280,270],["shape",360,155,280,270],["shape",680,155,280,270],["text",60,175,240,220,"1. Prepare"],["text",380,175,240,220,"2. Perform"],["text",700,175,240,220,"3. Review"]] },
+  { id: "process-stair", label: "Stepped process", slots: [["text",40,25,920,60,"Build step by step"],["text",50,130,260,130,"1. Foundation"],["text",350,240,260,130,"2. Application"],["text",650,350,300,130,"3. Outcome"]] },
+  { id: "process-vertical", label: "Vertical workflow", slots: [["text",40,50,300,100,"Workflow"],["text",390,40,550,120,"1. Prepare"],["text",390,205,550,120,"2. Execute"],["text",390,370,550,120,"3. Reflect"],["shape",350,50,4,440]] },
+  { id: "checklist", label: "Checklist", slots: [["text",60,35,880,70,"Before you begin"],["text",60,140,600,340,"□ Prepare materials\n□ Check requirements\n□ Confirm readiness"],["image",710,150,230,300]] },
+  { id: "dos-donts", label: "Do and avoid", slots: [["text",50,35,900,70,"Good practice"],["shape",50,140,430,360],["shape",520,140,430,360],["text",75,160,380,310,"Do\nExplain recommended actions"],["text",545,160,380,310,"Avoid\nExplain common pitfalls"]] },
+  { id: "problem-solution", label: "Problem and solution", slots: [["text",40,50,420,100,"The problem"],["text",40,190,420,280,"Describe the challenge"],["shape",490,70,4,420],["text",540,50,420,100,"The solution"],["text",540,190,420,280,"Describe the response"]] },
+  { id: "question-answer", label: "Question and explanation", slots: [["text",50,50,900,160,"Ask a thought-provoking question"],["shape",50,240,900,260],["text",75,265,850,210,"Explain the answer"]] },
+  { id: "case-study", label: "Case study brief", slots: [["text",50,30,900,65,"Case study"],["image",50,120,340,350],["text",440,120,510,100,"Situation"],["text",440,255,510,100,"Action"],["text",440,390,510,100,"Result"]] },
+  { id: "scenario-choice", label: "Scenario with two decisions", slots: [["text",50,30,900,65,"What would you do?"],["text",50,135,900,220,"Describe the situation and consequences."],["button",80,420,360,65,"Decision one"],["button",560,420,360,65,"Decision two"]] },
+  { id: "dialogue", label: "Dialogue exchange", slots: [["text",40,30,920,60,"Conversation"],["image",40,135,150,170],["text",220,135,730,130,"Speaker one: add dialogue"],["text",40,335,730,130,"Speaker two: add dialogue"],["image",810,335,150,170]] },
+  { id: "reflection", label: "Reflection prompt", slots: [["text",80,80,840,100,"Pause and reflect"],["text",120,220,760,180,"How will you use this idea in your work?"],["button",370,450,260,55,"Continue"]] },
+  { id: "objectives", label: "Learning objectives", slots: [["text",50,35,900,70,"By the end of this lesson"],["text",50,145,580,360,"1. Explain the concept\n2. Apply the skill\n3. Evaluate the outcome"],["shape",690,145,260,360],["text",715,175,210,280,"Your learning goal"]] },
+  { id: "summary", label: "Summary and next action", slots: [["text",60,40,880,70,"Key takeaways"],["text",60,145,880,260,"Summarize the three most important ideas."],["button",350,450,300,60,"Apply your learning"]] },
+  { id: "resources", label: "Resources and reading", slots: [["text",50,30,900,70,"Continue learning"],["text",50,145,580,320,"Add source titles, citations, and recommended reading."],["button",680,145,270,60,"Open resource"],["button",680,260,270,60,"Open reference"],["button",680,375,270,60,"Next lesson"]] },
+  { id: "video-focus", label: "Video lesson", slots: [["text",50,25,900,65,"Watch and learn"],["video",80,115,840,365],["text",80,495,840,45,"Watch for the key steps."]] },
+  { id: "video-notes", label: "Video with notes", slots: [["text",40,25,920,65,"Demonstration"],["video",40,130,580,360],["text",665,130,295,360,"Observation notes"]] },
+  { id: "video-bottom-notes", label: "Video above discussion", slots: [["video",60,30,880,340],["text",60,405,400,110,"What did you notice?"],["text",540,405,400,110,"How can you apply it?"]] },
+  { id: "audio-lesson", label: "Audio with transcript", slots: [["text",50,35,900,65,"Listen and learn"],["audio",50,140,900,70],["text",50,245,900,260,"Add the transcript or listening notes."]] },
+  { id: "audio-image", label: "Audio and visual", slots: [["image",50,40,440,400],["text",540,40,410,85,"Listen to the explanation"],["text",540,170,410,260,"Listening guide"],["audio",50,465,900,60]] },
+  { id: "comparison-table", label: "Three-way comparison", slots: [["text",40,30,920,65,"Compare approaches"],["text",40,145,210,340,"Criteria\nCost\nTime\nOutcome"],["text",290,145,210,340,"Approach A"],["text",540,145,210,340,"Approach B"],["text",790,145,170,340,"Approach C"]] },
+  { id: "priority-grid", label: "Priority quadrants", slots: [["text",40,20,920,60,"Prioritize your actions"],["text",60,115,410,160,"Important / urgent"],["text",530,115,410,160,"Important / not urgent"],["text",60,325,410,160,"Not important / urgent"],["text",530,325,410,160,"Not important / not urgent"]] },
+  { id: "pyramid", label: "Three-level hierarchy", slots: [["text",50,25,900,65,"Build a strong foundation"],["text",350,130,300,80,"Top-level goal"],["text",220,255,560,90,"Supporting capabilities"],["text",90,400,820,95,"Foundational knowledge and practice"]] },
+  { id: "hub-spoke", label: "Central concept and four facets", slots: [["text",350,215,300,120,"Core concept"],["text",60,65,280,125,"Facet one"],["text",660,65,280,125,"Facet two"],["text",60,375,280,125,"Facet three"],["text",660,375,280,125,"Facet four"]] },
+  { id: "timeline-four", label: "Four milestone overview", slots: [["text",40,25,920,65,"Milestones"],["shape",40,225,920,4],["text",40,135,210,70,"Milestone one"],["text",280,255,210,150,"Milestone two"],["text",520,135,210,70,"Milestone three"],["text",760,255,200,150,"Milestone four"]] },
+  { id: "metric-dashboard", label: "Metric and two insights", slots: [["text",40,30,920,60,"Performance overview"],["text",40,135,440,330,"Primary metric\nAdd the value and context"],["text",540,135,420,140,"Insight one"],["text",540,325,420,140,"Insight two"]] },
+  { id: "team-roles", label: "Roles and responsibilities", slots: [["text",40,30,920,65,"Who does what?"],["image",40,135,200,200],["image",280,135,200,200],["image",520,135,200,200],["image",760,135,200,200],["text",40,365,200,120,"Role one"],["text",280,365,200,120,"Role two"],["text",520,365,200,120,"Role three"],["text",760,365,200,120,"Role four"]] },
+  { id: "closing", label: "Closing with next steps", slots: [["text",100,90,800,100,"You are ready for the next step"],["text",150,245,700,140,"Choose one action you will take today."],["button",350,455,300,60,"Finish course"]] },
+];
+export function seedCreatorLayout(id: string): CreatorDocument {
+  const recipe = CREATOR_LAYOUTS.find(r => r.id === id); if (!recipe) throw new Error("Unknown layout recipe");
+  return { version: 1, blocks: recipe.slots.map(([type,x,y,width,height,content], i) => ({ id: `recipe-${id}-${i}`, type, x,y,width,height, ...(content ? { content } : {}), ...(type === "image" || type === "video" || type === "audio" ? { src: "", alt: "" } : {}), style: type === "shape" ? { backgroundColor: "#12324a", borderRadius: 12 } : { color: "#ffffff", fontSize: type === "text" && i === 0 ? 38 : 22, fontWeight: i === 0 ? "bold" : "normal", ...(type === "button" ? { backgroundColor: "#0f766e", borderRadius: 8 } : {}) }, ...(type === "button" ? { action: { kind: id === "closing" ? "finish" as const : "next" as const } } : {}) })) };
+}
+export type CreatorTemplateId = "blank" | "training" | "quiz" | "scenario" | "microlearn" | "onboarding";
+export function seedCreatorTemplate(id: CreatorTemplateId) {
+  const ids: Record<CreatorTemplateId,string[]> = { blank: ["title"], training: ["title","objectives","image-text","reflection","summary"], quiz: ["title","title-content","closing"], scenario: ["title","scenario-choice","problem-solution","summary","closing"], microlearn: ["definition","video-notes","summary"], onboarding: ["title","agenda","team-roles","checklist","closing"] };
+  return ids[id].map((layout, i) => {
+    const document = seedCreatorLayout(layout);
+    if (id === "quiz" && i === 1) document.blocks = [{ id: "template-question", type: "assessment", x: 50, y: 50, width: 900, height: 450, assessment: createCreatorAssessment("multiple_choice"), style: { fontSize: 22 } }];
+    return { title: CREATOR_LAYOUTS.find(r => r.id === layout)!.label, layout, slideType: id === "quiz" && i === 1 ? "quiz" as const : id === "scenario" && i === 1 ? "scenario" as const : "content" as const, background: "#0f172a", contentJson: JSON.stringify(document), notes: id === "microlearn" ? "Designed as a three-minute micro-lesson; adjust the content and media duration for your audience." : "" };
+  });
+}

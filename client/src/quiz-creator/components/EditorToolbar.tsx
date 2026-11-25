@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScormImportDialog } from "./ScormImportDialog";
+import { useQuizCurrentCloudSave } from "../lib/useQuizCurrentCloudSave";
 import type { QuizFile } from "../types/quiz";
 
 interface Props {
@@ -34,7 +35,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const { user } = useAuth();
   const { orgId } = useOrgScope();
-  const saveToCloud = trpc.quizMaker.saveQuiz.useMutation();
+  const { saveCurrent } = useQuizCurrentCloudSave();
   const { data: questionBanks = [] } = trpc.quizBank.listBanks.useQuery(
     { orgId: Number(orgId) },
     { enabled: questionBankDialogOpen && Boolean(orgId) }
@@ -54,16 +55,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
     setCloudSaving(true);
     setFileMenuOpen(false);
     try {
-      const result = await saveToCloud.mutateAsync({
-        title: quiz.meta.title,
-        description: quiz.meta.description || "",
-        questionsJson: JSON.stringify(quiz.questions),
-        settingsJson: JSON.stringify(quiz.meta),
-        quizId: (quiz.meta as any).cloudId || undefined,
-      });
-      useQuizStore.getState().updateMeta({ cloudId: result.id } as any);
-      utils.quizMaker.listQuizzes.invalidate();
-      markSaved(quiz.meta.title + " (cloud)");
+      await saveCurrent();
     } catch (err) {
       alert("Cloud save failed: " + (err as Error).message);
     } finally {
@@ -75,7 +67,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
     setSaving(true);
     try {
       const filename = await downloadQuiz(quiz, license.licenseKey);
-      markSaved(filename);
+      if (JSON.stringify(useQuizStore.getState().quiz) === JSON.stringify(quiz)) markSaved(filename);
     } catch (e) {
       alert("Failed to save: " + (e as Error).message);
     } finally {
@@ -84,6 +76,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   };
 
   const handleOpen = () => {
+    if (useQuizStore.getState().isDirty && !confirm("Open another file? Current edits remain in local recovery.")) return;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".quiz";
@@ -102,6 +95,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
   };
 
   const handleOpenImportDialog = () => {
+    if (useQuizStore.getState().isDirty && !confirm("Import another quiz? Current edits remain in local recovery.")) return;
     setFileMenuOpen(false);
     setImportDialogOpen(true);
   };
@@ -127,8 +121,9 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
     const quizId = (quiz.meta as any).cloudId as number | undefined;
     if (!quizId || !targetBankId || selectedQuestionIds.length === 0) return;
     try {
+      const currentQuizId = await saveCurrent();
       const result = await exportToQuestionBank.mutateAsync({
-        quizId,
+        quizId: currentQuizId,
         targetBankId: Number(targetBankId),
         folderId: targetFolderId ? Number(targetFolderId) : undefined,
         questionIds: selectedQuestionIds,
@@ -195,7 +190,7 @@ export function EditorToolbar({ onPreview, onSettings, onLicense, onCloudOpen, o
             {fileMenuOpen && (
               <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-20 w-52">
                 <button
-                  onClick={() => { newQuiz(); setFileMenuOpen(false); }}
+                  onClick={() => { if (!useQuizStore.getState().isDirty || confirm("Start a new quiz? Current edits remain in local recovery.")) newQuiz(); setFileMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 text-sm text-gray-700"
                 >
                   <Plus className="w-4 h-4 text-gray-400" /> New Quiz

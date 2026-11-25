@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Course360AppAccessNotice } from "@/components/Course360AppAccessNotice";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { ProductSwitcher } from "@/components/ProductSwitcher";
@@ -21,6 +22,9 @@ import { getCourse360MediaLibraryHref } from "@/lib/course360MediaLibrary";
 const TIER_STYLES: Record<string, string> = {
   none: "bg-gray-500/20 text-gray-400 border-gray-500/30",
   creator: "bg-[#24abbc]/20 text-[#4ad9e0] border-[#24abbc]/30",
+  web: "bg-[#24abbc]/20 text-[#4ad9e0] border-[#24abbc]/30",
+  desktop: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
+  bundle: "bg-blue-500/20 text-blue-300 border-blue-500/30",
   pro: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
   team: "bg-blue-500/20 text-blue-300 border-blue-500/30",
 };
@@ -28,6 +32,9 @@ const TIER_STYLES: Record<string, string> = {
 const TIER_LABELS: Record<string, string> = {
   none: "Free",
   creator: "Creator",
+  web: "Web",
+  desktop: "Desktop",
+  bundle: "Web + Desktop",
   pro: "Pro",
   team: "Team",
 };
@@ -84,9 +91,10 @@ export default function StudioDashboard() {
   const [, navigate] = useLocation();
   const [activePage, setActivePage] = useState<"dashboard" | "record">("dashboard");
 
-  const { data: studioSub, isLoading: subLoading } = trpc.billing.getStudioSubscription.useQuery(undefined, {
-    enabled: !!user,
+  const { data: studioSub, isLoading: subLoading, error: subError, refetch: refetchAccess } = trpc.billing.getStudioSubscription.useQuery(undefined, {
+    enabled: !!user, retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true,
   });
+  useEffect(() => { if (!authLoading && !user) window.location.assign(getLoginUrl(window.location.pathname + window.location.search)); }, [authLoading, user]);
 
   // Courses are accessed via the LMS builder which has org context
   const coursesLoading = false;
@@ -97,10 +105,7 @@ export default function StudioDashboard() {
   });
 
   // ── Auth guard ──────────────────────────────────────────────────────────
-  if (!authLoading && !user) {
-    window.location.href = getLoginUrl();
-    return null;
-  }
+  if (!authLoading && !user) return null;
 
   if (authLoading || (user && subLoading)) {
     return (
@@ -113,12 +118,13 @@ export default function StudioDashboard() {
     );
   }
 
-  // Site owners and admins always have full access — no subscription required
-  const isPrivileged = (user as any)?.role === "site_owner" || (user as any)?.role === "site_admin";
-  const tier = isPrivileged ? "pro" : (studioSub?.tier ?? "none");
+  // Only the server's persisted-role, selected-school, audited support decision authorizes.
+  const isPrivileged = studioSub?.platformSupport ?? false;
+  const tier = studioSub?.tier ?? "none";
+  if (subError) return <div className="min-h-screen bg-[#0a0f1e] text-white p-6"><Course360AppAccessNotice app="studio" message={subError.message} retry={() => { void refetchAccess(); }} /></div>;
 
   // ── No active subscription ──────────────────────────────────────────────
-  if (!isPrivileged && !studioSub?.isActive) {
+  if (!studioSub?.isActive) {
     return (
       <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-6">
         <div className="max-w-lg w-full text-center">
@@ -132,6 +138,7 @@ export default function StudioDashboard() {
             <Zap className="w-9 h-9 text-[#24abbc]" />
           </div>
           <h1 className="text-2xl font-bold text-white mb-3">Activate Your Studio</h1>
+          <Course360AppAccessNotice app="studio" message={studioSub?.reason} retry={() => { void refetchAccess(); }} />
           <p className="text-white/50 mb-8 leading-relaxed">
             You need an active Course360 Studio subscription to access the course authoring tools.
             Choose a paid Studio plan to continue.
@@ -157,7 +164,7 @@ export default function StudioDashboard() {
   }
 
   // ── Full dashboard ──────────────────────────────────────────────────────
-  const showStudioWatermarkBanner = !isPrivileged && studioSub && !studioSub.isPaid;
+  const showStudioWatermarkBanner = !isPrivileged && studioSub && !studioSub.isPaid && !studioSub.hasManualGrant;
   const studioTrialDaysLeft = studioSub?.trialEndsAt
     ? Math.max(0, Math.ceil((new Date(studioSub.trialEndsAt).getTime() - Date.now()) / 86400000))
     : null;
@@ -268,6 +275,7 @@ export default function StudioDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <ProductSwitcher current="studio" variant="topbar" />
+            <a href="/studio/billing" className="text-sm text-teal-300 underline">App billing</a>
             <Button
               size="sm"
               variant="outline"

@@ -25,6 +25,7 @@ import { authenticateRequest } from "./authHelper";
 import { ENV } from "./_core/env";
 import { mediaAssets, mediaFolders, mediaVersions } from "../drizzle/schema";
 import { initialScormExtractionStatus, queueScormExtractionIfNeeded } from "./lib/scormPackage";
+import { requireActiveMediaOrganization } from "./formsRouter";
 
 const LARGE_FILE_LIMIT = 3 * 1024 * 1024 * 1024; // 3 GB
 
@@ -489,13 +490,11 @@ router.post("/media/initiate", express.json(), async (req: Request, res: Respons
   }
   const user = await authenticateRequest(req);
   if (!user) return res.status(401).json({ error: "Unauthorized" });
-  const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
-  const requestedOrgId = orgId ? parseInt(String(orgId), 10) : activeOrgId;
-  if (!activeOrgId || !requestedOrgId || requestedOrgId !== activeOrgId) {
-    return res.status(403).json({ error: "Switch to the requested organization before uploading media" });
-  }
+  let activeOrgId: number;
+  const requestedOrgId = orgId === undefined || orgId === null || orgId === "" ? undefined : Number(orgId);
+  if (requestedOrgId !== undefined && (!Number.isInteger(requestedOrgId) || requestedOrgId <= 0)) return res.status(400).json({ error: "orgId must be a positive integer" });
   try {
-    await requireOrgAdmin(user.id, user.role, activeOrgId);
+    activeOrgId = await requireActiveMediaOrganization(user.id, requestedOrgId);
   } catch {
     return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
   }
@@ -578,13 +577,8 @@ router.post(
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
     }
-    const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
-    if (activeOrgId !== session.orgId) {
-      if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
-      return res.status(403).json({ error: "Upload session no longer matches the active organization" });
-    }
     try {
-      await requireOrgAdmin(user.id, user.role, session.orgId);
+      await requireActiveMediaOrganization(user.id, session.orgId);
     } catch {
       if (tmpPath && existsSync(tmpPath)) unlinkSync(tmpPath);
       return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
@@ -618,10 +612,8 @@ router.post(
     const user = await authenticateRequest(req);
     if (!user) return res.status(401).json({ error: "Unauthorized" });
     if (user.id !== session.authUserId) return res.status(403).json({ error: "Upload session does not belong to the authenticated user" });
-    const activeOrgId = await getOrgIdForUserWithFallback(user.id, user.role);
-    if (activeOrgId !== session.orgId) return res.status(403).json({ error: "Upload session no longer matches the active organization" });
     try {
-      await requireOrgAdmin(user.id, user.role, session.orgId);
+      await requireActiveMediaOrganization(user.id, session.orgId);
     } catch {
       return res.status(403).json({ error: "You are not authorized to upload media for this organization" });
     }

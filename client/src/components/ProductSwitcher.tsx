@@ -3,7 +3,7 @@
  * Shows links to other Teachific products the current user is subscribed to.
  * Renders nothing if the user has no cross-product subscriptions.
  */
-import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { trpc } from "@/lib/trpc";
 import { LayoutDashboard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,6 +22,7 @@ type ProductSwitcherProps = {
 };
 
 const PRODUCTS = [
+  { key: "creator" as const, label: "Course360 Creator™", shortLabel: "Creator", href: "/creator", external: false, iconUrl: PRODUCT_ICON_URLS.creator, color: "text-[#24abbc]", bg: "bg-[#24abbc]/10 hover:bg-[#24abbc]/20", border: "border-[#24abbc]/30" },
   {
     key: "lms" as const,
     label: "Teachific LMS",
@@ -59,14 +60,15 @@ const PRODUCTS = [
 ];
 
 export function ProductSwitcher({ current, variant = "topbar" }: ProductSwitcherProps) {
-  const { subs, isLoading } = useSubscriptions();
+  const { data: subs, isLoading, error } = trpc.billing.getAllSubscriptions.useQuery(undefined, { retry: false, refetchInterval: 30_000, refetchOnWindowFocus: true });
 
-  if (isLoading || !subs) return null;
+  if (isLoading || error || !subs) return null;
 
   const subscriptionMap: Record<string, boolean> = {
     lms: subs.lms.isActive,
-    studio: subs.studio.isActive || subs.creator.isActive,
-    quizCreator: subs.quizCreator.isActive,
+    studio: subs.studio.isActive && ["web", "bundle"].includes(subs.studio.tier),
+    creator: subs.creator.isActive && ["web", "bundle"].includes(subs.creator.tier),
+    quizCreator: subs.quizCreator.isActive && ["web", "bundle"].includes(subs.quizCreator.tier),
   };
 
   const available = PRODUCTS.filter(

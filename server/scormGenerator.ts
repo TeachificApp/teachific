@@ -1,5 +1,6 @@
 import archiver from "archiver";
 import { PassThrough } from "stream";
+import { generateNativeQuizHtml, scriptJson } from "./lib/quizNativeScormRuntime";
 
 interface ScormOptions {
   title: string;
@@ -9,6 +10,8 @@ interface ScormOptions {
   timeLimit: number | null;
   shuffleQuestions: boolean;
   format: "scorm12" | "scorm2004";
+  nativeConfig?: any;
+  watermark?: string;
 }
 
 export async function generateScormPackage(options: ScormOptions): Promise<Buffer> {
@@ -28,13 +31,14 @@ export async function generateScormPackage(options: ScormOptions): Promise<Buffe
 
     // Add manifest
     if (format === "scorm12") {
-      archive.append(generateScorm12Manifest(title, description), { name: "imsmanifest.xml" });
+      archive.append(generateScorm12Manifest(title, description, passingScore), { name: "imsmanifest.xml" });
     } else {
-      archive.append(generateScorm2004Manifest(title, description), { name: "imsmanifest.xml" });
+      archive.append(generateScorm2004Manifest(title, description, passingScore), { name: "imsmanifest.xml" });
     }
 
     // Add the quiz player HTML
-    archive.append(generateQuizHtml(title, questions, passingScore, timeLimit, shuffleQuestions, format), {
+    const native = options.nativeConfig || (questions.some(q => q.data && ["mcq", "tf", "matching", "hotspot", "image_choice", "fill_blank", "short_answer"].includes(q.type)) ? { meta: { id: title, title, description, passingScore, timeLimit: timeLimit == null ? null : timeLimit / 60, shuffleQuestions, showFeedback: "deferred" }, questions } : null);
+    archive.append(native ? generateNativeQuizHtml(native, format, options.watermark) : generateQuizHtml(title, questions, passingScore, timeLimit, shuffleQuestions, format), {
       name: "index.html",
     });
 
@@ -48,7 +52,7 @@ export async function generateScormPackage(options: ScormOptions): Promise<Buffe
   });
 }
 
-function generateScorm12Manifest(title: string, description: string): string {
+function generateScorm12Manifest(title: string, description: string, passingScore: number): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <manifest identifier="quiz_${Date.now()}" version="1.0"
   xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
@@ -65,7 +69,7 @@ function generateScorm12Manifest(title: string, description: string): string {
       <title>${escapeXml(title)}</title>
       <item identifier="item1" identifierref="res1">
         <title>${escapeXml(title)}</title>
-        <adlcp:masteryscore>${Math.round(passingScoreToDecimal(70) * 100)}</adlcp:masteryscore>
+        <adlcp:masteryscore>${passingScore}</adlcp:masteryscore>
       </item>
     </organization>
   </organizations>
@@ -79,7 +83,7 @@ function generateScorm12Manifest(title: string, description: string): string {
 </manifest>`;
 }
 
-function generateScorm2004Manifest(title: string, description: string): string {
+function generateScorm2004Manifest(title: string, description: string, passingScore: number): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <manifest identifier="quiz_${Date.now()}" version="1.0"
   xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
@@ -103,6 +107,7 @@ function generateScorm2004Manifest(title: string, description: string): string {
       <item identifier="item1" identifierref="res1">
         <title>${escapeXml(title)}</title>
         <imsss:sequencing>
+          <imsss:objectives><imsss:primaryObjective objectiveID="quiz_mastery" satisfiedByMeasure="true"><imsss:minNormalizedMeasure>${passingScore / 100}</imsss:minNormalizedMeasure></imsss:primaryObjective></imsss:objectives>
           <imsss:deliveryControls completionSetByContent="true" objectiveSetByContent="true"/>
         </imsss:sequencing>
       </item>
@@ -126,7 +131,7 @@ function generateQuizHtml(
   shuffleQuestions: boolean,
   format: "scorm12" | "scorm2004"
 ): string {
-  const questionsJson = JSON.stringify(questions);
+  const questionsJson = scriptJson(questions);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -176,6 +181,7 @@ function generateQuizHtml(
     var TIME_LIMIT = ${timeLimit || "null"};
     var SHUFFLE = ${shuffleQuestions};
     var FORMAT = "${format}";
+    function escapeText(value) { return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
     var currentIdx = 0;
     var answers = {};
     var startTime = null;
@@ -218,7 +224,7 @@ function generateQuizHtml(
       var q = QUIZ_DATA[currentIdx];
       var container = document.getElementById("question-container");
       var html = '<div class="question"><h3>Question ' + (currentIdx + 1) + ' of ' + QUIZ_DATA.length + '</h3>';
-      html += '<p class="question-text">' + (q.stem || q.questionText || "") + '</p>';
+      html += '<p class="question-text">' + escapeText(q.stem || q.questionText || "") + '</p>';
 
       if (q.type === "multiple_choice" || q.type === "true_false" || q.type === "multiple_select") {
         var options = q.options || q.choices || [];
@@ -228,18 +234,18 @@ function generateQuizHtml(
         for (var i = 0; i < options.length; i++) {
           var opt = options[i];
           var optText = opt.text || opt.choiceText || opt.label || "";
-          var optId = opt.id || i;
+          var optId = escapeText(opt.id == null ? i : opt.id);
           var checked = "";
           if (answers[currentIdx]) {
             if (isMulti && answers[currentIdx].indexOf(optId) >= 0) checked = "checked";
             else if (!isMulti && answers[currentIdx] === optId) checked = "checked";
           }
-          html += '<label class="option"><input type="' + inputType + '" name="q' + currentIdx + '" value="' + optId + '" ' + checked + ' onchange="saveAnswer(this)"> ' + optText + '</label>';
+          html += '<label class="option"><input type="' + inputType + '" name="q' + currentIdx + '" value="' + optId + '" ' + checked + ' onchange="saveAnswer(this)"> ' + escapeText(optText) + '</label>';
         }
         html += '</div>';
       } else if (q.type === "short_answer" || q.type === "long_answer" || q.type === "fill_blank") {
         var val = answers[currentIdx] || "";
-        html += '<textarea class="text-answer" onchange="saveTextAnswer(this)" placeholder="Type your answer...">' + val + '</textarea>';
+        html += '<textarea class="text-answer" onchange="saveTextAnswer(this)" placeholder="Type your answer...">' + escapeText(val) + '</textarea>';
       } else if (q.type === "numeric") {
         var nval = answers[currentIdx] || "";
         html += '<input type="number" class="numeric-answer" value="' + nval + '" onchange="saveNumericAnswer(this)" placeholder="Enter a number">';
@@ -277,7 +283,7 @@ function generateQuizHtml(
       var earned = 0, total = 0;
       for (var i = 0; i < QUIZ_DATA.length; i++) {
         var q = QUIZ_DATA[i];
-        var pts = q.points || 1;
+        var pts = Number.isFinite(q.points) && q.points >= 0 ? q.points : 1;
         total += pts;
         var ans = answers[i];
         if (!ans) continue;
@@ -310,7 +316,7 @@ function generateQuizHtml(
         }
         // short_answer and long_answer are not auto-graded
       }
-      return { earned: earned, total: total, pct: total > 0 ? Math.round((earned / total) * 100) : 0 };
+      return { earned: earned, total: total, pct: total > 0 ? Math.round((earned / total) * 10000) / 100 : 0 };
     }
 
     function submitQuiz() {
@@ -461,6 +467,7 @@ var ScormAPI = (function() {
 
 function generateStyles(): string {
   return `* { margin: 0; padding: 0; box-sizing: border-box; }
+label { display:block; margin:0.75rem 0; } input,select,textarea { margin:0.25rem; max-width:100%; } #watermark { text-align:right; opacity:.65; } button { padding:.6rem; cursor:pointer; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
 #quiz-app { max-width: 700px; width: 100%; margin: 2rem; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 2.5rem; }
 .screen { display: none; }
@@ -469,13 +476,13 @@ h1 { font-size: 1.75rem; margin-bottom: 1rem; color: #1a1a2e; }
 h3 { font-size: 1.1rem; color: #666; margin-bottom: 0.5rem; }
 .quiz-info { margin: 1.5rem 0; padding: 1rem; background: #f0f9f9; border-radius: 8px; }
 .quiz-info p { margin: 0.5rem 0; }
-.btn-primary { background: #189aa1; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+.btn-primary { background: var(--quiz-primary, #189aa1); color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
 .btn-primary:hover { background: #147a80; }
 .btn-secondary { background: #e2e8f0; color: #4a5568; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-size: 1rem; cursor: pointer; }
 .btn-secondary:hover { background: #cbd5e0; }
 .quiz-header { margin-bottom: 1.5rem; }
 .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 0.75rem; }
-.progress-fill { height: 100%; background: #189aa1; border-radius: 3px; transition: width 0.3s; }
+.progress-fill { height: 100%; background: var(--quiz-primary, #189aa1); border-radius: 3px; transition: width 0.3s; }
 .timer { float: right; font-weight: 600; color: #e53e3e; }
 .question-text { font-size: 1.2rem; margin: 1rem 0 1.5rem; line-height: 1.5; }
 .options { display: flex; flex-direction: column; gap: 0.75rem; }

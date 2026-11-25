@@ -19,52 +19,13 @@ import {
   FlashcardPlayer,
 } from "@/components/InteractiveQuizQuestions";
 
+import { gradeQuizQuestion, scoreNativeQuizAttempt, hitTestQuizHotspot } from "../../../shared/quizScoring";
+
 type Answer = string | boolean | string[] | Record<string, string>;
 
 // ─── Branching Logic Helper ─────────────────────────────────────────────────
 
-function isAnswerCorrect(q: QuizQuestion, ans: Answer | undefined): boolean {
-  if (!ans) return false;
-  if (q.type === "mcq" || q.type === "image_choice") {
-    const data = q.data as McqData;
-    const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
-    const selected = (ans as string[]) ?? [];
-    return JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
-  } else if (q.type === "tf") {
-    return ans === (q.data as TfData).correct;
-  } else if (q.type === "matching") {
-    const data = q.data as MatchingData;
-    const a = (ans as Record<string, string>) ?? {};
-    return data.pairs.every((p) => a[p.id] === p.id);
-  } else if (q.type === "ordering") {
-    const data = q.data as OrderingData;
-    const a = (ans as string[]) ?? [];
-    return a.length === data.items.length && a.every((id, i) => id === data.items[i].id);
-  } else if (q.type === "numeric") {
-    const data = q.data as NumericData;
-    const a = Number(ans);
-    if (data.allowRange && data.rangeMin != null && data.rangeMax != null) return a >= data.rangeMin && a <= data.rangeMax;
-    return Math.abs(a - data.correctValue) <= data.tolerance;
-  } else if (q.type === "dropdown") {
-    const data = q.data as DropdownData;
-    const a = (ans as Record<string, string>) ?? {};
-    return data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
-  } else if (q.type === "drag_words") {
-    const data = q.data as DragWordsData;
-    const a = (ans as Record<string, string>) ?? {};
-    return data.blanks.every((b) => a[b.id] === b.correctWord);
-  } else if (q.type === "fill_blank") {
-    const data = q.data as FillBlankData;
-    const a = (ans as Record<string, string>) ?? {};
-    return data.blanks.every((b) => {
-      const userAns = (a[b.id] ?? "").trim();
-      return b.acceptedAnswers.some((accepted) => b.caseSensitive ? userAns === accepted : userAns.toLowerCase() === accepted.toLowerCase());
-    });
-  } else if (q.type === "image_labeling") {
-    return gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans);
-  }
-  return false;
-}
+function isAnswerCorrect(q: QuizQuestion, ans: Answer | undefined): boolean { return gradeQuizQuestion(q, ans).correct; }
 
 function evaluateBranchRules(
   rules: BranchRule[] | undefined,
@@ -185,8 +146,8 @@ function MatchingQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuest
             style={{ "--tw-ring-color": `${primaryColor}50` } as any}
           >
             <option value="">Select...</option>
-            {data.pairs.map((p) => (
-              <option key={p.id} value={p.id}>{p.response}</option>
+            {((data as any).responses || data.pairs.map(p => ({ id: p.id, text: p.response }))).map((p: any) => (
+              <option key={p.id} value={p.id}>{p.text}</option>
             ))}
           </select>
         </div>
@@ -204,17 +165,7 @@ function HotspotQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQuesti
     const xPct = ((e.clientX - rect.left) / rect.width) * 100;
     const yPct = ((e.clientY - rect.top) / rect.height) * 100;
 
-    const hit = data.regions.find((r) => {
-      if (r.shape === "circle" && r.radius != null) {
-        const dx = xPct - r.x, dy = yPct - r.y;
-        return Math.sqrt(dx * dx + dy * dy) <= r.radius;
-      }
-      if (r.shape === "rect" && r.width != null && r.height != null) {
-        return Math.abs(xPct - r.x) <= r.width / 2 && Math.abs(yPct - r.y) <= r.height / 2;
-      }
-      return false;
-    });
-
+    const hit = data.regions.find(r => hitTestQuizHotspot(r, { x: xPct, y: yPct }));
     if (!hit) return;
     if (data.multiSelect) {
       setAnswer(selected.includes(hit.id) ? selected.filter((s) => s !== hit.id) : [...selected, hit.id]);
@@ -412,8 +363,8 @@ function DragWordsQuestion({ q, answer, setAnswer, primaryColor }: { q: QuizQues
   return (
     <DndDragWords
       template={data.template}
-      blanks={data.blanks}
-      distractorWords={data.distractorWords}
+      blanks={data.blanks.map(b => ({ ...b, correctWord: b.correctWord || "" }))}
+      distractorWords={(data as any).wordOptions || data.distractorWords}
       selections={selections}
       onSelectionChange={setAnswer}
       primaryColor={primaryColor}
@@ -482,62 +433,7 @@ function EssayQuestion({ answer, setAnswer, primaryColor, data }: { answer: Answ
 
 // ─── Scoring ─────────────────────────────────────────────────────────────────
 
-function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): number {
-  let earned = 0;
-  questions.forEach((q) => {
-    const ans = answers[q.id];
-    if (q.type === "mcq" || q.type === "image_choice") {
-      const data = q.data as McqData;
-      const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
-      const selected = (ans as string[]) ?? [];
-      if (JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort())) earned += q.points;
-    } else if (q.type === "tf") {
-      const data = q.data as TfData;
-      if (ans === data.correct) earned += q.points;
-    } else if (q.type === "matching") {
-      const data = q.data as MatchingData;
-      const a = (ans as Record<string, string>) ?? {};
-      const allCorrect = data.pairs.every((p) => a[p.id] === p.id);
-      if (allCorrect) earned += q.points;
-    } else if (q.type === "fill_blank") {
-      const data = q.data as FillBlankData;
-      const a = (ans as Record<string, string>) ?? {};
-      const allCorrect = data.blanks.every((b) => {
-        const userAns = (a[b.id] ?? "").trim();
-        return b.acceptedAnswers.some((accepted) =>
-          b.caseSensitive ? userAns === accepted : userAns.toLowerCase() === accepted.toLowerCase()
-        );
-      });
-      if (allCorrect) earned += q.points;
-    } else if (q.type === "ordering") {
-      const data = q.data as OrderingData;
-      const a = (ans as string[]) ?? [];
-      if (a.length === data.items.length && a.every((id, i) => id === data.items[i].id)) earned += q.points;
-    } else if (q.type === "numeric") {
-      const data = q.data as NumericData;
-      const a = Number(ans);
-      if (data.allowRange && data.rangeMin != null && data.rangeMax != null) {
-        if (a >= data.rangeMin && a <= data.rangeMax) earned += q.points;
-      } else {
-        if (Math.abs(a - data.correctValue) <= data.tolerance) earned += q.points;
-      }
-    } else if (q.type === "dropdown") {
-      const data = q.data as DropdownData;
-      const a = (ans as Record<string, string>) ?? {};
-      const allCorrect = data.blanks.every((b) => Number(a[b.id]) === b.correctIndex);
-      if (allCorrect) earned += q.points;
-    } else if (q.type === "drag_words") {
-      const data = q.data as DragWordsData;
-      const a = (ans as Record<string, string>) ?? {};
-      const allCorrect = data.blanks.every((b) => a[b.id] === b.correctWord);
-      if (allCorrect) earned += q.points;
-    } else if (q.type === "image_labeling") {
-      if (gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans)) earned += q.points;
-    }
-    // likert and essay are not auto-graded
-  });
-  return earned;
-}
+function calcScore(questions: QuizQuestion[], answers: Record<string, Answer>): number { return scoreNativeQuizAttempt(questions, answers).earnedPoints; }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
@@ -585,8 +481,17 @@ export default function PublicQuizPlayerPage() {
     totalPoints: number;
     scorePercent: number;
     passed: boolean;
+    gradingStatus?: string;
+    feedback?: Record<string, any>;
   } | null>(null);
   const startTimeRef = useRef<number>(0);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const expireRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!started || submitted || !quiz?.timeLimit) return;
+    const tick = () => { const remaining = Math.max(0, Math.ceil((startTimeRef.current + quiz.timeLimit * 1000 - Date.now()) / 1000)); setRemainingSeconds(remaining); if (!remaining && !submitAttemptMutation.isPending) expireRef.current(); };
+    const interval = setInterval(tick, 1000); tick(); return () => clearInterval(interval);
+  }, [started, submitted, quiz?.timeLimit, submitAttemptMutation.isPending]);
 
   // Branching state: tracks the path of question IDs visited
   const [questionPath, setQuestionPath] = useState<string[]>([]);
@@ -674,6 +579,8 @@ export default function PublicQuizPlayerPage() {
       };
     }
   }, [fontFamily]);
+
+  expireRef.current = () => { if (submitted || submitAttemptMutation.isPending) return; if (isStaffPreview) { setSubmitted(true); return; } submitAttemptMutation.mutate({ ...(isWidget ? { widgetToken } : { shareToken: shareToken || "" }), takerEmail: takerEmail || undefined, timeTakenSeconds: Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000)), answersJson: JSON.stringify(answers) }, { onSuccess: result => { setAuthoritativeAttemptResult(result); setSubmitted(true); }, onError: err => setAttemptSubmissionError(err.message) }); };
 
   if (isLoading) {
     return (
@@ -793,11 +700,12 @@ export default function PublicQuizPlayerPage() {
   // ─── Results Screen ────────────────────────────────────────────────────────
   if (submitted) {
     const localScore = calcScore(visibleQuestions, answers);
-    const localPct = totalPoints > 0 ? Math.round((localScore / totalPoints) * 100) : 0;
+    const localPct = totalPoints > 0 ? Math.round((localScore / totalPoints) * 10000) / 100 : 0;
     const score = authoritativeAttemptResult?.earnedPoints ?? localScore;
     const displayedTotalPoints = authoritativeAttemptResult?.totalPoints ?? totalPoints;
     const pct = authoritativeAttemptResult?.scorePercent ?? localPct;
-    const passed = authoritativeAttemptResult?.passed ?? localPct >= (quiz.passingScore ?? 70);
+    const pendingManual = authoritativeAttemptResult?.gradingStatus === "pending_manual" || isStaffPreview && scoreNativeQuizAttempt(visibleQuestions, answers).pendingManual;
+    const passed = !pendingManual && (authoritativeAttemptResult?.passed ?? (totalPoints > 0 && localScore / totalPoints * 100 >= (quiz.passingScore ?? 70)));
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: bgGradient }}>
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
@@ -808,7 +716,7 @@ export default function PublicQuizPlayerPage() {
             {passed ? <CheckCircle2 className="w-10 h-10" style={{ color: primaryColor }} /> : <XCircle className="w-10 h-10 text-red-500" />}
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-1">
-            {completionMessage ? completionMessage : (passed ? "Quiz Passed!" : "Not Quite")}
+            {pendingManual ? "Pending instructor review" : completionMessage ? completionMessage : (passed ? "Quiz Passed!" : "Not Quite")}
           </h2>
           <p className="text-gray-500 mb-2">You scored {score}/{displayedTotalPoints} points ({pct}%)</p>
           <p className="text-sm text-gray-400 mb-6">Passing score: {quiz.passingScore}%</p>
@@ -818,22 +726,8 @@ export default function PublicQuizPlayerPage() {
             <div className="text-left border-t border-gray-100 pt-4 mb-6 max-h-60 overflow-y-auto space-y-2">
               {visibleQuestions.map((q, i) => {
                 const ans = answers[q.id];
-                let isCorrect = false;
-                if (q.type === "mcq" || q.type === "image_choice") {
-                  const data = q.data as McqData;
-                  const correctIds = data.choices.filter((c) => c.correct).map((c) => c.id);
-                  const selected = (ans as string[]) ?? [];
-                  isCorrect = JSON.stringify([...correctIds].sort()) === JSON.stringify([...selected].sort());
-                } else if (q.type === "tf") {
-                  const data = q.data as TfData;
-                  isCorrect = ans === data.correct;
-                } else if (q.type === "matching") {
-                  const data = q.data as MatchingData;
-                  const a = (ans as Record<string, string>) ?? {};
-                  isCorrect = data.pairs.every((p) => a[p.id] === p.id);
-                } else if (q.type === "image_labeling") {
-                  isCorrect = gradeImageLabelingAnswer((q.data as ImageLabelingData).targets, ans);
-                }
+                const grade = isStaffPreview ? gradeQuizQuestion(q, ans) : authoritativeAttemptResult?.feedback?.[q.id];
+                const isCorrect = grade?.correct === true;
                 return (
                   <div key={q.id} className="flex items-center gap-2 text-sm">
                     {isCorrect ? (
@@ -841,7 +735,7 @@ export default function PublicQuizPlayerPage() {
                     ) : (
                       <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                     )}
-                    <span className="text-gray-600 truncate">Q{i + 1}: {q.stem}</span>
+                    <span className="text-gray-600">Q{i + 1}: {q.stem}{grade?.status === "pending_manual" ? " — Pending review" : grade?.feedback ? ` — ${grade.feedback}` : ""}</span>
                   </div>
                 );
               })}
@@ -850,6 +744,7 @@ export default function PublicQuizPlayerPage() {
 
           <div className="flex gap-3 justify-center">
             <button
+            disabled={(quiz as any).allowRetry === false}
             onClick={() => { setSubmitted(false); setReviewing(false); setAuthoritativeAttemptResult(null); setAnswers({}); setFlaggedQuestions({}); setCurrentIdx(0); startTimeRef.current = Date.now(); }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-700 hover:bg-gray-50"
             >
@@ -951,7 +846,7 @@ export default function PublicQuizPlayerPage() {
           <div className="flex items-center gap-3">
             {quiz.timeLimit && (
               <span className="flex items-center gap-1 text-sm text-gray-500">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4" /> {remainingSeconds == null ? "" : `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`}
               </span>
             )}
             <span className="text-sm text-gray-500">

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { course360AppPurchaseLoginPath } from "@shared/course360AppPurchaseIntent";
+import { Course360AppSkuSelector } from "@/components/Course360AppSkuSelector";
 import { Link } from "wouter";
 import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
 import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
@@ -185,7 +187,7 @@ export default function QuizCreatorLandingPage() {
                 Sign In
               </Button>
             </Link>
-            <Link href="/register">
+            <Link href={course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
               <Button size="sm" className=" font-semibold rounded-lg px-4">
                 Start Free Trial
               </Button>
@@ -219,7 +221,7 @@ export default function QuizCreatorLandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/register">
+            <Link href={course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
               <Button className=" font-bold text-lg px-10 py-4 rounded-xl h-auto">
                 Start Free Trial — No Card Required
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -342,7 +344,7 @@ export default function QuizCreatorLandingPage() {
                 engineering training, and technical certification programs. Course360 Quiz Creator™ provides
                 a focused workspace for building these interactions.
               </p>
-              <Link href="/register">
+              <Link href={course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
                 <Button className=" font-bold px-8 py-3 rounded-xl h-auto">
                   Try the Hotspot Editor Free
                 </Button>
@@ -378,6 +380,7 @@ export default function QuizCreatorLandingPage() {
 
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 px-6">
+        <div className="max-w-6xl mx-auto mb-8"><Course360AppSkuSelector app="quiz_creator" /></div>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <Badge className="mb-4 bg-teal-500/20 text-teal-300 border-teal-500/30">
@@ -452,7 +455,7 @@ export default function QuizCreatorLandingPage() {
                   )}
                 </div>
 
-                <Link href={plan.id === "enterprise" ? "mailto:sales@course360.app" : "/register"}>
+                <Link href={plan.id === "enterprise" ? "mailto:sales@course360.app" : course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
                   <Button
                     className={`w-full font-semibold rounded-xl py-3 h-auto ${
                       plan.highlight
@@ -542,7 +545,7 @@ export default function QuizCreatorLandingPage() {
                 authoring power to build assessments that are as sophisticated as the subjects you teach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/register">
+                <Link href={course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
                   <Button className=" font-bold text-lg px-10 py-4 rounded-xl h-auto">
                     Start Your Free Trial
                     <ArrowRight className="ml-2 w-5 h-5" />

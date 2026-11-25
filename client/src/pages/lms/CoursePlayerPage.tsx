@@ -270,9 +270,10 @@ function QuizPlayer({
 
 // ─── Lesson Content Renderer ──────────────────────────────────────────────────
 function LessonContent({
-  lesson, primaryColor, onComplete, packageProxyBase, watermark,
+  lesson, courseSlug, primaryColor, onComplete, packageProxyBase, watermark,
 }: {
   lesson: any;
+  courseSlug: string;
   primaryColor: string;
   onComplete?: () => void;
   packageProxyBase: string;
@@ -456,7 +457,7 @@ function LessonContent({
               <EmbeddedQuizPlayer
                 quizId={lesson.quizId}
                 sourceLessonId={lesson.id}
-                courseSlug={course.slug}
+                courseSlug={courseSlug}
                 showHeader={true}
                 onComplete={(_score, passed) => {
                   if (passed) onComplete?.();
@@ -1171,6 +1172,7 @@ export default function CoursePlayerPage() {
               {!isLessonLocked(currentLesson.id) && (
                 <LessonContent
                   lesson={currentLesson}
+                  courseSlug={course.slug}
                   primaryColor={primaryColor}
                   onComplete={handleComplete}
                   packageProxyBase="/api/embed"

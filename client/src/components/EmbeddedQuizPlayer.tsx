@@ -16,6 +16,7 @@ import { Loader2, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, BookOp
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { useLocation } from "wouter";
+import Course360NativeLessonQuizPlayer from "./Course360NativeLessonQuizPlayer";
 
 // ─── Timer hook ───────────────────────────────────────────────────────────────
 function useTimer(limitSeconds: number | null, onExpire: () => void) {
@@ -96,6 +97,11 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
     accessInput,
     { enabled: !!user && hasCourseContext && !authorPreview && !isNaN(quizId) }
   );
+
+  useEffect(() => {
+    setPhase("idle"); setAttemptId(null); setQuestions([]); setAnswers({}); setResult(null);
+    setRevealed({}); setQuizData(null); setCurrentIdx(0);
+  }, [quizId, sourceLessonId, courseSlug, authorPreview]);
 
   const startMutation = trpc.quiz.startLearnerAttempt.useMutation();
   const checkMutation = trpc.quiz.checkLearnerResponse.useMutation();
@@ -253,6 +259,10 @@ export default function EmbeddedQuizPlayer({ quizId, sourceLessonId, courseSlug,
           : "Quiz preview is available from its assigned course lesson."}
       </div>
     );
+  }
+
+  if (quizInfo.kind === "native") {
+    return <Course360NativeLessonQuizPlayer key={`${quizId}:${courseSlug}:${sourceLessonId}:${authorPreview}`} quizId={quizId} sourceLessonId={sourceLessonId} courseSlug={courseSlug} authorPreview={authorPreview} showHeader={showHeader} onComplete={onComplete} quizInfo={quizInfo} />;
   }
 
   // ── Idle (start screen) ───────────────────────────────────────────────────

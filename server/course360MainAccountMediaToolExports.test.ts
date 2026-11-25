@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   user: { id: 101, role: "org_admin" } as any,
   activeOrg: 7 as number | null,
   membershipRole: "org_admin",
+  membershipOrg: 7, membershipUser: 101, memberSubRole: null as string | null,
+  organizationActive: true,
+  appActive: true,
+  organization: vi.fn(), capability: vi.fn(), supportAudit: vi.fn(),
   usedBytes: 0,
   maxBytes: 100 * 1024 * 1024 * 1024,
   getUser: vi.fn(), resolveOrg: vi.fn(), admin: vi.fn(), usage: vi.fn(),
@@ -34,6 +38,10 @@ vi.mock("./lib/course360PaymentLedger", () => ({
   getCourse360PaymentAppAccess: mocks.creator,
   setCourse360PaymentManualRole: mocks.external,
 }));
+vi.mock("./lib/course360AppCapabilities", () => ({
+  requireCourse360AppOrganization: mocks.organization,
+  requireCourse360AppCapability: mocks.capability,
+}));
 vi.mock("./_core/llm", () => ({ invokeLLM: mocks.external }));
 vi.mock("./lib/publicSourceUrl", () => ({ fetchPublicSourceText: mocks.external }));
 vi.mock("./scormGenerator", () => ({ generateScormPackage: mocks.generate }));
@@ -49,7 +57,10 @@ class MemoryDb {
   insertId: any = 901;
   failUpdate = false;
   table(table: any) { return this.rows.get(getTableName(table)) ?? []; }
-  seed(table: any, rows: any[]) { this.rows.set(getTableName(table), structuredClone(rows)); }
+  seed(table: any, rows: any[]) {
+    for (const row of rows) for (const key of Object.keys(row)) if (!(key in getTableColumns(table))) throw new Error(`Unknown fixture field ${getTableName(table)}.${key}`);
+    this.rows.set(getTableName(table), structuredClone(rows));
+  }
   matches(table: any, row: any, condition: any) {
     if (!condition) throw new Error("Unscoped mock DB access denied");
     const query = dialect.sqlToQuery(condition);
@@ -84,8 +95,11 @@ class MemoryDb {
   }
   update(table: any) { return { set: (values: any) => ({ where: async (condition: any) => {
     if (this.failUpdate) throw new Error("Injected publication update failure");
+    for (const key of Object.keys(values)) if (!(key in getTableColumns(table))) throw new Error(`Unknown update field ${key}`);
     this.writes.push({ kind: "update", table: getTableName(table), values: structuredClone(values) });
-    for (const row of this.table(table)) if (this.matches(table, row, condition)) Object.assign(row, values);
+    let affectedRows = 0;
+    for (const row of this.table(table)) if (this.matches(table, row, condition)) { Object.assign(row, values); affectedRows++; }
+    return [{ affectedRows }];
   } }) }; }
 }
 let db: MemoryDb;
@@ -94,7 +108,7 @@ const creatorCaller = (role?: string) => authoringRouter.createCaller(context(ro
 const quizCaller = (role?: string) => quizMakerRouter.createCaller(context(role));
 const questions = [{ id: "q1", type: "multiple_choice", stem: "Safe locally generated question", points: 1, data: { options: [{ id: "a", text: "Answer", correct: true }] } }];
 function seedQuiz(more: any = {}) {
-  db.seed(schema.quizzes, [{ id: 5, orgId: 7, userId: 101, title: "Stored quiz", description: "Preserved", instructions: JSON.stringify(questions), passingScore: 80, timeLimit: null, shuffleQuestions: false, ...more }]);
+  db.seed(schema.quizzes, [{ id: 5, orgId: 7, userId: 101, legacyCreatedBy: 101, title: "Stored quiz", description: "Preserved", instructions: JSON.stringify(questions), legacyPassingScore: 80, passScorePercent: 80, timeLimitSeconds: null, legacyShuffleQuestions: false, randomizeQuestions: false, ...more }]);
 }
 const tools = [
   { name: "Creator", run: (save: boolean | undefined = true, role?: string, format = "scorm12") => creatorCaller(role).exportPackage({ projectId: 4, format: format as any, ...(save === undefined ? {} : { saveToMediaLibrary: save }) }), source: schema.authoringProjects, sourceId: 4, prefix: "creator-exports" },
@@ -112,6 +126,8 @@ beforeEach(() => {
   vi.spyOn(net.Socket.prototype, "connect").mockImplementation(denied);
   for (const key of ["DATABASE_URL", "STRIPE_SECRET_KEY", "COURSE360_STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "AWS_S3_BUCKET", "BUILT_IN_FORGE_API_KEY", "BUILT_IN_FORGE_API_URL", "OPENAI_API_KEY", "JWT_SECRET"]) vi.stubEnv(key, "");
   mocks.user = { id: 101, role: "org_admin" }; mocks.activeOrg = 7; mocks.membershipRole = "org_admin";
+  mocks.membershipOrg = 7; mocks.membershipUser = 101; mocks.memberSubRole = null;
+  mocks.organizationActive = true; mocks.appActive = true;
   mocks.usedBytes = 0; mocks.maxBytes = 100 * 1024 * 1024 * 1024;
   db = new MemoryDb(); mocks.db = db;
   db.seed(schema.authoringProjects, [{ id: 4, userId: 101, orgId: 7, title: "Stored course", status: "draft", description: "Preserved", settingsJson: "{}" }]);
@@ -122,8 +138,29 @@ beforeEach(() => {
   mocks.resolveOrg.mockImplementation(async () => mocks.activeOrg);
   mocks.savedOrg.mockImplementation(async () => mocks.activeOrg);
   mocks.admin.mockImplementation(async (_id, role, orgId) => {
-    if (!['site_owner', 'site_admin', 'admin'].includes(role) && !['org_super_admin', 'org_admin', 'sub_admin'].includes(mocks.membershipRole)) throw new TRPCError({ code: "FORBIDDEN" });
+    if (!['site_owner', 'site_admin', 'admin'].includes(role) && (mocks.membershipOrg !== orgId || mocks.membershipUser !== _id || !['org_super_admin', 'org_admin', 'sub_admin'].includes(mocks.membershipRole))) throw new TRPCError({ code: "FORBIDDEN" });
     return orgId ?? mocks.activeOrg;
+  });
+  mocks.organization.mockImplementation(async (userId: number, requestedOrgId?: number) => {
+    if (!mocks.db) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "School access service is unavailable." });
+    const orgId = await mocks.savedOrg(userId);
+    if (!orgId || !mocks.organizationActive || requestedOrgId !== undefined && requestedOrgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
+    const user = await mocks.getUser(userId);
+    if (!user || user.id !== userId) throw new TRPCError({ code: "FORBIDDEN" });
+    const platformSupport = ['site_owner', 'site_admin'].includes(user.role);
+    const member = mocks.membershipOrg === orgId && mocks.membershipUser === userId
+      ? { role: mocks.membershipRole, memberSubRole: mocks.memberSubRole } : null;
+    if (!platformSupport && (!member || !['org_super_admin', 'org_admin', 'sub_admin'].includes(member.role) && member.memberSubRole !== 'instructor')) throw new TRPCError({ code: "FORBIDDEN" });
+    return { orgId, platformSupport, member };
+  });
+  mocks.supportAudit.mockResolvedValue(undefined);
+  mocks.capability.mockImplementation(async (userId: number, app: string, mode: string) => {
+    if (!['creator', 'quiz_creator'].includes(app) || mode !== 'web') throw new Error('Unexpected app capability: Studio never owns this library');
+    const scope = await mocks.organization(userId);
+    if (scope.platformSupport) await mocks.supportAudit({ userId, orgId: scope.orgId, app, mode });
+    else if (!mocks.appActive) throw new TRPCError({ code: 'FORBIDDEN' });
+    const provenance = scope.platformSupport ? { isPaid: false, hasManualGrant: false } : await mocks.creator(scope.orgId, userId, app);
+    return { ...scope, ...provenance, schoolIncluded: false, access: { tier: 'web', isActive: true, isInTrial: !provenance.isPaid && !provenance.hasManualGrant && !scope.platformSupport, ...provenance } };
   });
   mocks.mediaGuard.mockImplementation(async (userId) => {
     const user = await mocks.getUser(userId);
@@ -152,9 +189,11 @@ for (const tool of tools) describe(`${tool.name} main-account Media Library expo
       : await quizCaller().exportScorm({ quizId: 5, format: "scorm12", ...(save === undefined ? {} : { saveToMediaLibrary: save }) });
     expect(result).not.toHaveProperty("mediaItemId");
     expect(mocks.storage.mock.calls[0][0]).toMatch(tool.name === "Creator" ? /^authoring\/101\/exports\// : /^scorm-exports\/101\//);
-    expect(mocks.getUser).not.toHaveBeenCalled(); expect(mocks.usage).not.toHaveBeenCalled();
+    // Central author guard rereads persisted identity; downloads still bypass library authority/quota.
+    expect(mocks.getUser).toHaveBeenCalledWith(101); expect(mocks.mediaGuard).not.toHaveBeenCalled(); expect(mocks.usage).not.toHaveBeenCalled();
+    expect(mocks.capability).toHaveBeenCalledWith(101, tool.name === "Creator" ? "creator" : "quiz_creator", "web");
     expect(db.table(schema.orgMediaLibrary)).toHaveLength(1);
-    if (tool.name === "Creator") expect(result).toEqual({ url: expect.any(String), format: "scorm12" });
+    if (tool.name === "Creator") expect(result).toEqual({ url: expect.any(String), format: "scorm12", warnings: [] });
     else expect(result).toEqual({ downloadUrl: expect.any(String) });
   });
   it.each(["scorm12", "scorm2004"])("saves generated %s ZIP and exact metadata without Studio access", async (format) => {
@@ -211,7 +250,9 @@ for (const tool of tools) describe(`${tool.name} main-account Media Library expo
   it.each(["member", "user", "instructor", "group_manager"])("rejects %s membership despite a forged/stale Creator session role", async (role) => {
     mocks.user.role = "user"; mocks.membershipRole = role;
     await expect(tool.run(true, "site_owner")).rejects.toMatchObject({ code: "FORBIDDEN" });
-    expect(mocks.admin).toHaveBeenCalledWith(101, "user", 7); expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
+    expect(mocks.getUser).toHaveBeenCalledWith(101); expect(mocks.organization).toHaveBeenCalledWith(101);
+    expect(mocks.user.role).toBe("user"); expect(mocks.admin).not.toHaveBeenCalled();
+    expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
   });
   it.each(["org_super_admin", "org_admin", "sub_admin"])("uses existing media guard for %s", async (role) => {
     mocks.membershipRole = role;
@@ -264,12 +305,58 @@ for (const tool of tools) describe(`${tool.name} main-account Media Library expo
   });
   it("rejects unavailable DB without invoking a provider", async () => {
     mocks.db = null;
-    await expect(tool.run()).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" }); expect(mocks.storage).not.toHaveBeenCalled();
+    // Quiz now reaches the central unavailable-school service guard first.
+    await expect(tool.run()).rejects.toMatchObject({ code: tool.name === "Creator" ? "INTERNAL_SERVER_ERROR" : "PRECONDITION_FAILED" });
+    expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
   });
   it("rejects an unauthenticated caller", async () => {
     const caller = (tool.name === "Creator" ? authoringRouter : quizMakerRouter).createCaller({ user: null, req: {}, res: {} } as any) as any;
     await expect(tool.name === "Creator" ? caller.exportPackage({ projectId: 4, format: "scorm12", saveToMediaLibrary: true }) : caller.exportScorm({ quizId: 5, format: "scorm12", saveToMediaLibrary: true })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(mocks.getUser).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled();
+  });
+  it("rejects an inactive persisted selected organization", async () => {
+    mocks.organizationActive = false;
+    await expect(tool.run()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.storage).not.toHaveBeenCalled(); expect(mocks.mediaGuard).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
+  });
+  it.each(["membershipOrg", "membershipUser"] as const)("rejects stale/foreign %s without trusting session role", async (key) => {
+    mocks[key] = key === "membershipOrg" ? 8 : 202;
+    await expect(tool.run(true, "site_owner")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.getUser).toHaveBeenCalledWith(101); expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
+  });
+  it("author instructor subrole does not bypass the independent main-library admin guard", async () => {
+    mocks.user.role = "user"; mocks.membershipRole = "member"; mocks.memberSubRole = "instructor";
+    await expect(tool.run(false)).resolves.toBeDefined();
+    const before = structuredClone(db.table(tool.source)); db.writes.length = 0; mocks.storage.mockClear();
+    await expect(tool.run(true)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.admin).toHaveBeenCalledWith(101, "user", 7); expect(mocks.storage).not.toHaveBeenCalled();
+    expect(db.table(tool.source)).toEqual(before); expect(db.writes).toEqual([]);
+  });
+  it("inactive app access denies export before optional library authority without consulting Studio", async () => {
+    mocks.appActive = false;
+    await expect(tool.run()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.capability).toHaveBeenCalledWith(101, tool.name === "Creator" ? "creator" : "quiz_creator", "web");
+    expect(mocks.mediaGuard).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
+  });
+  it("persisted support audit failure blocks export without fabricating paid/manual provenance", async () => {
+    mocks.user.role = "site_owner"; mocks.membershipRole = "member";
+    mocks.supportAudit.mockRejectedValueOnce(new Error("Support audit failed"));
+    await expect(tool.run()).rejects.toThrow("Support audit failed");
+    expect(mocks.supportAudit).toHaveBeenCalledWith({ userId: 101, orgId: 7, app: tool.name === "Creator" ? "creator" : "quiz_creator", mode: "web" });
+    expect(mocks.creator).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
+  });
+  it("rejects changed persisted school between app capability and library authority before any writes", async () => {
+    // A persisted school switch can occur between awaits, not just in a browser hint.
+    // Both schools have admin permission, but authorization for 7 cannot export 8.
+    const mediaGuard = mocks.mediaGuard.getMockImplementation()!;
+    mocks.mediaGuard.mockImplementation(async (userId: number) => {
+      mocks.activeOrg = 8; mocks.membershipOrg = 8;
+      return mediaGuard(userId);
+    });
+    db.table(tool.source)[0].orgId = 8;
+    const original = structuredClone(db.table(tool.source));
+    await expect(tool.run()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.table(tool.source)).toEqual(original); expect(mocks.storage).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
   });
 });
 
@@ -279,10 +366,11 @@ describe("special-case preservation and failure behavior", () => {
     await expect(quizCaller().exportScorm({ quizId: 5, format: "scorm12", saveToMediaLibrary: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(db.table(schema.quizzes)).toEqual(oldQuiz); expect(db.writes).toEqual([]); expect(mocks.generate).not.toHaveBeenCalled(); expect(mocks.storage).not.toHaveBeenCalled();
   });
-  it("retains existing default legacy Quiz export adoption behavior", async () => {
-    seedQuiz({ orgId: 0 });
-    await expect(quizCaller().exportScorm({ quizId: 5, format: "scorm12" })).resolves.toEqual({ downloadUrl: expect.any(String) });
-    expect(db.table(schema.quizzes)[0].orgId).toBe(7); expect(db.table(schema.orgMediaLibrary)).toHaveLength(1); expect(mocks.getUser).not.toHaveBeenCalled();
+  it("default Quiz download also rejects legacy unscoped records without adoption or content changes", async () => {
+    seedQuiz({ orgId: 0 }); const original = structuredClone(db.table(schema.quizzes));
+    await expect(quizCaller().exportScorm({ quizId: 5, format: "scorm12" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(db.table(schema.quizzes)).toEqual(original); expect(db.table(schema.orgMediaLibrary)).toHaveLength(1);
+    expect(mocks.getUser).toHaveBeenCalledWith(101); expect(mocks.storage).not.toHaveBeenCalled(); expect(mocks.generate).not.toHaveBeenCalled(); expect(db.writes).toEqual([]);
   });
   it.each(["[]", "malformed", "{}"])("retains quiz question validation and makes no persistence for %s", async (instructions) => {
     seedQuiz({ instructions });
@@ -322,5 +410,26 @@ describe("special-case preservation and failure behavior", () => {
     expect(db.table(schema.orgMediaLibrary)[1].orgId).toBe(7);
     expect(mocks.storage.mock.calls[0][0]).toMatch(/^org-7\//);
     expect(db.table(schema.orgMediaLibrary)[1].url).not.toBe("https://foreign.example.test");
+  });
+  it.each([{ isPaid: true, hasManualGrant: false }, { isPaid: false, hasManualGrant: true }])("retains paid/manual Creator watermark provenance %j independently of library ownership", async (provenance) => {
+    mocks.creator.mockResolvedValue(provenance);
+    await creatorCaller().exportPackage({ projectId: 4, format: "scorm12", saveToMediaLibrary: true });
+    const zip = await JSZip.loadAsync(mocks.storage.mock.calls[0][1]);
+    expect(await zip.file("index.html")!.async("string")).not.toContain('id="teachific-watermark"');
+    expect(mocks.creator).toHaveBeenCalledWith(7, 101, "creator");
+    expect(db.table(schema.orgMediaLibrary)[1].orgId).toBe(7);
+    expect(provenance.isPaid).toBe(!provenance.hasManualGrant);
+  });
+  it("native Quiz theme JSON and precise settings/media survive generated library export unchanged", async () => {
+    const nativeQuestions = [{ id: "native-q", type: "mcq", stem: "Retained precise question", points: 0.25, data: { multiSelect: false, choices: [{ id: "a", text: "Answer", correct: true }], imageUrl: "https://legacy.example.test/keep.png" } }];
+    const meta = { id: "native-uuid", title: "Stored quiz", passingScore: 80.125, timeLimit: 2.5, shuffleQuestions: false, futureMeta: { retained: true } };
+    seedQuiz({ instructions: JSON.stringify(nativeQuestions), legacyPassingScore: 80.125, timeLimitSeconds: 150, themeConfig: { historicalTheme: { preserved: true }, course360QuizNativeV1: { version: 1, revision: 3, config: { meta, questions: nativeQuestions, futureConfig: "retained" } } } });
+    const original = structuredClone(db.table(schema.quizzes));
+    await quizCaller().exportScorm({ quizId: 5, format: "scorm2004", saveToMediaLibrary: true });
+    expect(mocks.generate).toHaveBeenCalledWith(expect.objectContaining({ passingScore: 80.125, timeLimit: 150, nativeConfig: expect.objectContaining({ meta: expect.objectContaining(meta), questions: nativeQuestions, futureConfig: "retained" }) }));
+    const zip = await JSZip.loadAsync(mocks.storage.mock.calls[0][1]);
+    const html = await zip.file("index.html")!.async("string");
+    expect(html).toContain("80.125"); expect(html).toContain("0.25"); expect(html).toContain("https://legacy.example.test/keep.png");
+    expect(db.table(schema.quizzes)).toEqual(original); expect(mocks.external).not.toHaveBeenCalled();
   });
 });

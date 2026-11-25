@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -57,33 +58,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getCourse360MediaLibraryHref } from "@/lib/course360MediaLibrary";
+import { useOrgScope } from "@/hooks/useOrgScope";
+import { readCreatorDocument, createCreatorAssessment, CREATOR_ASSESSMENT_TYPES, type CreatorBlock, type CreatorDocument } from "@shared/course360CreatorModel";
+import { CREATOR_LAYOUTS, seedCreatorLayout } from "@shared/course360CreatorLayouts";
+import { CreatorSaveQueue } from "@shared/course360CreatorSaveQueue";
+import { CreatorBlockView } from "@/components/creator/CreatorBlockView";
+import { CreatorInspector } from "@/components/creator/CreatorInspector";
+import { CreatorProjectSettings } from "@/components/creator/CreatorProjectSettings";
+import { CreatorAiPptxControls } from "@/components/creator/CreatorAiPptxControls";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Block {
-  id: string;
-  type: "text" | "image" | "shape" | "button";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  content?: string;
-  src?: string;
-  style?: {
-    fontSize?: number;
-    fontWeight?: string;
-    fontStyle?: string;
-    textDecoration?: string;
-    color?: string;
-    textAlign?: string;
-    backgroundColor?: string;
-    borderRadius?: number;
-    opacity?: number;
-  };
-}
-
-interface SlideData {
-  blocks: Block[];
-}
+type Block = CreatorBlock;
+type SlideData = CreatorDocument;
 
 // ─── Canvas dimensions ────────────────────────────────────────────────────────
 const CANVAS_W = 1000;
@@ -105,6 +91,13 @@ function newBlock(type: Block["type"]): Block {
       return { id, type, x: 200, y: 150, width: 300, height: 200, src: "", style: {} };
     case "shape":
       return { id, type, x: 300, y: 200, width: 200, height: 120, content: "", style: { backgroundColor: "#24abbc", borderRadius: 8 } };
+    case "video":
+    case "audio":
+      return { id, type, x: 100, y: 120, width: 800, height: type === "video" ? 360 : 80, src: "", style: {} };
+    case "assessment":
+      return { id, type, x: 60, y: 60, width: 880, height: 440, assessment: createCreatorAssessment("multiple_choice"), style: { fontSize: 22 } };
+    case "interaction":
+      return { id, type, x: 60, y: 100, width: 880, height: 360, interaction: { kind: "tabs", items: [{ id: "one", title: "First item", content: "Edit the first item's details" }, { id: "two", title: "Second item", content: "Edit the second item's details" }] }, style: { fontSize: 22 } };
     case "button":
       return { id, type, x: 350, y: 250, width: 200, height: 50, content: "Click Me", style: { backgroundColor: "#24abbc", color: "#ffffff", fontSize: 16, borderRadius: 8, textAlign: "center" } };
     default:
@@ -117,11 +110,15 @@ export default function CreatorEditorPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = parseInt(params.projectId || "0");
   const [, navigate] = useLocation();
+  const { orgId } = useOrgScope();
 
   // Project & slides data
-  const { data: project, isLoading: projectLoading } = trpc.authoring.getProject.useQuery({ id: projectId });
+  const { data: project, isLoading: projectLoading, error: projectError } = trpc.authoring.getProject.useQuery({ id: projectId });
   const { data: slides = [], isLoading: slidesLoading } = trpc.authoring.listSlides.useQuery({ projectId });
 
+  let settings: Record<string, any> = {}; try { settings = JSON.parse(project?.settingsJson || "{}"); } catch { /* do not rewrite saved settings */ }
+  const CANVAS_W = Math.max(320, Math.min(4000, Number(settings.width) || 1000));
+  const CANVAS_H = Math.max(240, Math.min(4000, Number(settings.height) || 563));
   const utils = trpc.useUtils();
 
   // Local state
@@ -144,6 +141,23 @@ export default function CreatorEditorPage() {
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [slideTitle, setSlideTitle] = useState("");
   const [editingSlideTitle, setEditingSlideTitle] = useState(false);
+  const [readError, setReadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [nextSlideId, setNextSlideId] = useState<number | null>(null);
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [slideNotes, setSlideNotes] = useState("");
+  const canvasHostRef = useRef<HTMLDivElement>(null);
+  const drafts = useRef(new Map<number, { document: SlideData; background: string; title: string; nextSlideId: number | null; notes: string }>());
+  const bases = useRef(new Map<number, string>());
+  const notesBases = useRef(new Map<number, string>());
+  const activeRef = useRef<number | null>(null);
+  const switchRequest = useRef(0);
+  const dirtyRef = useRef(false);
+  const titleInitialized = useRef(false);
+  const exportLock = useRef(false);
+  const previewQuery = trpc.authoring.previewPackage.useQuery({ projectId }, { enabled: false });
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
@@ -185,6 +199,28 @@ export default function CreatorEditorPage() {
     },
   });
 
+  type SavePayload = { id: number; contentJson: string; background: string; title: string; nextSlideId: number | null; notes?: string };
+  const mutationRef = useRef(updateSlideMutation); mutationRef.current = updateSlideMutation;
+  const saveQueue = useRef<CreatorSaveQueue<SavePayload> | null>(null);
+  if (!saveQueue.current) saveQueue.current = new CreatorSaveQueue(async payload => {
+    await mutationRef.current.mutateAsync({ ...payload, ...(bases.current.has(payload.id) ? { expectedContentJson: bases.current.get(payload.id)! } : {}) });
+    bases.current.set(payload.id, payload.contentJson);
+    if (payload.notes !== undefined) notesBases.current.set(payload.id, payload.notes);
+    utils.authoring.listSlides.setData({ projectId }, old => old?.map(s => Number(s.id) === payload.id ? { ...s, ...payload } : s));
+  });
+  useEffect(() => {
+    activeRef.current = activeSlideId;
+    if (activeSlideId && !readError) {
+      drafts.current.set(activeSlideId, { document: slideContent, background: slideBackground, title: slideTitle, nextSlideId, notes: slideNotes });
+      dirtyRef.current = JSON.stringify(slideContent) !== bases.current.get(activeSlideId) || slideNotes !== notesBases.current.get(activeSlideId);
+    }
+  }, [activeSlideId, slideContent, slideBackground, slideTitle, nextSlideId, slideNotes, readError]);
+  useEffect(() => { const prevent = (event: BeforeUnloadEvent) => { if (dirtyRef.current || saveQueue.current?.hasPending) { event.preventDefault(); event.returnValue = ""; } }; window.addEventListener("beforeunload", prevent); return () => window.removeEventListener("beforeunload", prevent); }, []);
+  useEffect(() => {
+    const fit = () => { const host = canvasHostRef.current; if (host) setCanvasScale(Math.max(.1, Math.min(1, (host.clientWidth - 64) / CANVAS_W, (host.clientHeight - 64) / CANVAS_H))); };
+    fit(); const observer = typeof ResizeObserver === "function" ? new ResizeObserver(fit) : null; if (canvasHostRef.current) observer?.observe(canvasHostRef.current); window.addEventListener("resize", fit); return () => { observer?.disconnect(); window.removeEventListener("resize", fit); };
+  }, [projectLoading, slidesLoading, CANVAS_W, CANVAS_H]);
+
   // Init active slide when slides load
   useEffect(() => {
     if (slides.length > 0 && activeSlideId === null) {
@@ -195,70 +231,80 @@ export default function CreatorEditorPage() {
   }, [slides]);
 
   useEffect(() => {
-    if (project) setProjectTitle(project.title);
+    if (project && !titleInitialized.current) { setProjectTitle(project.title); titleInitialized.current = true; }
   }, [project]);
 
   function loadSlide(slide: (typeof slides)[0]) {
+    const id = Number(slide.id);
     try {
-      const parsed = JSON.parse(slide.contentJson || "{}");
-      setSlideContent({ blocks: parsed.blocks || [] });
-    } catch {
-      setSlideContent({ blocks: [] });
-    }
-    setSlideBackground(slide.background || "#0f172a");
-    setSlideTitle(slide.title);
-    setSelectedBlockId(null);
-    setEditingBlockId(null);
+      const draft = drafts.current.get(id);
+      if (!bases.current.has(id)) bases.current.set(id, slide.contentJson || "");
+      if (!notesBases.current.has(id)) notesBases.current.set(id, slide.notes || "");
+      setSlideContent(draft?.document || readCreatorDocument(slide.contentJson));
+      setSlideBackground(draft?.background || slide.background || "#0f172a");
+      setSlideTitle(draft?.title || slide.title);
+      setNextSlideId(draft ? draft.nextSlideId : slide.nextSlideId ?? null);
+      setSlideNotes(draft ? draft.notes : slide.notes || "");
+      setReadError("");
+    } catch (error) { setReadError(error instanceof Error ? error.message : "This saved slide cannot be safely edited. Original data retained."); }
+    setSelectedBlockId(null); setEditingBlockId(null);
   }
-
-  function switchSlide(slide: (typeof slides)[0]) {
-    // Auto-save current slide before switching
-    if (activeSlideId !== null) {
-      saveCurrentSlide(activeSlideId, false);
-    }
-    setActiveSlideId(Number(slide.id));
-    loadSlide(slide);
+  async function switchSlide(slide: (typeof slides)[0]) {
+    if (Number(slide.id) === activeSlideId) { switchRequest.current++; return; }
+    const request = ++switchRequest.current;
+    try {
+      if (activeSlideId !== null && !readError) await saveCurrentSlide(activeSlideId, false);
+      if (request !== switchRequest.current) return;
+      setActiveSlideId(Number(slide.id)); loadSlide(slide);
+    } catch { /* Save errors retain active selection and drafts. */ }
   }
-
   async function saveCurrentSlide(slideId: number, showToast = true) {
+    if (readError) { toast.error(readError); throw new Error(readError); }
     setIsSaving(true);
+    const snapshot = { id: slideId, contentJson: JSON.stringify(slideContent), background: slideBackground, title: slideTitle, nextSlideId, ...(slideNotes !== notesBases.current.get(slideId) ? { notes: slideNotes } : {}) };
     try {
-      await updateSlideMutation.mutateAsync({
-        id: slideId,
-        contentJson: JSON.stringify(slideContent),
-        background: slideBackground,
-        title: slideTitle,
-      });
+      if (saveQueue.current?.error) await saveQueue.current.retry();
+      await saveQueue.current!.enqueue(snapshot);
+      setSaveError(""); dirtyRef.current = JSON.stringify(drafts.current.get(slideId)?.document) !== snapshot.contentJson || drafts.current.get(slideId)?.notes !== notesBases.current.get(slideId);
       if (showToast) toast.success("Saved");
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (error) { setSaveError(error instanceof Error ? error.message : "Save failed; your draft is retained."); throw error; }
+    finally { setIsSaving(false); }
+  }
+  async function previewCourse() {
+    try { if (activeSlideId) await saveCurrentSlide(activeSlideId, false); const result = await previewQuery.refetch(); if (!result.data) throw result.error || new Error("Preview unavailable"); setPreviewHtml(result.data.html); setShowPreview(true); } catch (error) { toast.error(error instanceof Error ? error.message : "Preview unavailable; draft retained."); }
+  }
+  async function addSlide(afterIndex?: number) {
+    try { if (activeSlideId) await saveCurrentSlide(activeSlideId, false); await addSlideMutation.mutateAsync({ projectId, afterIndex }); } catch { /* retained */ }
+  }
+  async function removeSlide(slide: (typeof slides)[0]) {
+    if (slides.length <= 1) { toast.error("Cannot delete the only slide"); return; }
+    try { await deleteSlideMutation.mutateAsync({ id: Number(slide.id) }); drafts.current.delete(Number(slide.id)); bases.current.delete(Number(slide.id)); if (Number(slide.id) === activeSlideId) { const other = slides.find(s => Number(s.id) !== Number(slide.id)); if (other) { setActiveSlideId(Number(other.id)); loadSlide(other); } } } catch { /* failed delete never changes local selection */ }
   }
 
   // ── Block manipulation ────────────────────────────────────────────────────
 
   function addBlock(type: Block["type"]) {
     const block = newBlock(type);
-    setSlideContent((prev) => ({ blocks: [...prev.blocks, block] }));
+    setSlideContent((prev) => ({ ...prev, blocks: [...prev.blocks, block] }));
     setSelectedBlockId(block.id);
   }
 
   function updateBlock(id: string, updates: Partial<Block>) {
     setSlideContent((prev) => ({
-      blocks: prev.blocks.map((b) => (b.id === id ? { ...b, ...updates } : b)),
+      ...prev, blocks: prev.blocks.map((b) => (b.id === id ? { ...b, ...updates, ...(updates.content !== undefined ? { contentMode: "plain" } : {}) } : b)),
     }));
   }
 
   function updateBlockStyle(id: string, styleUpdates: Partial<Block["style"]>) {
     setSlideContent((prev) => ({
-      blocks: prev.blocks.map((b) =>
+      ...prev, blocks: prev.blocks.map((b) =>
         b.id === id ? { ...b, style: { ...b.style, ...styleUpdates } } : b
       ),
     }));
   }
 
   function deleteBlock(id: string) {
-    setSlideContent((prev) => ({ blocks: prev.blocks.filter((b) => b.id !== id) }));
+    setSlideContent((prev) => ({ ...prev, blocks: prev.blocks.filter((b) => b.id !== id) }));
     setSelectedBlockId(null);
   }
 
@@ -266,7 +312,7 @@ export default function CreatorEditorPage() {
     const block = slideContent.blocks.find((b) => b.id === id);
     if (!block) return;
     const newB = { ...block, id: `block-${Date.now()}`, x: block.x + 20, y: block.y + 20 };
-    setSlideContent((prev) => ({ blocks: [...prev.blocks, newB] }));
+    setSlideContent((prev) => ({ ...prev, blocks: [...prev.blocks, newB] }));
     setSelectedBlockId(newB.id);
   }
 
@@ -277,9 +323,9 @@ export default function CreatorEditorPage() {
     return canvasRef.current.getBoundingClientRect().width / CANVAS_W;
   }
 
-  function handleBlockMouseDown(e: React.MouseEvent, blockId: string) {
+  function handleBlockMouseDown(e: React.MouseEvent | React.PointerEvent, blockId: string) {
     if (editingBlockId === blockId) return;
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setSelectedBlockId(blockId);
     const block = slideContent.blocks.find((b) => b.id === blockId);
     if (!block) return;
@@ -289,6 +335,12 @@ export default function CreatorEditorPage() {
       y: e.clientY / scale - block.y,
     });
     setIsDragging(true);
+    const moveEvent = "pointerId" in e ? "pointermove" : "mousemove"; const upEvent = "pointerId" in e ? "pointerup" : "mouseup";
+    if ("pointerId" in e) e.currentTarget.setPointerCapture?.(e.pointerId);
+    const startX = e.clientX, startY = e.clientY, x = block.x, y = block.y;
+    const move = (ev: MouseEvent) => updateBlock(blockId, { x: Math.max(0, Math.min(CANVAS_W - 20, x + (ev.clientX - startX) / scale)), y: Math.max(0, Math.min(CANVAS_H - 20, y + (ev.clientY - startY) / scale)) });
+    const up = () => { setIsDragging(false); window.removeEventListener(moveEvent, move as EventListener); window.removeEventListener(upEvent, up); };
+    window.addEventListener(moveEvent, move as EventListener); window.addEventListener(upEvent, up);
   }
 
   function handleCanvasMouseMove(e: React.MouseEvent) {
@@ -312,7 +364,7 @@ export default function CreatorEditorPage() {
 
   // ── Resize ────────────────────────────────────────────────────────────────
 
-  function handleResizeMouseDown(e: React.MouseEvent, blockId: string) {
+  function handleResizeMouseDown(e: React.MouseEvent | React.PointerEvent, blockId: string) {
     e.stopPropagation();
     e.preventDefault();
     const block = slideContent.blocks.find((b) => b.id === blockId);
@@ -321,21 +373,23 @@ export default function CreatorEditorPage() {
     setSelectedBlockId(blockId);
     setResizeStart({ x: e.clientX, y: e.clientY, w: block.width, h: block.height });
     const scale = getCanvasScale();
+    const moveEvent = "pointerId" in e ? "pointermove" : "mousemove"; const upEvent = "pointerId" in e ? "pointerup" : "mouseup";
+    if ("pointerId" in e) e.currentTarget.setPointerCapture?.(e.pointerId);
     const onMove = (ev: MouseEvent) => {
       const dx = (ev.clientX - e.clientX) / scale;
       const dy = (ev.clientY - e.clientY) / scale;
       updateBlock(blockId, {
-        width: Math.max(40, resizeStart.w + dx),
-        height: Math.max(20, resizeStart.h + dy),
+        width: Math.max(40, block.width + dx),
+        height: Math.max(20, block.height + dy),
       });
     };
     const onUp = () => {
       setIsResizing(false);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener(moveEvent, onMove as EventListener);
+      window.removeEventListener(upEvent, onUp);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener(moveEvent, onMove as EventListener);
+    window.addEventListener(upEvent, onUp);
   }
 
   const selectedBlock = slideContent.blocks.find((b) => b.id === selectedBlockId) ?? null;
@@ -345,22 +399,19 @@ export default function CreatorEditorPage() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (editingBlockId) return;
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedBlockId) {
-        deleteBlock(selectedBlockId);
-      }
-      if (e.key === "Escape") {
-        setSelectedBlockId(null);
-        setEditingBlockId(null);
-      }
-      if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        if (activeSlideId) saveCurrentSlide(activeSlideId);
+      if (e.key === "s" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (activeSlideId) void saveCurrentSlide(activeSlideId).catch(() => {}); return; }
+      const target = e.target as HTMLElement | null;
+      if (editingBlockId || target?.closest("input,textarea,select,[contenteditable=true],[role=dialog]")) return;
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedBlockId) { e.preventDefault(); deleteBlock(selectedBlockId); }
+      if (e.key === "Escape") { setSelectedBlockId(null); setEditingBlockId(null); }
+      if (selectedBlockId && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+        e.preventDefault(); const b = slideContent.blocks.find(b => b.id === selectedBlockId); const step = e.shiftKey ? 10 : 1;
+        if (b) updateBlock(b.id, { x: b.x + (e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0), y: b.y + (e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0) });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedBlockId, editingBlockId, activeSlideId, slideContent, slideBackground, slideTitle]);
+  }, [selectedBlockId, editingBlockId, activeSlideId, slideContent, slideBackground, slideTitle, slideNotes]);
 
   if (projectLoading || slidesLoading) {
     return (
@@ -374,7 +425,7 @@ export default function CreatorEditorPage() {
     return (
       <div className="h-screen bg-[#0a0f1e] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/50 mb-4">Project not found</p>
+          <p className="text-white/50 mb-4">{projectError?.message || "Project not found"}</p><a className="text-[#4ad9e0]" href="/billing">Billing and access recovery</a>
           <Link href="/creator">
             <Button variant="ghost" className="text-[#4ad9e0]">← Back to Projects</Button>
           </Link>
@@ -388,7 +439,7 @@ export default function CreatorEditorPage() {
       <div className="h-screen bg-[#0a0f1e] text-white flex flex-col overflow-hidden">
         {/* ── Top Bar ─────────────────────────────────────────────────────────── */}
         <div className="h-12 border-b border-white/10 bg-[#0d1117] flex items-center px-4 gap-3 shrink-0">
-          <Link href="/creator">
+          <Link href="/creator" onClick={e => { if (dirtyRef.current || saveQueue.current?.hasPending) { if (!window.confirm("You have unsaved changes. Leave the editor without saving?")) e.preventDefault(); } }}>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-white/60 hover:text-white">
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -432,13 +483,14 @@ export default function CreatorEditorPage() {
 
           {/* Actions */}
           <a href={getCourse360MediaLibraryHref()} target="_blank" rel="noopener noreferrer" className="text-xs text-[#4ad9e0] hover:underline">Media Library</a>
+          <CreatorAiPptxControls orgId={orgId} projectId={projectId} title={projectTitle} description={project.description} beforeExport={async () => { if (activeSlideId) await saveCurrentSlide(activeSlideId, false); }} onApplied={id => { void utils.authoring.listSlides.invalidate({ projectId }); if (id !== projectId) navigate(`/creator/${id}`); }} />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 text-white/60 hover:text-white"
-                onClick={() => activeSlideId && saveCurrentSlide(activeSlideId)}
+                onClick={() => activeSlideId && void saveCurrentSlide(activeSlideId).catch(() => {})}
                 disabled={isSaving}
               >
                 <Save className="w-4 h-4 mr-1.5" />
@@ -448,6 +500,7 @@ export default function CreatorEditorPage() {
             <TooltipContent>Save (Ctrl+S)</TooltipContent>
           </Tooltip>
 
+          <Button size="sm" variant="ghost" onClick={previewCourse} disabled={isSaving || !!readError}><Play className="mr-1 h-4 w-4" />Preview</Button>
           <Button
             size="sm"
             className="h-8 bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"
@@ -458,6 +511,7 @@ export default function CreatorEditorPage() {
           </Button>
         </div>
 
+        {(readError || saveError) && <div role="alert" className="bg-red-950 px-4 py-2 text-sm">{readError || saveError} Your original saved data and local draft have not been discarded.</div>}
         <div className="flex flex-1 overflow-hidden">
           {/* ── Slide Panel (left) ────────────────────────────────────────────── */}
           <div className="w-52 border-r border-white/10 bg-[#0d1117] flex flex-col overflow-hidden shrink-0">
@@ -469,13 +523,7 @@ export default function CreatorEditorPage() {
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6 text-white/50 hover:text-white"
-                    onClick={() => {
-                      if (activeSlideId) saveCurrentSlide(activeSlideId, false);
-                      addSlideMutation.mutate({
-                        projectId,
-                        afterIndex: activeSlide ? activeSlide.slideIndex : undefined,
-                      });
-                    }}
+                    onClick={() => addSlide(activeSlide?.slideIndex)}
                   >
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
@@ -521,8 +569,7 @@ export default function CreatorEditorPage() {
                           className="hover:bg-white/10 cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (activeSlideId) saveCurrentSlide(activeSlideId, false);
-                            addSlideMutation.mutate({ projectId, afterIndex: slide.slideIndex });
+                            void addSlide(slide.slideIndex);
                           }}
                         >
                           <Plus className="w-3.5 h-3.5 mr-2" /> Add After
@@ -532,18 +579,7 @@ export default function CreatorEditorPage() {
                           className="text-red-400 hover:bg-red-500/10 cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (slides.length <= 1) {
-                              toast.error("Cannot delete the only slide");
-                              return;
-                            }
-                            deleteSlideMutation.mutate({ id: Number(slide.id) });
-                            if (Number(slide.id) === activeSlideId) {
-                              const other = slides.find((s) => Number(s.id) !== Number(slide.id));
-                              if (other) {
-                                setActiveSlideId(Number(other.id));
-                                loadSlide(other);
-                              }
-                            }
+                            void removeSlide(slide);
                           }}
                         >
                           <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
@@ -559,12 +595,14 @@ export default function CreatorEditorPage() {
           {/* ── Canvas Area (center) ──────────────────────────────────────────── */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Block toolbar */}
-            <div className="h-10 border-b border-white/10 bg-[#0d1117] flex items-center px-4 gap-1 shrink-0">
+            <div className="min-h-10 border-b border-white/10 bg-[#0d1117] flex flex-wrap items-center px-4 gap-1 shrink-0">
               {/* Add blocks */}
               {[
                 { type: "text" as const, icon: <Type className="w-3.5 h-3.5" />, label: "Text" },
                 { type: "image" as const, icon: <ImageIcon className="w-3.5 h-3.5" />, label: "Image" },
                 { type: "shape" as const, icon: <Square className="w-3.5 h-3.5" />, label: "Shape" },
+                { type: "video" as const, icon: <Play className="w-3.5 h-3.5" />, label: "Video" },
+                { type: "audio" as const, icon: <Play className="w-3.5 h-3.5" />, label: "Audio" },
                 { type: "button" as const, icon: <Circle className="w-3.5 h-3.5" />, label: "Button" },
               ].map(({ type, icon, label }) => (
                 <Tooltip key={type}>
@@ -583,6 +621,9 @@ export default function CreatorEditorPage() {
                 </Tooltip>
               ))}
 
+              <select aria-label="Add assessment" className="h-7 w-28 bg-[#12324a] text-xs" value="" onChange={e => { if (!e.target.value) return; const b = newBlock("assessment"); b.assessment = createCreatorAssessment(e.target.value as any); setSlideContent(prev => ({ ...prev, blocks: [...prev.blocks, b] })); setSelectedBlockId(b.id); }}><option value="">Assessment</option>{CREATOR_ASSESSMENT_TYPES.map(t => <option key={t} value={t}>{t.replaceAll("_", " ")}</option>)}</select>
+              <select aria-label="Add interaction" className="h-7 w-28 bg-[#12324a] text-xs" value="" onChange={e => { if (!e.target.value) return; const b = newBlock("interaction"); b.interaction!.kind = e.target.value as any; setSlideContent(prev => ({ ...prev, blocks: [...prev.blocks, b] })); setSelectedBlockId(b.id); }}><option value="">Interaction</option>{["tabs","accordion","timeline","flip_cards","matching_drag"].map(t => <option key={t} value={t}>{t.replaceAll("_", " ")}</option>)}</select>
+              <select aria-label="Append layout recipe" className="h-7 w-28 bg-[#12324a] text-xs" value="" onChange={e => { if (!e.target.value) return; const seed = seedCreatorLayout(e.target.value); const stamp = Date.now(); setSlideContent(prev => ({ ...prev, blocks: [...prev.blocks, ...seed.blocks.map((b,i) => ({ ...b, x: b.x * CANVAS_W / 1000, y: b.y * CANVAS_H / 563, width: b.width * CANVAS_W / 1000, height: b.height * CANVAS_H / 563, id: `layout-${stamp}-${i}` }))] })); toast.success("Layout added without replacing your existing blocks"); }}><option value="">Layouts ({CREATOR_LAYOUTS.length})</option>{CREATOR_LAYOUTS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}</select>
               <div className="w-px h-5 bg-white/10 mx-1" />
 
               {/* Background color */}
@@ -759,6 +800,7 @@ export default function CreatorEditorPage() {
 
             {/* Canvas */}
             <div
+              ref={canvasHostRef}
               className="flex-1 overflow-auto bg-[#070d1a] flex items-center justify-center p-8"
               onClick={() => setShowBgPicker(false)}
             >
@@ -766,7 +808,7 @@ export default function CreatorEditorPage() {
                 style={{
                   width: CANVAS_W,
                   height: CANVAS_H,
-                  transform: `scale(${Math.min(1, (window.innerWidth - 300) / CANVAS_W)})`,
+                  transform: `scale(${canvasScale})`,
                   transformOrigin: "top left",
                 }}
                 className="relative shadow-2xl shadow-black/60 rounded-lg overflow-hidden"
@@ -779,7 +821,7 @@ export default function CreatorEditorPage() {
                   onMouseUp={handleCanvasMouseUp}
                   onClick={handleCanvasClick}
                 >
-                  {slideContent.blocks.map((block) => (
+                  {!readError && slideContent.blocks.map((block) => (
                     <BlockElement
                       key={block.id}
                       block={block}
@@ -809,6 +851,7 @@ export default function CreatorEditorPage() {
 
             {selectedBlock ? (
               <div className="p-3 space-y-4">
+                <CreatorInspector block={selectedBlock} orgId={orgId ?? undefined} slides={slides.filter(s => Number(s.id) !== activeSlideId).map(s => ({ id: Number(s.id), title: s.title }))} update={updates => updateBlock(selectedBlock.id, updates)} />
                 {/* Position & Size */}
                 <div>
                   <p className="text-[11px] text-white/40 mb-2 uppercase tracking-wider">Position & Size</p>
@@ -881,6 +924,7 @@ export default function CreatorEditorPage() {
               </div>
             ) : (
               <div className="p-3 space-y-4">
+                <CreatorProjectSettings raw={project.settingsJson} orgId={orgId ?? undefined} save={raw => updateProjectMutation.mutateAsync({ id: projectId, settingsJson: raw })} />
                 <div>
                   <p className="text-[11px] text-white/40 mb-2 uppercase tracking-wider">Slide Info</p>
                   <p className="text-xs text-white/60">
@@ -891,11 +935,13 @@ export default function CreatorEditorPage() {
                   <p className="text-[11px] text-white/40 mb-2 uppercase tracking-wider">Blocks</p>
                   <p className="text-xs text-white/60">{slideContent.blocks.length} block{slideContent.blocks.length !== 1 ? "s" : ""}</p>
                 </div>
+                <label className="block text-xs">Next-slide branch<select aria-label="Next slide branch" className="mt-1 w-full rounded bg-[#12324a] p-1" value={nextSlideId ?? ""} onChange={e => setNextSlideId(e.target.value ? Number(e.target.value) : null)}><option value="">Sequential</option>{slides.filter(s => Number(s.id) !== activeSlideId).map(s => <option key={s.id} value={Number(s.id)}>{s.title}</option>)}</select></label>
                 <div className="text-xs text-white/30 leading-relaxed">
                   Click a block to select it, double-click to edit text.
                 </div>
               </div>
             )}
+            <label className="block p-3 text-xs text-white/70">Slide notes / editable narration script<textarea aria-label="Creator slide notes" maxLength={200000} value={slideNotes} onChange={e => { setSlideNotes(e.target.value); dirtyRef.current = true; }} className="mt-1 block w-full min-h-24 bg-white/5 rounded p-2" /></label>
           </div>
         </div>
 
@@ -903,7 +949,7 @@ export default function CreatorEditorPage() {
         <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
           <DialogContent className="bg-[#111827] border-white/10 text-white max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold">Export Course Package</DialogTitle>
+              <DialogTitle className="text-lg font-bold">Export Course Package</DialogTitle><DialogDescription className="text-xs text-white/60">Export your saved draft; this does not create a school delivery record.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3 py-2">
@@ -948,9 +994,9 @@ export default function CreatorEditorPage() {
               </Button>
               <Button
                 onClick={async () => {
-                  if (activeSlideId) await saveCurrentSlide(activeSlideId, false);
-                  setIsExporting(true);
-                  exportMutation.mutate({ projectId, format: exportFormat, saveToMediaLibrary });
+                  if (exportLock.current) return; exportLock.current = true; setIsExporting(true);
+                  try { if (activeSlideId) await saveCurrentSlide(activeSlideId, false); await exportMutation.mutateAsync({ projectId, format: exportFormat, saveToMediaLibrary }); }
+                  catch { setIsExporting(false); } finally { exportLock.current = false; }
                 }}
                 disabled={isExporting}
                 className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"
@@ -961,163 +1007,18 @@ export default function CreatorEditorPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog open={showPreview} onOpenChange={setShowPreview}><DialogContent className="h-[85vh] max-w-6xl bg-[#071a2b] text-white"><DialogHeader><DialogTitle>Exact learner runtime preview</DialogTitle><DialogDescription className="text-xs text-white/60">The same packaged runtime, controls, scoring, branching and watermark rules as exports. Preview does not publish.</DialogDescription></DialogHeader><iframe title="Creator learner preview" sandbox="allow-scripts allow-popups" srcDoc={previewHtml} className="h-full w-full border-0" /></DialogContent></Dialog>
       </div>
     </TooltipProvider>
   );
 }
 
-// ─── Block Element ────────────────────────────────────────────────────────────
-function BlockElement({
-  block,
-  isSelected,
-  isEditing,
-  onMouseDown,
-  onDoubleClick,
-  onContentChange,
-  onBlur,
-  onResizeMouseDown,
-}: {
-  block: Block;
-  isSelected: boolean;
-  isEditing: boolean;
-  onMouseDown: (e: React.MouseEvent) => void;
-  onDoubleClick: () => void;
-  onContentChange: (content: string) => void;
-  onBlur: () => void;
-  onResizeMouseDown: (e: React.MouseEvent) => void;
+// ─── Block Element — shared renderer under preserved editor selection/resize shell ───
+function BlockElement({ block, isSelected, isEditing, onMouseDown, onDoubleClick, onContentChange, onBlur, onResizeMouseDown }: {
+  block: Block; isSelected: boolean; isEditing: boolean; onMouseDown: (e: React.MouseEvent | React.PointerEvent) => void; onDoubleClick: () => void; onContentChange: (content: string) => void; onBlur: () => void; onResizeMouseDown: (e: React.MouseEvent | React.PointerEvent) => void;
 }) {
-  const baseStyle: React.CSSProperties = {
-    position: "absolute",
-    left: block.x,
-    top: block.y,
-    width: block.width,
-    height: block.height,
-    cursor: isEditing ? "text" : "move",
-    userSelect: isEditing ? "text" : "none",
-    opacity: block.style?.opacity ?? 1,
-    outline: isSelected ? "2px solid #24abbc" : "none",
-    outlineOffset: "1px",
-  };
-
-  if (block.type === "text") {
-    return (
-      <div
-        style={{
-          ...baseStyle,
-          fontSize: block.style?.fontSize || 18,
-          fontWeight: block.style?.fontWeight || "normal",
-          fontStyle: block.style?.fontStyle || "normal",
-          textDecoration: block.style?.textDecoration || "none",
-          color: block.style?.color || "#ffffff",
-          textAlign: (block.style?.textAlign as React.CSSProperties["textAlign"]) || "left",
-          padding: "4px 8px",
-          overflow: "hidden",
-          wordBreak: "break-word",
-        }}
-        onMouseDown={onMouseDown}
-        onDoubleClick={onDoubleClick}
-      >
-        {isEditing ? (
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => onContentChange((e.target as HTMLElement).innerText)}
-            onBlur={onBlur}
-            style={{ outline: "none", minHeight: "1em" }}
-            autoFocus
-            dangerouslySetInnerHTML={{ __html: block.content || "" }}
-          />
-        ) : (
-          block.content || <span style={{ opacity: 0.3 }}>Click to edit text</span>
-        )}
-        {isSelected && (
-          <div
-            style={{ position: "absolute", bottom: -4, right: -4, width: 10, height: 10, background: "#24abbc", cursor: "se-resize", borderRadius: 2 }}
-            onMouseDown={onResizeMouseDown}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (block.type === "shape") {
-    return (
-      <div
-        style={{
-          ...baseStyle,
-          background: block.style?.backgroundColor || "#24abbc",
-          borderRadius: block.style?.borderRadius || 0,
-        }}
-        onMouseDown={onMouseDown}
-      >
-        {isSelected && (
-          <div
-            style={{ position: "absolute", bottom: -4, right: -4, width: 10, height: 10, background: "#24abbc", cursor: "se-resize", borderRadius: 2 }}
-            onMouseDown={onResizeMouseDown}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (block.type === "button") {
-    return (
-      <div
-        style={{
-          ...baseStyle,
-          background: block.style?.backgroundColor || "#24abbc",
-          borderRadius: block.style?.borderRadius || 8,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: block.style?.color || "#ffffff",
-          fontSize: block.style?.fontSize || 16,
-          fontWeight: "600",
-          padding: "4px 12px",
-        }}
-        onMouseDown={onMouseDown}
-        onDoubleClick={onDoubleClick}
-      >
-        {isEditing ? (
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => onContentChange((e.target as HTMLElement).innerText)}
-            onBlur={onBlur}
-            style={{ outline: "none" }}
-            autoFocus
-            dangerouslySetInnerHTML={{ __html: block.content || "" }}
-          />
-        ) : (
-          block.content || "Button"
-        )}
-        {isSelected && (
-          <div
-            style={{ position: "absolute", bottom: -4, right: -4, width: 10, height: 10, background: "#24abbc", cursor: "se-resize", borderRadius: 2 }}
-            onMouseDown={onResizeMouseDown}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (block.type === "image") {
-    return (
-      <div
-        style={{ ...baseStyle, border: "2px dashed rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}
-        onMouseDown={onMouseDown}
-      >
-        <ImageIcon className="w-8 h-8 text-white/20" />
-        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>Image placeholder</span>
-        {isSelected && (
-          <div
-            style={{ position: "absolute", bottom: -4, right: -4, width: 10, height: 10, background: "#24abbc", cursor: "se-resize", borderRadius: 2 }}
-            onMouseDown={onResizeMouseDown}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return null;
+  return <div data-creator-editor-block={block.id} style={{ position: "absolute", left: block.x, top: block.y, width: block.width, height: block.height, cursor: isEditing ? "text" : "move", touchAction: "none", outline: isSelected ? "2px solid #24abbc" : "none", outlineOffset: 1, zIndex: Number(block.style?.zIndex) || 1 }} onPointerDown={e => { if (e.pointerType !== "mouse") onMouseDown(e); }} onMouseDown={onMouseDown} onDoubleClick={onDoubleClick}>
+    {isEditing && (block.type === "text" || block.type === "button") ? <textarea aria-label="Edit block text" autoFocus value={block.content || ""} onChange={e => onContentChange(e.target.value)} onBlur={onBlur} style={{ width: "100%", height: "100%", background: "#12324a", color: "white", border: 0, fontSize: Number(block.style?.fontSize) || 18 }} /> : <div style={{ width: "100%", height: "100%", pointerEvents: "none" }}><CreatorBlockView block={block} /></div>}
+    {isSelected && <div aria-label="Resize selected block" style={{ position: "absolute", bottom: -4, right: -4, width: 12, height: 12, background: "#24abbc", cursor: "se-resize", borderRadius: 2 }} onPointerDown={e => { if (e.pointerType !== "mouse") onResizeMouseDown(e); }} onMouseDown={onResizeMouseDown} />}
+  </div>;
 }

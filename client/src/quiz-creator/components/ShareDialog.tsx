@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Copy, Check, Globe, GlobeLock, Code, Link2, ExternalLink, ShieldCheck } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useQuizCurrentCloudSave } from "../lib/useQuizCurrentCloudSave";
 import { useQuizStore } from "../store/quizStore";
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
 
 export function ShareDialog({ open, onClose, quizId }: Props) {
   const { quiz } = useQuizStore();
+  const { saveCurrent } = useQuizCurrentCloudSave();
+  const [visibility, setVisibility] = useState<"published" | "hidden">("hidden");
   const [copied, setCopied] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [widgetEmbedCode, setWidgetEmbedCode] = useState<string | null>(null);
@@ -48,7 +51,9 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
     if (!quizId) return;
     setPublishing(true);
     try {
-      await publishMutation.mutateAsync({ quizId });
+      const currentId = await saveCurrent();
+      if (!confirm(visibility === "published" ? "Publish this quiz publicly on its school share link?" : "Publish this quiz as unlisted? Anyone with its share link may attempt it.")) return;
+      await publishMutation.mutateAsync({ quizId: currentId, visibility });
       await refetch();
       utils.quizMaker.listQuizzes.invalidate();
     } catch (err) {
@@ -107,6 +112,7 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+        <label className="block px-6 pt-3 text-sm">Share visibility <select value={visibility} onChange={e => setVisibility(e.target.value as "published" | "hidden")}><option value="hidden">Unlisted — link holders</option><option value="published">Public</option></select></label>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">

@@ -29,6 +29,7 @@ import uploadAiGenerationSourceRouter from "../routes/uploadAiGenerationSource";
 import { handleScheduledEmailCampaignSend } from "../routers/emailCampaignRouter";
 import { handleScheduledEmailWorkflowSend } from "../lib/emailWorkflowEngine";
 import { getCanonicalCourse360Url } from "../lib/canonicalCourse360Domain";
+import { bootstrapConfiguredCourse360PaymentLedger, getCourse360PaymentBootstrapStatus } from "../lib/course360PaymentBootstrap";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -52,6 +53,13 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Verify the existing platform account, endpoint and installed schema before
+  // production billing/webhook traffic. Development must explicitly opt in;
+  // watch-mode edits never initiate repeated live verification by default.
+  if (process.env.NODE_ENV === "production" || process.env.COURSE360_VERIFY_PAYMENT_BOOTSTRAP === "1") {
+    await bootstrapConfiguredCourse360PaymentLedger();
+  }
 
   // Retired platform hostnames may only redirect to Course360. Preserve the
   // request path/query for web visitors while leaving APIs and webhooks alone.
@@ -159,7 +167,7 @@ async function startServer() {
 
   // Health check endpoint for Railway / load balancers (no auth required)
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    res.json({ status: "ok", timestamp: new Date().toISOString(), paymentBootstrap: getCourse360PaymentBootstrapStatus() });
   });
 
   app.get("/api/platform-identity", (_req, res) => {

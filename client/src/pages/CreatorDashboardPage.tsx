@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -48,6 +49,7 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
 import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
+import { CreatorAiPptxControls } from "@/components/creator/CreatorAiPptxControls";
 
 // ─── Template options ─────────────────────────────────────────────────────────
 const TEMPLATES = [
@@ -113,10 +115,10 @@ export default function CreatorDashboardPage() {
   const handleCreate = () => {
     if (!newTitle.trim()) return;
     if (!orgId) { toast.error("Select an organization before creating a project"); return; }
-    createProject.mutate({ title: newTitle.trim(), orgId });
+    createProject.mutate({ title: newTitle.trim(), orgId, template: selectedTemplate as "blank" | "training" | "quiz" | "scenario" | "microlearn" | "onboarding" });
   };
 
-  const showWatermarkBanner = roleData && !roleData.isPaid;
+  const showWatermarkBanner = roleData && !roleData.isPaid && !roleData.hasManualGrant;
 
   // Trial countdown
   const trialDaysLeft = roleData?.trialEndsAt
@@ -195,6 +197,7 @@ export default function CreatorDashboardPage() {
               </Button>
             )}
             <ProductSwitcher current="studio" variant="topbar" />
+            <CreatorAiPptxControls orgId={orgId} onApplied={id => { void utils.authoring.listProjects.invalidate(); navigate(`/creator/${id}`); }} />
             <Button
               size="sm"
               className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"
@@ -295,7 +298,7 @@ export default function CreatorDashboardPage() {
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent className="bg-[#111827] border-white/10 text-white max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Create New Project</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Create New Project</DialogTitle><DialogDescription className="text-white/60">Choose a template to create its real, editable slides in the selected school.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-5 py-2">

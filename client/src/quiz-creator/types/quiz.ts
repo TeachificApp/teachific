@@ -46,6 +46,8 @@ export interface HotspotRegion {
   id: string;
   label: string;
   correct: boolean;
+  feedback?: string;
+  scoreWeight?: number;
   shape: HotspotShape;
   // All values as % of image dimensions (0-100)
   x: number;
@@ -90,6 +92,9 @@ export interface FillBlankBlank {
   id: string;
   acceptedAnswers: string[];
   caseSensitive: boolean;
+  gradingMode?: "exact" | "keyword";
+  keywords?: string[];
+  keywordMode?: "all" | "any";
 }
 export interface FillBlankData {
   template: string; // use {{blankId}} placeholders
@@ -245,6 +250,7 @@ export interface QuizQuestion {
   type: QuestionType;
   order: number;
   points: number;
+  scoring?: { partialCredit?: boolean; wrongChoicePolicy?: "zero" | "subtract" };
   required: boolean;
   stem: string;
   stemHtml?: string; // rich text HTML for the question stem
@@ -331,6 +337,8 @@ export interface DrawConfig {
 
 export interface QuizMeta {
   id: string;
+  cloudId?: number;
+  nativeRevision?: number;
   title: string;
   description: string;
   author: string;

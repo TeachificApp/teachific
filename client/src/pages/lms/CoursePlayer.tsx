@@ -2324,11 +2324,16 @@ export default function CoursePlayer() {
                         quizId={lessonData.standaloneQuizId}
                         sourceLessonId={lessonData.id}
                         courseSlug={slug!}
-                        onComplete={(_score, passed) => {
-                          if (!passed) return;
-                          setOptimisticCompleted(prev => new Set([...prev, lessonData.id]));
-                          markComplete.mutate({ lessonId: lessonData.id, courseSlug: slug! });
-                          fireLessonCompleteEffect();
+                        authorPreview={data?.isAdminPreview === true}
+                        onComplete={async (_score, passed) => {
+                          if (!passed || data?.isAdminPreview === true) return;
+                          try {
+                            await markComplete.mutateAsync({ lessonId: lessonData.id, courseSlug: slug! });
+                            setOptimisticCompleted(prev => new Set([...prev, lessonData.id]));
+                            fireLessonCompleteEffect();
+                          } catch {
+                            // The retained mutation error handler reports and rolls back failed progress saves.
+                          }
                         }}
                       />
                     ) : (
