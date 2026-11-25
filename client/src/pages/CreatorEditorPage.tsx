@@ -56,6 +56,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getCourse360MediaLibraryHref } from "@/lib/course360MediaLibrary";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Block {
@@ -135,6 +136,7 @@ export default function CreatorEditorPage() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportFormat, setExportFormat] = useState<"scorm12" | "scorm2004" | "html5">("scorm12");
   const [isExporting, setIsExporting] = useState(false);
+  const [saveToMediaLibrary, setSaveToMediaLibrary] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [projectTitle, setProjectTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -175,7 +177,7 @@ export default function CreatorEditorPage() {
       a.href = data.url;
       a.download = `${project?.title || "course"}-${data.format}.zip`;
       a.click();
-      toast.success("Package exported successfully!");
+      toast.success(data.mediaItemId ? "Package exported and saved to your organization's Course360 Media Library." : "Package exported successfully!");
     },
     onError: (e) => {
       setIsExporting(false);
@@ -429,6 +431,7 @@ export default function CreatorEditorPage() {
           {isSaving && <span className="text-xs text-white/40">Saving...</span>}
 
           {/* Actions */}
+          <a href={getCourse360MediaLibraryHref()} target="_blank" rel="noopener noreferrer" className="text-xs text-[#4ad9e0] hover:underline">Media Library</a>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -929,6 +932,10 @@ export default function CreatorEditorPage() {
                   </div>
                 </button>
               ))}
+              <label className="flex items-start gap-2 text-sm text-white/80">
+                <input type="checkbox" checked={saveToMediaLibrary} onChange={(event) => setSaveToMediaLibrary(event.target.checked)} disabled={isExporting} className="mt-1 accent-[#24abbc]" />
+                <span>Also save to my organization's Course360 Media Library<span className="block text-xs text-white/40 mt-1">Uses your main Course360 account's library and storage allowance, not Studio storage.</span></span>
+              </label>
             </div>
 
             <DialogFooter>
@@ -943,7 +950,7 @@ export default function CreatorEditorPage() {
                 onClick={async () => {
                   if (activeSlideId) await saveCurrentSlide(activeSlideId, false);
                   setIsExporting(true);
-                  exportMutation.mutate({ projectId, format: exportFormat });
+                  exportMutation.mutate({ projectId, format: exportFormat, saveToMediaLibrary });
                 }}
                 disabled={isExporting}
                 className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"

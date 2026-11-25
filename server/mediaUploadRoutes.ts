@@ -22,9 +22,11 @@ import { tmpdir } from "os";
 import { nanoid } from "nanoid";
 import { storagePutStream } from "./storage";
 import { authenticateRequest } from "./authHelper";
-import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "./db";
+import { getDb } from "./db";
+import { requireActiveMediaOrganization } from "./formsRouter";
+import { TRPCError } from "@trpc/server";
 import { orgMediaLibrary } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 class MediaUploadRouteError extends Error {
   constructor(
@@ -37,8 +39,11 @@ class MediaUploadRouteError extends Error {
 
 function parseOptionalOrganizationId(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new MediaUploadRouteError(400, "Organization ID must be a positive integer.");
+  }
   const orgId = Number(value);
-  if (!Number.isInteger(orgId) || orgId <= 0) {
+  if (!Number.isSafeInteger(orgId) || orgId <= 0) {
     throw new MediaUploadRouteError(400, "Organization ID must be a positive integer.");
   }
   return orgId;
@@ -53,24 +58,31 @@ function normalizeMediaFolder(value: unknown): string {
   return folder || "media";
 }
 
+function assertMediaReplacementKeyOrganization(fileKey: string, orgId: number): void {
+  // Known scoped keys must agree with the authoritative row. Opaque historical
+  // keys remain usable; do not rename or backfill existing objects.
+  const scoped = /^(?:org-(\d+)\/|(?:org-media|lms-media)\/(\d+)\/)/.exec(fileKey);
+  const keyOrgId = scoped ? Number(scoped[1] ?? scoped[2]) : undefined;
+  if (keyOrgId !== undefined && keyOrgId !== orgId) {
+    throw new MediaUploadRouteError(403, "Media storage key does not belong to the active organization.");
+  }
+}
+
 async function requireActiveMediaUploadOrganization(
   user: { id: number; role?: string | null },
   requestedOrgId?: number,
 ): Promise<number> {
-  const role = user.role ?? "member";
-  const activeOrgId = await getOrgIdForUserWithFallback(user.id, role);
-  if (!activeOrgId) {
-    throw new MediaUploadRouteError(403, "Select an active organization before uploading media.");
-  }
-  if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
-    throw new MediaUploadRouteError(403, "Switch to the requested organization before uploading media.");
-  }
   try {
-    await requireOrgAdmin(user.id, role, activeOrgId);
-  } catch {
-    throw new MediaUploadRouteError(403, "Organization administrator access is required to upload media.");
+    return await requireActiveMediaOrganization(user.id, requestedOrgId);
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "FORBIDDEN") {
+      throw new MediaUploadRouteError(403, error.message.replace("managing media", "uploading media").replace("manage media", "upload media"));
+    }
+    if (error instanceof TRPCError && error.code === "INTERNAL_SERVER_ERROR") {
+      throw new MediaUploadRouteError(503, "Database unavailable");
+    }
+    throw error;
   }
-  return activeOrgId;
 }
 
 const router = express.Router();
@@ -141,7 +153,7 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const activeOrgId = await requireActiveMediaUploadOrganization(user);
+    const activeOrgId = await requireActiveMediaUploadOrganization(user, parseOptionalOrganizationId(req.body.orgId));
 
     if (!req.file) {
       res.status(400).json({ error: "No file provided" });
@@ -149,8 +161,8 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
     }
 
     const mediaItemId = req.body.mediaItemId ? Number(req.body.mediaItemId) : 0;
-    if (!mediaItemId) {
-      res.status(400).json({ error: "mediaItemId is required" });
+    if ((typeof req.body.mediaItemId !== "string" && typeof req.body.mediaItemId !== "number") || !Number.isSafeInteger(mediaItemId) || mediaItemId <= 0) {
+      res.status(400).json({ error: "mediaItemId must be a positive integer" });
       return;
     }
 
@@ -164,7 +176,7 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
     const rows = await db
       .select()
       .from(orgMediaLibrary)
-      .where(eq(orgMediaLibrary.id, mediaItemId))
+      .where(and(eq(orgMediaLibrary.id, mediaItemId), eq(orgMediaLibrary.orgId, activeOrgId)))
       .limit(1);
 
     const item = rows[0];
@@ -181,6 +193,7 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
       res.status(404).json({ error: "Media item not found in the active organization" });
       return;
     }
+    assertMediaReplacementKeyOrganization(item.fileKey, activeOrgId);
 
     // Overwrite the same S3 key — the CDN URL will remain identical
     const { url } = await storagePutStream(
@@ -197,7 +210,7 @@ router.post("/replace", upload.single("file"), async (req: Request, res: Respons
         fileSize: req.file.size,
         mimeType: req.file.mimetype || item.mimeType,
       })
-      .where(eq(orgMediaLibrary.id, mediaItemId));
+      .where(and(eq(orgMediaLibrary.id, mediaItemId), eq(orgMediaLibrary.orgId, activeOrgId)));
 
     res.json({
       key: item.fileKey,

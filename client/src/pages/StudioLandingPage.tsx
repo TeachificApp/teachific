@@ -42,7 +42,7 @@ const PLAN_FEATURES = [
   "Snap-to-corner draggable camera bubble",
   "Publish directly to Course360 LMS™",
   "White-label player",
-  "50 GB media storage",
+  "Save to your main Course360 account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
@@ -69,7 +69,7 @@ const PLANS = [
       "Everything in Course360 Studio™",
       "Unlimited seats",
       "SSO / SAML integration",
-      "Unlimited storage",
+      "Media storage follows your organization's Course360 plan",
       "Service-level planning",
       "Dedicated onboarding & training",
     ],
@@ -117,7 +117,7 @@ const FEATURES = [
   {
     icon: Video,
     title: "Media Library",
-    desc: "All recordings auto-save to your Media Library. Organize, search, and reuse clips across projects.",
+    desc: "Recordings save to your organization's main Course360 Media Library. The library belongs to your Course360 account, not your Studio subscription.",
   },
   {
     icon: Mic,

@@ -1493,11 +1493,31 @@ export const quizMakerRouter = router({
       z.object({
         quizId: z.number(),
         format: z.enum(["scorm12", "scorm2004"]),
+        saveToMediaLibrary: z.boolean().optional().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = (await getDb())!;
-      const quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      let mediaOrgId: number | undefined;
+      let quiz: Awaited<ReturnType<typeof requireQuizMakerAccess>>;
+      if (input.saveToMediaLibrary) {
+        // Never invoke legacy adoption for a library save. The source must
+        // already belong to the main account's independently resolved school.
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+        const { requireActiveMediaOrganization } = await import("./formsRouter");
+        const activeOrgId = await requireActiveMediaOrganization(ctx.user.id);
+        const [sourceQuiz] = await db.select().from(quizzes).where(and(
+          eq(quizzes.id, input.quizId),
+          eq(quizzes.orgId, activeOrgId),
+        )).limit(1);
+        if (!sourceQuiz || !sourceQuiz.orgId || sourceQuiz.orgId !== activeOrgId) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only quizzes already owned by the active organization can be saved to its Media Library." });
+        }
+        quiz = sourceQuiz;
+        mediaOrgId = activeOrgId;
+      } else {
+        quiz = await requireQuizMakerAccess(ctx, input.quizId);
+      }
 
       let serializedQuestions: SerializedQuizQuestion[];
       try {
@@ -1522,10 +1542,44 @@ export const quizMakerRouter = router({
 
       // Upload to S3
       const { storagePut } = await import("./storage");
-      const fileName = `scorm-exports/${ctx.user.id}/${quiz.id}-${input.format}-${Date.now()}.zip`;
+      if (mediaOrgId !== undefined) {
+        const { getOrgStorageUsage } = await import("./db");
+        const { usedBytes, maxBytes } = await getOrgStorageUsage(mediaOrgId);
+        if (!Number.isSafeInteger(usedBytes) || usedBytes < 0 || !Number.isSafeInteger(maxBytes) || maxBytes < -1) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Media Library storage availability could not be verified." });
+        }
+        if (maxBytes !== -1 && usedBytes + zipBuffer.length > maxBytes) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This export exceeds the main account's Media Library storage allowance." });
+        }
+      }
+      const fileName = mediaOrgId !== undefined
+        ? `org-${mediaOrgId}/media/quiz-exports/${quiz.id}-${input.format}-${(await import("nanoid")).nanoid(16)}.zip`
+        : `scorm-exports/${ctx.user.id}/${quiz.id}-${input.format}-${Date.now()}.zip`;
       const { url } = await storagePut(fileName, zipBuffer, "application/zip");
 
-      return { downloadUrl: url };
+      let mediaItemId: number | undefined;
+      if (mediaOrgId !== undefined) {
+        if (!url || typeof url !== "string") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Export upload did not return a Media Library URL." });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const [result] = await db.insert(orgMediaLibrary).values({
+          orgId: mediaOrgId,
+          uploadedBy: ctx.user.id,
+          filename: `${quiz.title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "quiz"}-${input.format}.zip`,
+          mimeType: "application/zip",
+          fileSize: zipBuffer.length,
+          fileKey: fileName,
+          url,
+          source: "other",
+          sourceId: quiz.id,
+          tags: JSON.stringify(["quiz_creator", input.format]),
+        });
+        mediaItemId = Number((result as any)?.insertId);
+        if (!Number.isSafeInteger(mediaItemId) || mediaItemId < 1) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Export could not be saved to the Media Library." });
+        }
+      }
+
+      return { downloadUrl: url, ...(mediaItemId !== undefined ? { mediaItemId } : {}) };
     }),
 
   /** Copy supported authored questions into a Question Bank owned by the same organization. */

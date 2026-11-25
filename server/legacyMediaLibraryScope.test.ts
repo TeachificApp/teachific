@@ -5,6 +5,7 @@ const getUserById = vi.hoisted(() => vi.fn());
 const requireOrgAdmin = vi.hoisted(() => vi.fn());
 const getDb = vi.hoisted(() => vi.fn());
 const storagePresignedPut = vi.hoisted(() => vi.fn());
+const requireActiveMediaOrganization = vi.hoisted(() => vi.fn());
 
 vi.mock("./db", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./db")>()),
@@ -17,6 +18,7 @@ vi.mock("./storage", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./storage")>()),
   storagePresignedPut,
 }));
+vi.mock("./formsRouter", () => ({ requireActiveMediaOrganization }));
 
 const { lmsRouter } = await import("./lmsRouter");
 
@@ -43,6 +45,7 @@ describe("Course360 legacy Media Library active-organization scope", () => {
     getUserById.mockResolvedValue({ id: 101, role: "org_admin" });
     getOrgIdForUserWithFallback.mockResolvedValue(7);
     requireOrgAdmin.mockResolvedValue(undefined);
+    requireActiveMediaOrganization.mockResolvedValue(7);
     getDb.mockResolvedValue(emptySelectDb());
     storagePresignedPut.mockResolvedValue({
       uploadUrl: "https://uploads.example.test/media",
@@ -63,7 +66,16 @@ describe("Course360 legacy Media Library active-organization scope", () => {
       expect.stringMatching(/^org-7\/course-images-banners\/[A-Za-z0-9_-]{12}\.PNG$/),
       "image/png",
     );
-    expect(requireOrgAdmin).toHaveBeenCalledWith(101, "org_admin", 7);
+    expect(requireActiveMediaOrganization).toHaveBeenCalledWith(101);
+    expect(getOrgIdForUserWithFallback).not.toHaveBeenCalled();
+  });
+
+  it("never falls back to a valid school when no active main-account organization is saved", async () => {
+    const { TRPCError } = await import("@trpc/server");
+    requireActiveMediaOrganization.mockRejectedValue(new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing media." }));
+    await expect(caller().media.getUploadUrl({ orgId: 7, fileName: "photo.png" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(getOrgIdForUserWithFallback).not.toHaveBeenCalled();
+    expect(storagePresignedPut).not.toHaveBeenCalled();
   });
 
   it("rejects stale or forged organization hints before media reads, uploads, imports, and transcription", async () => {

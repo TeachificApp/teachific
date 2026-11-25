@@ -587,14 +587,14 @@ async function requireActiveLegacyMediaOrg(
   ctx: { user: { id: number; role: string } },
   requestedOrgId?: number,
 ): Promise<number> {
-  const activeOrgId = await requireOrgId(ctx.user.id);
+  const { requireActiveMediaOrganization } = await import("./formsRouter");
+  const activeOrgId = await requireActiveMediaOrganization(ctx.user.id);
   if (requestedOrgId !== undefined && requestedOrgId !== activeOrgId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Switch to the media library's organization before managing media.",
     });
   }
-  await requireOrgAdmin(ctx.user.id, ctx.user.role, activeOrgId);
   return activeOrgId;
 }
 

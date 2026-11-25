@@ -733,12 +733,21 @@ export const authoringRouter = router({
       z.object({
         projectId: z.number(),
         format: z.enum(["scorm12", "scorm2004", "html5"]),
+        saveToMediaLibrary: z.boolean().optional().default(false),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+      // Library authority is the main account's persisted active organization,
+      // independent of Creator's watermark/access policy and any Studio plan.
+      let orgId: number;
+      if (input.saveToMediaLibrary) {
+        const { requireActiveMediaOrganization } = await import("./formsRouter");
+        orgId = await requireActiveMediaOrganization(ctx.user.id);
+      } else {
+        orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+      }
       const [project] = await db
         .select()
         .from(authoringProjects)
@@ -781,8 +790,42 @@ export const authoringRouter = router({
 
       const zipBuffer = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 
-      const fileKey = `authoring/${ctx.user.id}/exports/${input.projectId}-${input.format}-${randomSuffix()}.zip`;
+      if (input.saveToMediaLibrary) {
+        const { getOrgStorageUsage } = await import("./db");
+        const { usedBytes, maxBytes } = await getOrgStorageUsage(orgId);
+        if (!Number.isSafeInteger(usedBytes) || usedBytes < 0 || !Number.isSafeInteger(maxBytes) || maxBytes < -1) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Media Library storage availability could not be verified." });
+        }
+        if (maxBytes !== -1 && usedBytes + zipBuffer.length > maxBytes) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "This export exceeds the main account's Media Library storage allowance." });
+        }
+      }
+      const fileKey = input.saveToMediaLibrary
+        ? `org-${orgId}/media/creator-exports/${input.projectId}-${input.format}-${(await import("nanoid")).nanoid(16)}.zip`
+        : `authoring/${ctx.user.id}/exports/${input.projectId}-${input.format}-${randomSuffix()}.zip`;
       const { url } = await storagePut(fileKey, zipBuffer, "application/zip");
+
+      let mediaItemId: number | undefined;
+      if (input.saveToMediaLibrary) {
+        if (!url || typeof url !== "string") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Export upload did not return a Media Library URL." });
+        const { orgMediaLibrary } = await import("../drizzle/schema");
+        const [result] = await db.insert(orgMediaLibrary).values({
+          orgId,
+          uploadedBy: ctx.user.id,
+          filename: `${project.title.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "course"}-${input.format}.zip`,
+          mimeType: "application/zip",
+          fileSize: zipBuffer.length,
+          fileKey,
+          url,
+          source: "other",
+          sourceId: project.id,
+          tags: JSON.stringify(["creator", input.format]),
+        });
+        mediaItemId = Number((result as any)?.insertId);
+        if (!Number.isSafeInteger(mediaItemId) || mediaItemId < 1) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Export could not be saved to the Media Library." });
+        }
+      }
 
       // Update project with last published info
       await db
@@ -794,7 +837,7 @@ export const authoringRouter = router({
         })
         .where(and(eq(authoringProjects.id, input.projectId), eq(authoringProjects.userId, ctx.user.id), eq(authoringProjects.orgId, orgId)));
 
-      return { url, format: input.format };
+      return { url, format: input.format, ...(mediaItemId !== undefined ? { mediaItemId } : {}) };
     }),
 
   // ── User role ─────────────────────────────────────────────────────────────

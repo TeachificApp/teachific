@@ -3,16 +3,64 @@ import { TRPCError } from "@trpc/server";
 import { eq, desc, and, sql, gte, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { getDb } from "./db";
+import { getDb, getOrgMember, getUserById } from "./db";
 import { storagePut } from "./storage";
 import {
   forms, formFields, formBranchingRules, formSubmissions, orgSubscriptions,
   formSessions, formAnalyticsEvents, formIntegrations, orgThemes,
   orgMediaLibrary, formFilters, formViews, formLabels, formDocs, formScheduledExports,
-  organizations,
+  organizations, userActiveOrg, lmsCourses,
 } from "../drizzle/schema";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Shared media belongs to the selected Course360 account, not an authoring app. */
+export async function getActiveOrgIdForUser(userId: number): Promise<number | null> {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+  const [active] = await db.select({ orgId: userActiveOrg.orgId }).from(userActiveOrg)
+    .innerJoin(organizations, eq(userActiveOrg.orgId, organizations.id))
+    .where(and(eq(userActiveOrg.userId, userId), eq(organizations.isActive, true))).limit(1);
+  return active?.orgId ?? null;
+}
+
+export async function requireActiveMediaOrganization(userId: number, requestedOrgId?: number): Promise<number> {
+  const orgId = await getActiveOrgIdForUser(userId);
+  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active organization before managing media." });
+  if (requestedOrgId !== undefined && requestedOrgId !== orgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the requested organization before managing media." });
+  }
+  // Preserve persisted platform authority, but only inside an explicit active
+  // selection. Session/browser role claims never grant cross-school access.
+  const user = await getUserById(userId);
+  if (!user) throw new TRPCError({ code: "FORBIDDEN", message: "Media account access is unavailable." });
+  if (user.role === "site_owner" || user.role === "site_admin") return orgId;
+  // Everyone else needs exact-school admin membership; never same-email lookup.
+  const membership = await getOrgMember(orgId, userId);
+  if (!membership || !["org_super_admin", "org_admin", "sub_admin"].includes(membership.role)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Organization administrator access is required to manage media." });
+  }
+  return orgId;
+}
+
+async function requireMediaItem(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, id: number) {
+  const [item] = await db.select().from(orgMediaLibrary).where(and(
+    eq(orgMediaLibrary.id, id), eq(orgMediaLibrary.orgId, orgId),
+  )).limit(1);
+  if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Media item not found in the active organization." });
+  return item;
+}
+
+async function requireMediaSource(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, orgId: number, source: string, sourceId?: number) {
+  if (sourceId === undefined) return;
+  // Only concrete school-owned source types have an authoritative parent table.
+  const table = source === "form" ? forms : source === "course" ? lmsCourses : undefined;
+  if (!table) throw new TRPCError({ code: "BAD_REQUEST", message: "A source ID requires a form or course source." });
+  const [parent] = await db.select({ id: table.id }).from(table).where(and(
+    eq(table.id, sourceId), eq(table.orgId, orgId),
+  )).limit(1);
+  if (!parent) throw new TRPCError({ code: "NOT_FOUND", message: "Media source not found in the active organization." });
+}
 
 async function getFormById(id: number) {
   const db = await getDb();
@@ -912,16 +960,17 @@ export const formsRouter = router({
   media: router({
     list: protectedProcedure
       .input(z.object({
-        orgId: z.number(),
+        orgId: z.number().int().positive(),
         mimeType: z.string().optional(), // filter by mime prefix e.g. "image/"
         tag: z.string().optional(),
-        page: z.number().default(1),
-        pageSize: z.number().default(30),
+        page: z.number().int().positive().default(1),
+        pageSize: z.number().int().positive().default(30),
       }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const orgId = await requireActiveMediaOrganization(ctx.user.id, input.orgId);
         const db = await getDb();
         if (!db) return { items: [], total: 0 };
-        let q = db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.orgId, input.orgId));
+        let q = db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.orgId, orgId));
         const rows = await q.orderBy(desc(orgMediaLibrary.createdAt));
         let filtered = rows;
         if (input.mimeType) filtered = filtered.filter(r => r.mimeType.startsWith(input.mimeType!));
@@ -936,25 +985,27 @@ export const formsRouter = router({
 
     upload: protectedProcedure
       .input(z.object({
-        orgId: z.number(),
+        orgId: z.number().int().positive(),
         base64: z.string(),
         mimeType: z.string(),
         filename: z.string(),
         altText: z.string().optional(),
         tags: z.array(z.string()).optional(),
         source: z.enum(["form", "course", "direct", "other"]).default("direct"),
-        sourceId: z.number().optional(),
+        sourceId: z.number().int().positive().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveMediaOrganization(ctx.user.id, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await requireMediaSource(db, orgId, input.source, input.sourceId);
         const base64Data = input.base64.replace(/^data:[^;]+;base64,/, "");
         const buffer = Buffer.from(base64Data, "base64");
         const ext = input.filename.split(".").pop() ?? "bin";
-        const key = `org-media/${input.orgId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const key = `org-media/${orgId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
         const { url } = await storagePut(key, buffer, input.mimeType);
         const [result] = await db.insert(orgMediaLibrary).values({
-          orgId: input.orgId,
+          orgId,
           uploadedBy: ctx.user.id,
           filename: input.filename,
           mimeType: input.mimeType,
@@ -967,27 +1018,31 @@ export const formsRouter = router({
           sourceId: input.sourceId ?? null,
         });
         const id = (result as any).insertId as number;
-        const rows = await db.select().from(orgMediaLibrary).where(eq(orgMediaLibrary.id, id)).limit(1);
+        const rows = await db.select().from(orgMediaLibrary).where(and(eq(orgMediaLibrary.id, id), eq(orgMediaLibrary.orgId, orgId))).limit(1);
         return rows[0];
       }),
 
     updateTags: protectedProcedure
-      .input(z.object({ id: z.number(), tags: z.array(z.string()), altText: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ id: z.number().int().positive(), orgId: z.number().int().positive().optional(), tags: z.array(z.string()), altText: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveMediaOrganization(ctx.user.id, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        await requireMediaItem(db, orgId, input.id);
         await db.update(orgMediaLibrary)
           .set({ tags: JSON.stringify(input.tags), altText: input.altText ?? null, updatedAt: new Date() })
-          .where(eq(orgMediaLibrary.id, input.id));
+          .where(and(eq(orgMediaLibrary.id, input.id), eq(orgMediaLibrary.orgId, orgId)));
         return { success: true };
       }),
 
     delete: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ id: z.number().int().positive(), orgId: z.number().int().positive().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const orgId = await requireActiveMediaOrganization(ctx.user.id, input.orgId);
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-        await db.delete(orgMediaLibrary).where(eq(orgMediaLibrary.id, input.id));
+        await requireMediaItem(db, orgId, input.id);
+        await db.delete(orgMediaLibrary).where(and(eq(orgMediaLibrary.id, input.id), eq(orgMediaLibrary.orgId, orgId)));
         return { success: true };
       }),
   }),

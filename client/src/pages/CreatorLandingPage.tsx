@@ -48,7 +48,7 @@ const PLAN_FEATURES = [
   "PowerPoint import & export",
   "Custom themes & brand kit",
   "White-label player",
-  "50 GB media storage",
+  "Save to your main Course360 account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
@@ -92,7 +92,7 @@ const TIERS = [
       "SSO / SAML integration",
       "On-premise deployment option",
       "Service-level planning",
-      "Unlimited storage",
+      "Media storage follows your organization's Course360 plan",
       "Dedicated onboarding & training",
     ],
     cta: "Contact Sales",
@@ -149,7 +149,7 @@ const FEATURES = [
   {
     icon: Image,
     title: "Media Library",
-    desc: "Organize images, videos, and audio clips in a centralized library. Search, tag, and reuse assets across all projects.",
+    desc: "Use your organization's main Course360 Media Library for shared learning assets. Its ownership and storage allowance come from your Course360 account, not Creator or Studio.",
   },
   {
     icon: PenTool,

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import RecordEditPage from "./RecordEditPage";
+import { getCourse360MediaLibraryHref } from "@/lib/course360MediaLibrary";
 
 // ── Tier badge colours ─────────────────────────────────────────────────────
 const TIER_STYLES: Record<string, string> = {
@@ -37,7 +38,7 @@ const QUICK_ACTIONS = [
     icon: Video,
     label: "New Recording",
     desc: "Record screen, camera, or audio",
-    href: "/media-library#record-edit",
+    href: getCourse360MediaLibraryHref("record-edit"),
     color: "text-[#24abbc]",
     bg: "bg-[#24abbc]/10",
   },
@@ -53,7 +54,7 @@ const QUICK_ACTIONS = [
     icon: Brain,
     label: "Media Library",
     desc: "Manage your uploaded assets",
-    href: "/media-library",
+    href: getCourse360MediaLibraryHref(),
     color: "text-blue-400",
     bg: "bg-blue-500/10",
   },
@@ -71,7 +72,7 @@ const QUICK_ACTIONS = [
 const NAV_ITEMS = [
   { icon: Video, label: "Record & Upload", href: "#record" },
   { icon: BookOpen, label: "My Courses", href: "/lms/courses" },
-  { icon: Brain, label: "Media Library", href: "/media-library" },
+  { icon: Brain, label: "Media Library", href: getCourse360MediaLibraryHref() },
   { icon: Layers, label: "Creator", href: "/creator" },
   { icon: FileCode2, label: "Quiz Builder", href: "/quizzes/new" },
   { icon: Settings, label: "Settings", href: "/profile" },
@@ -406,10 +407,11 @@ export default function StudioDashboard() {
                     <p className="text-sm text-white/40">
                       {isPrivileged && "Full access — no limits"}
                       {!isPrivileged && tier === "none" && "No active subscription — choose a plan to unlock access"}
-                      {!isPrivileged && tier === "web" && "Web app access · 5 GB storage"}
-                      {!isPrivileged && tier === "desktop" && "Pro · 50 GB storage"}
-                      {!isPrivileged && tier === "bundle" && "Team · Unlimited storage · 5 seats"}
+                      {!isPrivileged && tier === "web" && "Web app access"}
+                      {!isPrivileged && tier === "desktop" && "Desktop app access"}
+                      {!isPrivileged && tier === "bundle" && "Web + Desktop app access · 5 seats"}
                     </p>
+                    <p className="text-xs text-white/40 mt-1">Media storage belongs to your organization's main Course360 account and follows its Course360 plan.</p>
                   </div>
                   {!isPrivileged && tier !== "desktop" && tier !== "bundle" && (
                     <Button
@@ -424,7 +426,7 @@ export default function StudioDashboard() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {[
                     { label: "Courses", value: courses?.length ?? 0, max: isPrivileged || tier === "desktop" || tier === "bundle" || tier === "pro" ? "∞" : tier === "web" ? 10 : 1 },
-                    { label: "Storage Used", value: "—", max: isPrivileged ? "∞" : tier === "none" ? "100 MB" : tier === "web" ? "5 GB" : "50 GB" },
+                    { label: "Storage Used", value: "—", max: "Course360 plan" },
                     { label: "Team Seats", value: tier === "bundle" ? "5" : "1", max: tier === "bundle" ? "5" : "1" },
                   ].map((stat) => (
                     <div key={stat.label} className="bg-white/5 rounded-xl p-3">

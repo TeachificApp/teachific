@@ -119,7 +119,7 @@ const PLAN_FEATURES = [
   "Detailed scoring & partial credit",
   "Course360 LMS™ direct publish",
   "White-label quiz player",
-  "50 GB media storage",
+  "Save to your main Course360 account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
@@ -146,7 +146,7 @@ const PLANS = [
       "Everything in Course360 Quiz Creator™",
       "Unlimited seats",
       "SSO / SAML integration",
-      "Unlimited storage",
+      "Media storage follows your organization's Course360 plan",
       "Service-level planning",
       "Dedicated onboarding & training",
     ],

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Upload, Image, Film, FileText, X, Check, Tag, Search } from "lucide-react";
 import { toast } from "sonner";
+import { parseCourse360MediaTags } from "@/lib/course360MediaLibrary";
 
 export type MediaItem = {
   id: number;
@@ -59,10 +60,13 @@ export function MediaLibraryPicker({ orgId, onSelect, accept = "all", trigger }:
   const [newTagInput, setNewTagInput] = useState<Record<number, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: mediaItems = [], refetch } = trpc.forms.media.list.useQuery(
+  const { data: mediaResult, refetch } = trpc.forms.media.list.useQuery(
     { orgId },
     { enabled: open }
   );
+  // Retain old array fixtures while honoring the actual paginated server API.
+  const rawItems = Array.isArray(mediaResult) ? mediaResult : mediaResult?.items ?? [];
+  const mediaItems = rawItems.map((item: any) => ({ ...item, tags: parseCourse360MediaTags(item.tags) })) as MediaItem[];
   const uploadMutation = trpc.forms.media.upload.useMutation({
     onSuccess: () => { refetch(); setUploading(false); toast.success("File uploaded to media library"); },
     onError: (e) => { setUploading(false); toast.error(e.message); },
