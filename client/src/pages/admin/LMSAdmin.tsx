@@ -23,6 +23,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Course360AiStructureControls } from "@/components/Course360AiStructureControls";
+import { Course360IntegratedSources, Course360IntegratedDraftReview, useCourse360IntegratedSources, course360IntegratedSourceInput, requireCourse360IntegratedReview } from "@/components/Course360AiIntegratedReview";
+import { requireLandingDraftBlocks, landingAiErrorMessage } from "@/lib/landingAiDraft";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -413,6 +417,12 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
 // ─── Create Course Dialog ─────────────────────────────────────────────────────
 
 function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }: { open: boolean; onClose: () => void; onCreated: (id: number) => void; defaultType?: "course" | "quiz" | "download" | "cohort" }) {
+  const { orgId } = useOrgScope();
+  const sources = useCourse360IntegratedSources(orgId);
+  const [aiStructureMode, setAiStructureMode] = useState<"manual" | "ai">("manual");
+  const [aiShellId, setAiShellId] = useState<number | null>(null);
+  const [isApplyingDraft, setIsApplyingDraft] = useState(false);
+  const draftApplyBusy = useRef(false);
   const [mode, setMode] = useState<"manual" | "ai">("manual");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -436,9 +446,10 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   const [aiLessonsPerModule, setAiLessonsPerModule] = useState(4);
   const [aiStarterContent, setAiStarterContent] = useState("");
   const [aiGenerateQuizzes, setAiGenerateQuizzes] = useState(true);
+  useEffect(() => { setAiShellId(null); setAiPreview(null); setAiStep("input"); }, [orgId]);
 
   const create = trpc.lmsAdmin.createCourse.useMutation({
-    onSuccess: (data) => { toast.success("Course created!"); onCreated(data.id); },
+    onSuccess: (data) => { if (mode === "manual") { toast.success("Course created!"); onCreated(data.id); } },
     onError: e => toast.error(`Error: ${e.message}`),
   });
 
@@ -453,25 +464,27 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   });
 
   const handleAiCreate = async () => {
-    // Step 1: create the course shell
-    const courseTitle = aiPreview?.title || `New ${type === "quiz" ? "Quiz" : type === "download" ? "Download" : "Course"}`;
-    create.mutate({
-      title: courseTitle,
-      subtitle: aiPreview?.subtitle || undefined,
-      type,
-      pricingType: "free",
-      isFree: true,
-      price: 0,
-    }, {
-      onSuccess: async (data) => {
-        // Step 2: commit AI content (only for course and quiz — downloads don't have curriculum)
-        if (type !== "download") {
-          await aiCommit.mutateAsync({ courseId: data.id, productType: type === "quiz" ? "quiz" : "course", generated: aiPreview });
-        }
-        toast.success(`${type === "quiz" ? "Quiz" : type === "download" ? "Download" : "Course"} created${type !== "download" ? " with AI content" : ""}!`);
-        onCreated(data.id);
-      },
-    });
+    if (draftApplyBusy.current) return;
+    const productType = type === "quiz" ? "quiz" : "course";
+    try { requireCourse360IntegratedReview(aiPreview, productType); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Review the draft before creating."); return; }
+    draftApplyBusy.current = true;
+    setIsApplyingDraft(true);
+    try {
+      // Keep a failed shell for retry; do not create duplicate courses or delete authored work.
+      const id = aiShellId ?? (await create.mutateAsync({
+        title: aiPreview.title, subtitle: aiPreview.subtitle || undefined,
+        type, pricingType: "free", isFree: true, price: 0,
+      })).id;
+      setAiShellId(id);
+      if (type !== "download") await aiCommit.mutateAsync({ courseId: id, productType, generated: aiPreview });
+      toast.success(`${productLabel} created with AI content!`);
+      setAiShellId(null);
+      setAiPreview(null);
+      setAiStep("input");
+      onCreated(id);
+    } catch { toast.error("The AI draft could not be applied. Your preview is retained; retry applying it to the same course."); }
+    finally { draftApplyBusy.current = false; setIsApplyingDraft(false); }
   };
 
   const productLabel = type === "quiz" ? "Quiz" : type === "download" ? "Download" : type === "cohort" ? "Cohort" : "Course";
@@ -647,30 +660,14 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       </Select>
                     </div>
                   </div>
+                  <Course360IntegratedSources sources={sources} />
                   {type !== "quiz" && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-sm">Number of Modules: <span className="font-bold text-teal-600">{aiModuleCount}</span></Label>
-                          <input
-                            type="range" min={3} max={20} step={1}
-                            value={aiModuleCount}
-                            onChange={e => setAiModuleCount(Number(e.target.value))}
-                            className="mt-2 w-full accent-teal-600"
-                          />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>20</span></div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Lessons per Module: <span className="font-bold text-teal-600">{aiLessonsPerModule}</span></Label>
-                          <input
-                            type="range" min={3} max={10} step={1}
-                            value={aiLessonsPerModule}
-                            onChange={e => setAiLessonsPerModule(Number(e.target.value))}
-                            className="mt-2 w-full accent-teal-600"
-                          />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>10</span></div>
-                        </div>
-                      </div>
+                      <Course360AiStructureControls
+                        mode={aiStructureMode} moduleCount={aiModuleCount} lessonsPerModule={aiLessonsPerModule}
+                        onModeChange={setAiStructureMode} onModuleCountChange={setAiModuleCount} onLessonsPerModuleChange={setAiLessonsPerModule}
+                        disabled={aiGenerate.isPending || sources.isUploading}
+                      />
                       <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border">
                         <input
                           type="checkbox"
@@ -742,7 +739,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                                         {les.quiz?.questions?.length > 0 && <span className="text-teal-500 shrink-0">+quiz</span>}
                                       </div>
                                       {les.content && (
-                                        <div className="mt-0.5 pl-4 text-gray-400 line-clamp-2" dangerouslySetInnerHTML={{ __html: les.content.replace(/<[^>]+>/g, ' ').slice(0, 120) + '...' }} />
+                                        <div className="mt-0.5 pl-4 text-gray-400 line-clamp-2">{les.content.replace(/<[^>]+>/g, " ")}</div>
                                       )}
                                     </div>
                                   ))}
@@ -778,6 +775,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       </div>
                     )}
                   </div>
+                  <Course360IntegratedDraftReview draft={aiPreview} onChange={setAiPreview} />
                   <p className="text-xs text-gray-500">You can edit all content after creation in the course editor. Click "Create with AI Content" to proceed.</p>
                 </div>
               )}
@@ -808,13 +806,15 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
           ) : aiStep === "input" ? (
             <Button
               className="bg-teal-600 hover:bg-teal-700 text-white"
-              disabled={!aiTopics.trim() || aiGenerate.isPending}
+              disabled={(!aiTopics.trim() && !aiStarterContent.trim() && !sources.sourceFiles.length) || aiGenerate.isPending || sources.isUploading || isApplyingDraft}
               onClick={() => aiGenerate.mutate({
                 topics: aiTopics.trim(),
                 productType: type === "quiz" ? "quiz" : "course",
                 targetAudience: aiAudience.trim() || undefined,
                 difficultyLevel: aiDifficulty,
                 estimatedDurationMinutes: aiDuration ? parseInt(aiDuration) : undefined,
+                structureMode: aiStructureMode,
+                sourceFiles: course360IntegratedSourceInput(sources.sourceFiles),
                 moduleCount: aiModuleCount,
                 lessonsPerModule: aiLessonsPerModule,
                 starterContent: aiStarterContent.trim() || undefined,
@@ -826,7 +826,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
           ) : (
             <Button
               className="bg-teal-600 hover:bg-teal-700 text-white"
-              disabled={create.isPending || aiCommit.isPending}
+              disabled={create.isPending || aiCommit.isPending || isApplyingDraft || !aiPreview}
               onClick={handleAiCreate}
             >
               {(create.isPending || aiCommit.isPending) ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Create with AI Content</>}
@@ -2744,15 +2744,16 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
   const aiGenerateLandingPage = trpc.lmsAdmin.aiGenerateLandingPage.useMutation({
     onSuccess: (result) => {
       try {
-        sessionStorage.setItem(`landing-page-ai-draft:${courseId}`, JSON.stringify(result.blocks));
-      } catch {
-        toast.error("The generated draft could not be opened. Please try again.");
+        const blocks = requireLandingDraftBlocks(result.blocks);
+        sessionStorage.setItem(`landing-page-ai-draft:${courseId}`, JSON.stringify(blocks));
+      } catch (error) {
+        toast.error(landingAiErrorMessage(error));
         return;
       }
       toast.success("Landing page draft generated. Review it before saving.");
       setTimeout(() => navigate(`/admin/lms/${courseId}/landing-builder?t=${Date.now()}`), 600);
     },
-    onError: e => toast.error(`AI error: ${e.message}`),
+    onError: e => toast.error(`AI error: ${landingAiErrorMessage(e)}`),
   });
 
   const typeLabel = courseType === "download" ? "download" : courseType === "quiz" ? "quiz" : "course";

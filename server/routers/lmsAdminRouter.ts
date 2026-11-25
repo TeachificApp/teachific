@@ -8,6 +8,7 @@ import { lmsEnrollmentAdminRouter } from "./lmsEnrollmentAdminRouter";
 import { lmsCohortAdminRouter } from "./lmsCohortAdminRouter";
 import { lmsLandingPageRouter } from "./lmsQuizLandingRouter";
 import { assertCourseOwnership } from "./lmsHelpers";
+import { assertCourse360BuilderCourse } from "../lib/course360BuilderSchoolScope";
 import {
   getLmsCertificateTemplatesByOrg,
   getLmsCertificateTemplateById,
@@ -370,14 +371,14 @@ const _lmsAdminBaseRouter = router({
   getLessonsWithBlocks: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
-      await assertAdmin(ctx);
+      const { orgId } = await assertCourse360BuilderCourse(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db.select()
         .from(courseLessons)
         .where(eq(courseLessons.courseId, input.courseId))
         .orderBy(asc(courseLessons.sortOrder));
-      return rows;
+      return rows.map(row => ({ ...row, orgId }));
     }),
 });
 

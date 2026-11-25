@@ -36,13 +36,15 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import Layout from "@/components/Layout";
 import { SdmsCmeUserTab } from "@/components/admin/SdmsCmeUserTab";
+import { SubscriptionCancellationIndicator } from "@/components/customer/SubscriptionCancellationIndicator";
+import { formatStoredDollars, isConfirmedSubscriptionCancellation } from "@shared/customerSubscriptionBilling";
 
 // ─── Org-scoped access badge ───────────────────────────────────────────────────────
 function BrandBadge({ brand }: { brand?: string | null }) {
   if (!brand) return null;
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border bg-teal-50 border-teal-200 text-teal-700">
-      {brand === "both" ? "All membership access" : "Teachific membership access"}
+      {brand === "both" ? "All membership access" : "School membership access"}
     </span>
   );
 }
@@ -52,8 +54,8 @@ function formatDate(date: Date | string | null | undefined): string {
   return new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-function formatCurrency(cents: number, currency = "usd"): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+function formatCurrency(dollars: number | string, currency = "usd"): string {
+  return formatStoredDollars(dollars, currency);
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -352,7 +354,7 @@ function ProfileTab({ userId, data, refetch }: { userId: number; data: any; refe
           <div className="space-y-2">
             {data.memberships.map((m: any) => (
               <div key={m.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
-                <div><BrandBadge brand={m.brand} /><p className="text-xs text-gray-500 mt-1">{m.tier === "premium" ? "★ Premium" : "Free"}{m.expiresAt ? ` • Expires ${formatDate(m.expiresAt)}` : " • No expiry"}</p></div>
+                <div><BrandBadge brand={m.brand} /><p className="text-xs text-gray-500 mt-1">{m.planName ?? (m.tier === "premium" ? "★ Premium" : "Free")}{m.expiresAt ? ` • Expires ${formatDate(m.expiresAt)}` : " • No expiry"}</p></div>
                 <StatusBadge status={m.status ?? "active"} />
               </div>
             ))}
@@ -552,7 +554,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
     onError: (e) => toast.error(e.message),
   });
   const syncSub = trpc.adminUser.syncStripeSubscription.useMutation({
-    onSuccess: (res) => { toast.success(`Synced from Stripe (${res.stripeStatus}). Updated: ${res.updated?.join("; ") || "none"}`); refetch(); },
+    onSuccess: (res) => { toast.success(`Verified Stripe status: ${res.stripeStatus}. No access records changed.`); refetch(); },
     onError: (e) => toast.error(`Sync failed: ${e.message}`),
   });
   // Cohort group assignment
@@ -725,7 +727,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
                       {resendEnrollmentEmail.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />} Resend Email
                     </button>
                     {e.stripeSubscriptionId && (() => {
-                      const isCancelledAtPeriodEnd = !!(e.stripeSubscriptionId && e.accessExpiresAt);
+                      const isCancelledAtPeriodEnd = isConfirmedSubscriptionCancellation(e.stripeSubscriptionId, e.subscriptionBilling);
                       return (
                         <button
                           disabled={isCancelledAtPeriodEnd}
@@ -748,19 +750,14 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
                     </button>
                     {e.stripeSubscriptionId && (
                       <button
-                        onClick={() => syncSub.mutate({ stripeSubscriptionId: e.stripeSubscriptionId })}
+                        onClick={() => syncSub.mutate({ subscriptionId: e.stripeSubscriptionId })}
                         disabled={syncSub.isPending}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50"
                       >
                         <RefreshCw className="w-3 h-3" /> Sync from Stripe
                       </button>
                     )}
-                    {e.stripeSubscriptionId && e.accessExpiresAt && new Date(e.accessExpiresAt) < new Date() && (
-                      <p className="w-full text-xs text-orange-600 mt-1 flex items-center gap-1 font-medium">
-                        <XCircle className="w-3 h-3 flex-shrink-0" />
-                        Subscription cancelled{" — "}access ends {new Date(e.accessExpiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                      </p>
-                    )}
+                    <SubscriptionCancellationIndicator subscriptionId={e.stripeSubscriptionId} snapshot={e.subscriptionBilling} accessExpiresAt={e.accessExpiresAt} />
                   </div>
                   )
                   }
@@ -970,7 +967,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
                       {resendEnrollmentEmail.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />} Resend Email
                     </button>
                     {e.stripeSubscriptionId && (() => {
-                      const isCancelledAtPeriodEnd = !!(e.stripeSubscriptionId && e.accessExpiresAt);
+                      const isCancelledAtPeriodEnd = isConfirmedSubscriptionCancellation(e.stripeSubscriptionId, e.subscriptionBilling);
                       return (
                         <button
                           disabled={isCancelledAtPeriodEnd}
@@ -993,19 +990,14 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
                     </button>
                     {e.stripeSubscriptionId && (
                       <button
-                        onClick={() => syncSub.mutate({ stripeSubscriptionId: e.stripeSubscriptionId })}
+                        onClick={() => syncSub.mutate({ subscriptionId: e.stripeSubscriptionId })}
                         disabled={syncSub.isPending}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50"
                       >
                         <RefreshCw className="w-3 h-3" /> Sync from Stripe
                       </button>
                     )}
-                    {e.stripeSubscriptionId && e.accessExpiresAt && new Date(e.accessExpiresAt) < new Date() && (
-                      <p className="w-full text-xs text-orange-600 mt-1 flex items-center gap-1 font-medium">
-                        <XCircle className="w-3 h-3 flex-shrink-0" />
-                        Subscription cancelled{" — "}access ends {new Date(e.accessExpiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                      </p>
-                    )}
+                    <SubscriptionCancellationIndicator subscriptionId={e.stripeSubscriptionId} snapshot={e.subscriptionBilling} accessExpiresAt={e.accessExpiresAt} />
                   </div>
                   )
                   }
@@ -1212,15 +1204,11 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800 text-sm">{m.planTitle ?? "Membership"}</p>
                         <StatusBadge status={m.status ?? "active"} />
-                        {m.cancelAtPeriodEnd && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                            <XCircle className="w-3 h-3" /> Cancels at period end
-                          </span>
-                        )}
+                        <SubscriptionCancellationIndicator subscriptionId={m.stripeSubscriptionId} snapshot={m.subscriptionBilling} accessExpiresAt={m.currentPeriodEnd ?? m.expiresAt} />
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
                         {m.price > 0 ? `${formatCurrency(m.price, m.currency)} / ${m.billingInterval}` : "Free / Comp"}
-                        {m.currentPeriodEnd ? ` · ${m.cancelAtPeriodEnd ? "Access until" : "Expires"} ${formatDate(new Date(m.currentPeriodEnd))}` : " · No expiry"}
+                        {m.currentPeriodEnd ? ` · ${"Access until"} ${formatDate(new Date(m.currentPeriodEnd))}` : " · No expiry"}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">Granted {formatDate(m.createdAt)}</p>
                     </div>
@@ -1299,7 +1287,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
           <AlertDialogFooter>
             <AlertDialogCancel>Keep</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => cancelNativeConfirm && cancelNativeMembership.mutate({ membershipSubscriptionId: cancelNativeConfirm.id, stripeSubscriptionId: cancelNativeConfirm.stripeSubId ?? undefined })}
+              onClick={() => cancelNativeConfirm && cancelNativeMembership.mutate({ membershipMemberId: cancelNativeConfirm.id })}
               className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               Cancel Subscription
@@ -1324,7 +1312,7 @@ function ContentTab({ userId, data, refetch }: { userId: number; data: any; refe
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => revokeNativeConfirm !== null && revokeNativeMembership.mutate({ membershipSubscriptionId: revokeNativeConfirm, sendNotification: revokeNativeNotify })}
+              onClick={() => revokeNativeConfirm !== null && revokeNativeMembership.mutate({ membershipMemberId: revokeNativeConfirm })}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Revoke
@@ -1645,9 +1633,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
   const syncSub = trpc.adminUser.syncStripeSubscription.useMutation({
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(`Synced from Stripe (${res.stripeStatus}). Updated: ${res.updated?.join("; ") || "none"}`);
-      } else {
-        toast.warning(res.message ?? "No records updated.");
+        toast.success(`Verified Stripe status: ${res.stripeStatus}. No access records changed.`);
       }
       refetch();
     },
@@ -1714,20 +1700,16 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-gray-800 capitalize">{m.tier} Membership</span>
+                          <span className="font-semibold text-gray-800 capitalize">{m.planName ?? m.tier} Membership</span>
                           <StatusBadge status={m.status} />
                           {m.source === "admin" && (
                             <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 border border-teal-200">Admin granted</span>
                           )}
-                          {m.cancelAtPeriodEnd && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                              <XCircle className="w-3 h-3" /> Cancels at period end
-                            </span>
-                          )}
+                          <SubscriptionCancellationIndicator subscriptionId={m.stripeSubscriptionId} snapshot={m.subscriptionBilling} accessExpiresAt={m.currentPeriodEnd ?? m.expiresAt} />
                         </div>
                         <div className="text-xs text-gray-500 space-y-0.5">
                           <p>Granted: {formatDate(m.grantedAt ?? m.createdAt)}</p>
-                          {m.expiresAt && <p>{m.cancelAtPeriodEnd ? "Access until" : "Expires"}: {formatDate(m.expiresAt)}</p>}
+                          {m.expiresAt && <p>{"Access until"}: {formatDate(m.expiresAt)}</p>}
                           {m.stripeSubscriptionId && (
                             <p className="font-mono text-gray-400">{m.stripeSubscriptionId}</p>
                           )}
@@ -1760,7 +1742,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                         )}
                         {m.stripeSubscriptionId && (
                           <button
-                            onClick={() => syncSub.mutate({ stripeSubscriptionId: m.stripeSubscriptionId })}
+                            onClick={() => syncSub.mutate({ subscriptionId: m.stripeSubscriptionId })}
                             disabled={syncSub.isPending}
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50"
                           >
@@ -1794,6 +1776,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-800">{o.courseTitle ?? "Course"}</span>
                       <StatusBadge status={o.stripeSubscriptionId ? "subscription" : o.status} />
+                      <SubscriptionCancellationIndicator subscriptionId={o.stripeSubscriptionId} snapshot={o.subscriptionBilling} />
                     </div>
                     <div className="text-xs text-gray-500 space-y-0.5">
                       <p>Order #{o.id} &mdash; {formatDate(o.createdAt)}</p>
@@ -1812,7 +1795,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                     )}
                     {o.stripeSubscriptionId && (
                       <button
-                        onClick={() => syncSub.mutate({ stripeSubscriptionId: o.stripeSubscriptionId })}
+                        onClick={() => syncSub.mutate({ subscriptionId: o.stripeSubscriptionId })}
                         disabled={syncSub.isPending}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50"
                       >
@@ -1853,15 +1836,11 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-800">{m.planTitle ?? "Membership"}</span>
                       <StatusBadge status={m.status ?? "active"} />
-                      {m.cancelAtPeriodEnd && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                          <XCircle className="w-3 h-3" /> Cancels at period end
-                        </span>
-                      )}
+                      <SubscriptionCancellationIndicator subscriptionId={m.stripeSubscriptionId} snapshot={m.subscriptionBilling} accessExpiresAt={m.currentPeriodEnd ?? m.expiresAt} />
                     </div>
                     <div className="text-xs text-gray-500 space-y-0.5">
                       <p>Since: {formatDate(m.createdAt)}</p>
-                      {m.currentPeriodEnd && <p>{m.cancelAtPeriodEnd ? "Access until" : "Renews"}: {formatDate(new Date(m.currentPeriodEnd * 1000))}</p>}
+                      {m.currentPeriodEnd && <p>{"Access until"}: {formatDate(new Date(m.currentPeriodEnd))}</p>}
                       {m.price > 0 && <p>{formatCurrency(m.price, m.currency)} / {m.billingInterval}</p>}
                       {m.stripeSubscriptionId && <p className="font-mono text-gray-400">{m.stripeSubscriptionId}</p>}
                     </div>
@@ -1885,7 +1864,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
                     )}
                     {m.stripeSubscriptionId && (
                       <button
-                        onClick={() => syncSub.mutate({ stripeSubscriptionId: m.stripeSubscriptionId })}
+                        onClick={() => syncSub.mutate({ subscriptionId: m.stripeSubscriptionId })}
                         disabled={syncSub.isPending}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 disabled:opacity-50"
                       >
@@ -2036,7 +2015,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
           <AlertDialogFooter>
             <AlertDialogCancel>Keep</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => cancelConfirm && cancelSub.mutate({ membershipId: cancelConfirm.membershipId, stripeSubscriptionId: cancelConfirm.stripeSubId })}
+              onClick={() => cancelConfirm && cancelSub.mutate({ subscriptionId: cancelConfirm.stripeSubId })}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Cancel Subscription
@@ -2082,7 +2061,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
           <AlertDialogFooter>
             <AlertDialogCancel>Keep</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => cancelNativeSubConfirm && cancelNativeSub.mutate({ membershipSubscriptionId: cancelNativeSubConfirm.id, stripeSubscriptionId: cancelNativeSubConfirm.stripeSubId ?? undefined })}
+              onClick={() => cancelNativeSubConfirm && cancelNativeSub.mutate({ membershipMemberId: cancelNativeSubConfirm.id })}
               className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               Cancel Subscription
@@ -2107,7 +2086,7 @@ function SubscriptionsTab({ userId, data, refetch }: { userId: number; data: any
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => revokeNativeSubConfirm !== null && revokeNativeSub.mutate({ membershipSubscriptionId: revokeNativeSubConfirm, sendNotification: revokeNativeSubNotify })}
+              onClick={() => revokeNativeSubConfirm !== null && revokeNativeSub.mutate({ membershipMemberId: revokeNativeSubConfirm })}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Revoke

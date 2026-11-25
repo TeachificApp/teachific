@@ -23,6 +23,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { Course360AiStructureControls } from "@/components/Course360AiStructureControls";
+import { Course360IntegratedSources, Course360IntegratedDraftReview, useCourse360IntegratedSources, course360IntegratedSourceInput, requireCourse360IntegratedReview } from "@/components/Course360AiIntegratedReview";
+import { requireLandingDraftBlocks, landingAiErrorMessage } from "@/lib/landingAiDraft";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +63,7 @@ import CertificateTemplatesAdmin from "./CertificateTemplatesAdmin";
 import LessonBlockEditor from "@/components/LessonBlockEditor";
 import AssignmentBlockEditor from "@/components/AssignmentBlockEditor";
 import { Block, BlockType, BlockPreview } from "@/components/BlockPreview";
+import { builderRowsForOrg, compareBuilderLibraryOrder, parseLessonBuilderBlocks } from "@/components/lessonBuilderState";
 import { BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, uid } from "@/pages/admin/LandingPageBuilder";
 import { useLearnLink } from "@/hooks/useLearnLink";
 import { getAdminUrl } from "@/hooks/useSubdomain";
@@ -156,6 +161,8 @@ function SortableCourseRow({ course, onEdit, onDuplicate, onDelete }: { course: 
 }
 
 function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) => void; typeFilter?: "course" | "quiz" | "download" | "cohort" }) {
+  const { orgId } = useOrgScope();
+  const utils = trpc.useUtils();
   const [createOpen, setCreateOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
@@ -166,21 +173,26 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
   const typeLabel = typeFilter === "quiz" ? "Quiz" : typeFilter === "download" ? "Download" : typeFilter === "cohort" ? "Cohort" : "Course";
   const typeLabelPlural = typeFilter === "quiz" ? "quizzes" : typeFilter === "download" ? "downloads" : typeFilter === "cohort" ? "cohorts" : "courses";
 
-  const { data, isLoading, error, refetch } = trpc.lmsAdmin.listCourses.useQuery({ status: statusFilter as any, type: typeFilter, page, pageSize: 200 });
+  // Fetch one bounded batch; pagination below is local, not a second server offset.
+  const { data, isLoading, error, refetch } = trpc.lmsAdmin.listCourses.useQuery({ status: statusFilter as any, type: typeFilter, page: 1, pageSize: 200 }, { enabled: !!orgId });
 
   // Sync local courses from server data
   const prevDataRef = useRef<any>(null);
+  const prevOrgRef = useRef<number | null>(null);
   useEffect(() => {
+    if (prevOrgRef.current !== orgId) {
+      prevOrgRef.current = orgId;
+      prevDataRef.current = null;
+      setLocalCourses([]);
+      setPage(1);
+    }
     if (data?.courses && data.courses !== prevDataRef.current) {
       prevDataRef.current = data.courses;
       // Sort by libraryOrder asc, then createdAt desc (mirrors server)
-      const sorted = [...data.courses].sort((a: any, b: any) => {
-        if (a.libraryOrder !== b.libraryOrder) return (a.libraryOrder ?? 0) - (b.libraryOrder ?? 0);
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
+      const sorted = builderRowsForOrg(data.courses, orgId).sort(compareBuilderLibraryOrder);
       setLocalCourses(sorted);
     }
-  }, [data?.courses]);
+  }, [data?.courses, orgId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -188,8 +200,13 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
   );
 
   const reorderCourses = trpc.lmsAdmin.reorderCourses.useMutation({
-    onSuccess: () => toast.success("Library order saved"),
-    onError: e => toast.error(`Failed to save order: ${e.message}`),
+    onSuccess: () => {
+      toast.success("Library order saved");
+      void utils.lmsAdmin.listCourses.invalidate();
+      void utils.lms.listCourses.invalidate();
+      void utils.lms.getCollection.invalidate();
+    },
+    onError: e => { toast.error(`Failed to save order: ${e.message}`); refetch(); },
   });
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -304,10 +321,10 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
         </div>
       )}
 
-      {!reorderMode && (data?.total ?? 0) > pageSize && (
+      {!reorderMode && localCourses.length > pageSize && (
         <div className="flex justify-center gap-2">
           <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-          <Button size="sm" variant="outline" disabled={page * pageSize >= (data?.total ?? 0)} onClick={() => setPage(p => p + 1)}>Next</Button>
+          <Button size="sm" variant="outline" disabled={page * pageSize >= localCourses.length} onClick={() => setPage(p => p + 1)}>Next</Button>
         </div>
       )}
 
@@ -319,6 +336,12 @@ function CoursesTab({ onEdit, typeFilter = "course" }: { onEdit: (id: number) =>
 // ─── Create Course Dialog ─────────────────────────────────────────────────────
 
 function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }: { open: boolean; onClose: () => void; onCreated: (id: number) => void; defaultType?: "course" | "quiz" | "download" | "cohort" }) {
+  const { orgId } = useOrgScope();
+  const sources = useCourse360IntegratedSources(orgId);
+  const [aiStructureMode, setAiStructureMode] = useState<"manual" | "ai">("manual");
+  const [aiShellId, setAiShellId] = useState<number | null>(null);
+  const [isApplyingDraft, setIsApplyingDraft] = useState(false);
+  const draftApplyBusy = useRef(false);
   const [mode, setMode] = useState<"manual" | "ai">("manual");
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -342,10 +365,11 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   const [aiLessonsPerModule, setAiLessonsPerModule] = useState(4);
   const [aiStarterContent, setAiStarterContent] = useState("");
   const [aiGenerateQuizzes, setAiGenerateQuizzes] = useState(true);
+  useEffect(() => { setAiShellId(null); setAiPreview(null); setAiStep("input"); }, [orgId]);
   const [aiGenerateCourseQuiz, setAiGenerateCourseQuiz] = useState(false);
 
   const create = trpc.lmsAdmin.createCourse.useMutation({
-    onSuccess: (data) => { toast.success("Course created!"); onCreated(data.id); },
+    onSuccess: (data) => { if (mode === "manual") { toast.success("Course created!"); onCreated(data.id); } },
     onError: e => toast.error(`Error: ${e.message}`),
   });
 
@@ -360,25 +384,27 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
   });
 
   const handleAiCreate = async () => {
-    // Step 1: create the course shell
-    const courseTitle = aiPreview?.title || `New ${type === "quiz" ? "Quiz" : type === "download" ? "Download" : "Course"}`;
-    create.mutate({
-      title: courseTitle,
-      subtitle: aiPreview?.subtitle || undefined,
-      type,
-      pricingType: "free",
-      isFree: true,
-      price: 0,
-    }, {
-      onSuccess: async (data) => {
-        // Step 2: commit AI content (only for course and quiz — downloads don't have curriculum)
-        if (type !== "download") {
-          await aiCommit.mutateAsync({ courseId: data.id, productType: type === "quiz" ? "quiz" : "course", generated: aiPreview });
-        }
-        toast.success(`${type === "quiz" ? "Quiz" : type === "download" ? "Download" : "Course"} created${type !== "download" ? " with AI content" : ""}!`);
-        onCreated(data.id);
-      },
-    });
+    if (draftApplyBusy.current) return;
+    const productType = type === "quiz" ? "quiz" : "course";
+    try { requireCourse360IntegratedReview(aiPreview, productType); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Review the draft before creating."); return; }
+    draftApplyBusy.current = true;
+    setIsApplyingDraft(true);
+    try {
+      // Keep a failed shell for retry; do not create duplicate courses or delete authored work.
+      const id = aiShellId ?? (await create.mutateAsync({
+        title: aiPreview.title, subtitle: aiPreview.subtitle || undefined,
+        type, pricingType: "free", isFree: true, price: 0,
+      })).id;
+      setAiShellId(id);
+      if (type !== "download") await aiCommit.mutateAsync({ courseId: id, productType, generated: aiPreview });
+      toast.success(`${productLabel} created with AI content!`);
+      setAiShellId(null);
+      setAiPreview(null);
+      setAiStep("input");
+      onCreated(id);
+    } catch { toast.error("The AI draft could not be applied. Your preview is retained; retry applying it to the same course."); }
+    finally { draftApplyBusy.current = false; setIsApplyingDraft(false); }
   };
 
   const productLabel = type === "quiz" ? "Quiz" : type === "download" ? "Download" : type === "cohort" ? "Cohort" : "Course";
@@ -554,30 +580,14 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       </Select>
                     </div>
                   </div>
+                  <Course360IntegratedSources sources={sources} />
                   {type !== "quiz" && (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label className="text-sm">Number of Modules: <span className="font-bold text-[var(--org-primary)]">{aiModuleCount}</span></Label>
-                          <input
-                            type="range" min={3} max={6} step={1}
-                            value={aiModuleCount}
-                            onChange={e => setAiModuleCount(Number(e.target.value))}
-                            className="mt-2 w-full accent-[var(--org-primary)]"
-                          />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>6</span></div>
-                        </div>
-                        <div>
-                          <Label className="text-sm">Lessons per Module: <span className="font-bold text-[var(--org-primary)]">{aiLessonsPerModule}</span></Label>
-                          <input
-                            type="range" min={3} max={5} step={1}
-                            value={aiLessonsPerModule}
-                            onChange={e => setAiLessonsPerModule(Number(e.target.value))}
-                            className="mt-2 w-full accent-[var(--org-primary)]"
-                          />
-                          <div className="flex justify-between text-xs text-gray-400 mt-0.5"><span>3</span><span>5</span></div>
-                        </div>
-                      </div>
+                      <Course360AiStructureControls
+                        mode={aiStructureMode} moduleCount={aiModuleCount} lessonsPerModule={aiLessonsPerModule}
+                        onModeChange={setAiStructureMode} onModuleCountChange={setAiModuleCount} onLessonsPerModuleChange={setAiLessonsPerModule}
+                        disabled={aiGenerate.isPending || sources.isUploading}
+                      />
                       <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border">
                         <input
                           type="checkbox"
@@ -663,7 +673,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                                         {les.quiz?.questions?.length > 0 && <span className="text-[var(--org-primary)] shrink-0">+quiz</span>}
                                       </div>
                                       {les.content && (
-                                        <div className="mt-0.5 pl-4 text-gray-400 line-clamp-2" dangerouslySetInnerHTML={{ __html: les.content.replace(/<[^>]+>/g, ' ').slice(0, 120) + '...' }} />
+                                        <div className="mt-0.5 pl-4 text-gray-400 line-clamp-2">{les.content.replace(/<[^>]+>/g, " ")}</div>
                                       )}
                                     </div>
                                   ))}
@@ -713,6 +723,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
                       </div>
                     )}
                   </div>
+                  <Course360IntegratedDraftReview draft={aiPreview} onChange={setAiPreview} />
                   <p className="text-xs text-gray-500">You can edit all content after creation. For full editable lesson blocks and automatic visuals, open the course and select Curriculum → AI Generate Course.</p>
                 </div>
               )}
@@ -743,13 +754,15 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
           ) : aiStep === "input" ? (
             <Button
               className="bg-[var(--org-primary)] hover:opacity-90 text-white"
-              disabled={!aiTopics.trim() || aiGenerate.isPending}
+              disabled={(!aiTopics.trim() && !aiStarterContent.trim() && !sources.sourceFiles.length) || aiGenerate.isPending || sources.isUploading || isApplyingDraft}
               onClick={() => aiGenerate.mutate({
                 topics: aiTopics.trim(),
                 productType: type === "quiz" ? "quiz" : "course",
                 targetAudience: aiAudience.trim() || undefined,
                 difficultyLevel: aiDifficulty,
                 estimatedDurationMinutes: aiDuration ? parseInt(aiDuration) : undefined,
+                structureMode: aiStructureMode,
+                sourceFiles: course360IntegratedSourceInput(sources.sourceFiles),
                 moduleCount: aiModuleCount,
                 lessonsPerModule: aiLessonsPerModule,
                 starterContent: aiStarterContent.trim() || undefined,
@@ -762,7 +775,7 @@ function CreateCourseDialog({ open, onClose, onCreated, defaultType = "course" }
           ) : (
             <Button
               className="bg-[var(--org-primary)] hover:opacity-90 text-white"
-              disabled={create.isPending || aiCommit.isPending}
+              disabled={create.isPending || aiCommit.isPending || isApplyingDraft || !aiPreview}
               onClick={handleAiCreate}
             >
               {(create.isPending || aiCommit.isPending) ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Creating...</> : <><Sparkles className="w-4 h-4 mr-1" /> Create Quick AI Draft</>}
@@ -1194,6 +1207,7 @@ function CourseEditor({ courseId, onBack }: { courseId: number; onBack: () => vo
 
   if (isLoading) return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
   if (!course) return <div className="text-gray-500">Course not found</div>;
+  if (!orgId || course.orgId !== orgId) return <div role="alert" className="text-gray-500">Choose the organization that owns this course before editing it.</div>;
 
   return (
     <div className="space-y-4">
@@ -2716,15 +2730,16 @@ function LandingPageEditor({ courseId, courseType }: { courseId: number; courseT
   const aiGenerateLandingPage = trpc.lmsAdmin.aiGenerateLandingPage.useMutation({
     onSuccess: (result) => {
       try {
-        sessionStorage.setItem(`landing-page-ai-draft:${courseId}`, JSON.stringify(result.blocks));
-      } catch {
-        toast.error("The generated draft could not be opened. Please try again.");
+        const blocks = requireLandingDraftBlocks(result.blocks);
+        sessionStorage.setItem(`landing-page-ai-draft:${courseId}`, JSON.stringify(blocks));
+      } catch (error) {
+        toast.error(landingAiErrorMessage(error));
         return;
       }
       toast.success("Landing page draft generated. Review it before saving.");
       setTimeout(() => navigate(`/lms/courses/${courseId}/landing-builder?t=${Date.now()}`), 600);
     },
-    onError: e => toast.error(`AI error: ${e.message}`),
+    onError: e => toast.error(`AI error: ${landingAiErrorMessage(e)}`),
   });
 
   const typeLabel = courseType === "download" ? "download" : courseType === "quiz" ? "quiz" : "course";
@@ -3574,6 +3589,7 @@ function SaveSectionTemplateDialog({ section, onClose }: { section: { id: number
 
 // ─── Add Section Dialog ───────────────────────────────────────────────────────
 function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolean; courseId: number; onClose: () => void; onCreated: (section: { id: number; title: string }) => void }) {
+  const { orgId } = useOrgScope();
   const [mode, setMode] = useState<"blank" | "template" | "course">("blank");
   const [title, setTitle] = useState("");
   // Template mode
@@ -3584,11 +3600,13 @@ function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolea
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
   const [copyTitle, setCopyTitle] = useState("");
 
-  const { data: templates, isLoading: templatesLoading } = trpc.lmsAdmin.listSectionTemplates.useQuery(undefined, { enabled: open && mode === "template" });
-  const { data: coursesWithSections, isLoading: coursesLoading } = trpc.lmsAdmin.listCoursesWithSections.useQuery(undefined, { enabled: open && mode === "course" });
+  const { data: allTemplates, isLoading: templatesLoading } = trpc.lmsAdmin.listSectionTemplates.useQuery(undefined, { enabled: !!orgId && open && mode === "template" });
+  const { data: allCoursesWithSections, isLoading: coursesLoading } = trpc.lmsAdmin.listCoursesWithSections.useQuery(undefined, { enabled: !!orgId && open && mode === "course" });
+  const templates = builderRowsForOrg(allTemplates as any[] | undefined, orgId);
+  const coursesWithSections = builderRowsForOrg(allCoursesWithSections as any[] | undefined, orgId);
 
   const selectedCourse = coursesWithSections?.find(c => c.id === selectedCourseId);
-  const selectedSection = selectedCourse?.sections.find(s => s.id === selectedSectionId);
+  const selectedSection = selectedCourse?.sections.find((s: any) => s.id === selectedSectionId);
 
   const create = trpc.lmsAdmin.createSection.useMutation({
     onSuccess: (data) => { toast.success("Section added"); const t = title.trim(); setTitle(""); onCreated({ id: data.id, title: t }); },
@@ -3610,15 +3628,15 @@ function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolea
       if (!title.trim()) return;
       create.mutate({ courseId, title: title.trim() });
     } else if (mode === "template") {
-      if (!selectedTemplateId) return;
+      if (selectedTemplateId === null || !templates.some(template => template.id === selectedTemplateId)) return;
       importTemplate.mutate({ courseId, templateId: selectedTemplateId, sectionTitle: templateTitle.trim() || undefined });
     } else {
-      if (!selectedSectionId) return;
+      if (selectedSectionId === null || !selectedSection) return;
       copySection.mutate({ targetCourseId: courseId, sourceSectionId: selectedSectionId, sectionTitle: copyTitle.trim() || undefined });
     }
   }
 
-  const canSubmit = mode === "blank" ? !!title.trim() : mode === "template" ? !!selectedTemplateId : !!selectedSectionId;
+  const canSubmit = !!orgId && (mode === "blank" ? !!title.trim() : mode === "template" ? templates.some(template => template.id === selectedTemplateId) : !!selectedSection);
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
@@ -3735,6 +3753,7 @@ function AddSectionDialog({ open, courseId, onClose, onCreated }: { open: boolea
 // ─── Media Repository Picker Dialog ──────────────────────────────────────────
 
 function MediaPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (asset: { id: number; title: string; s3Url: string; mediaType: string }) => void }) {
+  const { orgId } = useOrgScope();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [mediaType, setMediaType] = useState<string>("all");
@@ -3747,7 +3766,7 @@ function MediaPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose
 
   const { data, isLoading } = trpc.mediaRepo.listAssets.useQuery(
     { search: debouncedSearch || undefined, mediaType: mediaType !== "all" ? mediaType as any : undefined, page, pageSize: 20 },
-    { enabled: open }
+    { enabled: open && !!orgId }
   );
 
   return (
@@ -3772,7 +3791,7 @@ function MediaPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded" />)
           ) : (
-            (data?.assets ?? []).map((a: any) => (
+            builderRowsForOrg(data?.assets, orgId).map((a: any) => (
               <button key={a.id} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] transition-colors text-left"
                 onClick={() => { onSelect({ id: a.id, title: a.title, s3Url: a.s3Url, mediaType: a.mediaType }); onClose(); }}>
                 <span className="text-xs font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded uppercase">{a.mediaType}</span>
@@ -3806,71 +3825,49 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
   onGenerated: () => void;
 }) {
   const { orgId } = useOrgScope();
+  const sources = useCourse360IntegratedSources(orgId);
+  const [structureMode, setStructureMode] = useState<"manual" | "ai">("manual");
   const [prompt, setPrompt] = useState("");
   const [courseDescription, setCourseDescription] = useState(initialCourseDescription);
   const [numSections, setNumSections] = useState(4);
   const [numLessonsPerSection, setNumLessonsPerSection] = useState(3);
   const [includeUnsplashImages, setIncludeUnsplashImages] = useState(true);
   const [includeAiImages, setIncludeAiImages] = useState(true);
-  const [sourceFiles, setSourceFiles] = useState<AiSourceReviewFile[]>([]);
-  const [isUploadingSources, setIsUploadingSources] = useState(false);
-  const [preview, setPreview] = useState<null | {
-    courseTitle: string;
-    sections: Array<{ id: number; title: string; lessons: Array<{ id: number; title: string }> }>;
-    visuals?: { curatedUnsplashImages: number; generatedAiImages: number };
-  }>(null);
-  const [step, setStep] = useState<"prompt" | "generating" | "done">("prompt");
-
+  const [preview, setPreview] = useState<any>(null);
+  const [step, setStep] = useState<"prompt" | "generating" | "review" | "done">("prompt");
   const generate = trpc.lmsAdmin.generateCourseOutline.useMutation({
     onSuccess: (data) => {
-      setPreview(data);
-      setStep("done");
+      if (!data.preview) { toast.error("AI returned no reviewable draft. No curriculum was applied."); setStep("prompt"); return; }
+      setPreview({ ...data.preview, title: data.preview.courseTitle });
+      setStep("review");
     },
-    onError: (e) => {
-      toast.error(`AI generation failed: ${e.message}`);
-      setStep("prompt");
-    },
+    onError: (e) => { toast.error(`AI generation failed: ${e.message}`); setStep("prompt"); },
   });
+  const apply = trpc.lmsAdmin.aiCommitCourse.useMutation({
+    onSuccess: () => { toast.success("Reviewed curriculum added. Existing lessons and course settings are unchanged."); setStep("done"); },
+    onError: (e) => toast.error(`AI draft could not be applied: ${e.message}`),
+  });
+  const handleApply = () => {
+    try { requireCourse360IntegratedReview(preview, "course"); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Review the complete draft."); return; }
+    apply.mutate({ courseId, productType: "course", generated: preview, reviewedOutline: true, includeUnsplashImages, includeAiImages });
+  };
 
   const handleGenerate = () => {
-    if (!prompt.trim()) { toast.error("Please enter the topics, notes, and required details."); return; }
+    if (!prompt.trim() && !courseDescription.trim() && !sources.sourceFiles.length) { toast.error("Enter topics or an outline, or add source files."); return; }
     setStep("generating");
     generate.mutate({
       courseId,
-      prompt: prompt.trim(),
+      prompt: prompt.trim() || "Use the supplied course sources and description to determine the subject and scope.",
+      structureMode,
+      previewOnly: true,
       courseDescription: courseDescription.trim() || undefined,
       numSections,
       numLessonsPerSection,
       includeUnsplashImages,
       includeAiImages,
-      sourceFiles: sourceFiles.map(({ url, mimeType, name }) => ({
-        url,
-        mimeType: mimeType as "application/pdf" | "image/jpeg" | "image/png" | "image/webp",
-        name,
-      })),
+      sourceFiles: course360IntegratedSourceInput(sources.sourceFiles),
     });
-  };
-
-  const uploadSourceFiles = async (files: File[]) => {
-    if (!orgId) { toast.error("Choose an organization before adding source files."); return; }
-    if (sourceFiles.length + files.length > 3) { toast.error("You can add up to three source files."); return; }
-    setIsUploadingSources(true);
-    try {
-      const uploaded = await Promise.all(files.map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("orgId", String(orgId));
-        const response = await fetch("/api/upload-ai-generation-source", { method: "POST", body: formData });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "Source upload failed.");
-        return payload.sourceFile as AiSourceReviewFile;
-      }));
-      setSourceFiles(current => [...current, ...uploaded]);
-    } catch (error: any) {
-      toast.error(error?.message || "Source upload failed.");
-    } finally {
-      setIsUploadingSources(false);
-    }
   };
 
   return (
@@ -3913,14 +3910,15 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
               />
               <p className="text-xs text-gray-400 mt-1">Be specific — include topics, audience, skill level, voice, examples, required modules, and anything the course must avoid.</p>
             </div>
-            <AiSourceFileReview
-              sourceFiles={sourceFiles}
-              isUploading={isUploadingSources}
-              onFiles={uploadSourceFiles}
-              onRemove={(index) => setSourceFiles(current => current.filter((_, currentIndex) => currentIndex !== index))}
-              description="Add organization-authorized PDFs or images to ground the generated course outline."
-            />
-            <div className="grid grid-cols-2 gap-4">
+            <Course360IntegratedSources sources={sources} />
+            <fieldset className="space-y-3" disabled={sources.isUploading || generate.isPending}>
+              <legend className="text-sm font-medium">Curriculum structure</legend>
+              <div className="flex gap-3 text-sm">
+                <label><input type="radio" name="reviewed-outline-structure" checked={structureMode === "manual"} onChange={() => setStructureMode("manual")} className="mr-1.5" />Manual counts (exact)</label>
+                <label><input type="radio" name="reviewed-outline-structure" checked={structureMode === "ai"} onChange={() => setStructureMode("ai")} className="mr-1.5" />AI-planned structure</label>
+              </div>
+              {structureMode === "ai" && <p className="text-xs text-gray-500">AI plans 1–20 modules with 1–10 lessons each from your outline and sources. Lesson counts may differ. Pro or Enterprise required.</p>}
+            {structureMode === "manual" && <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium">Number of Modules</Label>
                 <div className="flex items-center gap-3 mt-1.5">
@@ -3943,9 +3941,10 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
                   <span className="text-sm font-semibold text-[var(--org-primary)] w-6 text-center">{numLessonsPerSection}</span>
                 </div>
               </div>
-            </div>
+            </div>}
+            </fieldset>
             <div className="bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] rounded-lg px-4 py-3 text-xs text-[var(--org-primary)]">
-              <strong>This will generate:</strong> {numSections} modules × {numLessonsPerSection} lessons = <strong>{numSections * numLessonsPerSection} lessons</strong> with rich instructional content, takeaways, reflection prompts, and practice activities — all ready to edit.
+              <strong>This will preview:</strong> {structureMode === "manual" ? `${numSections} modules × ${numLessonsPerSection} lessons = ${numSections * numLessonsPerSection} lessons` : "an AI-planned curriculum"} with rich instructional content, takeaways, reflection prompts, and practice activities — all ready to edit.
             </div>
             <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
               <label className="flex items-start gap-3 px-4 py-3 cursor-pointer">
@@ -3985,9 +3984,16 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
             </div>
             <div className="text-center">
               <p className="font-semibold text-gray-800">Generating your course...</p>
-              <p className="text-sm text-gray-500 mt-1">AI is creating {numSections * numLessonsPerSection} lessons with rich content, dynamic learning blocks, and your selected visuals. This may take 45–120 seconds.</p>
+              <p className="text-sm text-gray-500 mt-1">AI is preparing {structureMode === "manual" ? `${numSections * numLessonsPerSection} lessons` : "your planned curriculum"} for review. No lessons or images are created until you apply the preview.</p>
             </div>
             <Loader2 className="w-5 h-5 animate-spin text-[var(--org-primary)]" />
+          </div>
+        )}
+
+        {step === "review" && preview && (
+          <div className="space-y-3 py-2">
+            <Course360IntegratedDraftReview draft={preview} onChange={setPreview} />
+            <p className="text-xs text-gray-500">Apply appends the reviewed modules atomically and keeps the saved course title, description, landing page, and existing curriculum unchanged. Selected visuals are added only when you confirm.</p>
           </div>
         )}
 
@@ -4013,14 +4019,14 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
             )}
             <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {preview.sections.map((section, si) => (
-                <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div key={si} className="border border-gray-200 rounded-lg overflow-hidden">
                   <div className="bg-gray-50 px-3 py-2 flex items-center gap-2">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Module {si + 1}</span>
                     <span className="text-sm font-semibold text-gray-800">{section.title}</span>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {section.lessons.map((lesson, li) => (
-                      <div key={lesson.id} className="px-3 py-1.5 flex items-center gap-2">
+                      <div key={li} className="px-3 py-1.5 flex items-center gap-2">
                         <span className="text-xs text-gray-400 w-5">{li + 1}.</span>
                         <span className="text-sm text-gray-700">{lesson.title}</span>
                       </div>
@@ -4038,10 +4044,18 @@ function AICourseGeneratorDialog({ courseId, courseTitle, initialCourseDescripti
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button
                 className="bg-[var(--org-primary)] hover:opacity-90 text-white"
-                disabled={!prompt.trim()}
+                disabled={(!prompt.trim() && !courseDescription.trim() && !sources.sourceFiles.length) || sources.isUploading || generate.isPending}
                 onClick={handleGenerate}
               >
-                <Sparkles className="w-4 h-4 mr-1" /> Generate Course
+                <Sparkles className="w-4 h-4 mr-1" /> Generate Draft Preview
+              </Button>
+            </>
+          )}
+          {step === "review" && (
+            <>
+              <Button variant="outline" disabled={apply.isPending} onClick={() => setStep("prompt")}>Back to Edit</Button>
+              <Button className="bg-[var(--org-primary)] hover:opacity-90 text-white" disabled={apply.isPending} onClick={handleApply}>
+                {apply.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />} Apply Reviewed Curriculum
               </Button>
             </>
           )}
@@ -4083,7 +4097,9 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
   const [requireManualComplete, setRequireManualComplete] = useState<boolean | null>(null);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<{ id: number; title: string; s3Url: string; mediaType: string } | null>(null);
-  const { data: standaloneQuizzes = [] } = trpc.quizMaker.listQuizzes.useQuery();
+  const { orgId } = useOrgScope();
+  const { data: allStandaloneQuizzes = [] } = trpc.quizMaker.listQuizzes.useQuery(undefined, { enabled: !!orgId });
+  const standaloneQuizzes = builderRowsForOrg(allStandaloneQuizzes, orgId);
 
   const create = trpc.lmsAdmin.createLesson.useMutation({
     onSuccess: (data) => {
@@ -4107,6 +4123,7 @@ function AddLessonDialog({ courseId, sectionId, onClose, onCreated }: {
   };
 
   const handleCreate = () => {
+    if (!orgId || (standaloneQuizId && !standaloneQuizzes.some(quiz => quiz.id === Number(standaloneQuizId)))) return;
     create.mutate({
       courseId,
       sectionId,
@@ -4227,12 +4244,14 @@ function CopyLessonDialog({
   onClose: () => void;
   onCopy: (targetCourseId: number, targetSectionId: number | null) => void;
 }) {
-  const { data: coursesResp1 } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 500 });
+  const { orgId } = useOrgScope();
+  const { data: coursesResp1 } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 }, { enabled: !!orgId });
   // Filter to only courses and quizzes (exclude downloads), sorted: current course first
-  const courses1 = (coursesResp1?.courses ?? []).filter((c: any) => c.type === "course" || c.type === "quiz").sort((a: any, b: any) => (a.id === currentCourseId ? -1 : b.id === currentCourseId ? 1 : 0));
+  const courses1 = builderRowsForOrg(coursesResp1?.courses, orgId).filter((c: any) => c.type === "course" || c.type === "quiz").sort((a: any, b: any) => (a.id === currentCourseId ? -1 : b.id === currentCourseId ? 1 : 0));
   const [selectedCourseId, setSelectedCourseId] = useState<number>(currentCourseId);
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
-  const { data: targetCourse } = trpc.lmsAdmin.getCourse.useQuery({ id: selectedCourseId }, { enabled: !!selectedCourseId });
+  const validDestination = courses1.some(course => course.id === selectedCourseId);
+  const { data: targetCourse } = trpc.lmsAdmin.getCourse.useQuery({ id: selectedCourseId }, { enabled: validDestination });
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -4278,7 +4297,7 @@ function CopyLessonDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className=" hover:" onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
+          <Button className=" hover:" disabled={!validDestination || !targetCourse || targetCourse.orgId !== orgId || (selectedSectionId !== null && !targetCourse.sections?.some((section: any) => section.id === selectedSectionId))} onClick={() => onCopy(selectedCourseId, selectedSectionId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Lesson
           </Button>
         </DialogFooter>
@@ -4295,9 +4314,10 @@ function CopyModuleDialog({
   onClose: () => void;
   onCopy: (targetCourseId: number) => void;
 }) {
-  const { data: coursesResp2 } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 500 });
+  const { orgId } = useOrgScope();
+  const { data: coursesResp2 } = trpc.lmsAdmin.listCourses.useQuery({ status: "all", type: "all", page: 1, pageSize: 200 }, { enabled: !!orgId });
   // Filter to only courses and quizzes (exclude downloads), sorted: current course first
-  const courses2 = (coursesResp2?.courses ?? []).filter((c: any) => c.type === "course" || c.type === "quiz").sort((a: any, b: any) => (a.id === currentCourseId ? -1 : b.id === currentCourseId ? 1 : 0));
+  const courses2 = builderRowsForOrg(coursesResp2?.courses, orgId).filter((c: any) => c.type === "course" || c.type === "quiz").sort((a: any, b: any) => (a.id === currentCourseId ? -1 : b.id === currentCourseId ? 1 : 0));
   const [selectedCourseId, setSelectedCourseId] = useState<number>(currentCourseId);
 
   return (
@@ -4332,7 +4352,7 @@ function CopyModuleDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button className=" hover:" onClick={() => onCopy(selectedCourseId)}>
+          <Button className=" hover:" disabled={!courses2.some(course => course.id === selectedCourseId)} onClick={() => onCopy(selectedCourseId)}>
             <Copy className="w-4 h-4 mr-2" /> Copy Module
           </Button>
         </DialogFooter>
@@ -4341,25 +4361,33 @@ function CopyModuleDialog({
   );
 }
 
-function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndClose, prevLesson, nextLesson, onNavigateLesson }: { lesson: any; onClose: () => void; onSaved: () => void; onSavedAndClose?: () => void; prevLesson?: any; nextLesson?: any; onNavigateLesson?: (lesson: any) => void }) {
+export function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndClose, prevLesson, nextLesson, onNavigateLesson }: { lesson: any; onClose: () => void; onSaved: () => void; onSavedAndClose?: () => void; prevLesson?: any; nextLesson?: any; onNavigateLesson?: (lesson: any) => void }) {
   const blockEditorRef = React.useRef<import('@/components/LessonBlockEditor').LessonBlockEditorHandle>(null);
   // Fetch the FULL lesson record (including contentBlocks, content, videoContent).
   // The course list view intentionally strips heavy columns for performance, so we
   // must re-fetch the full row here before the editor can render existing blocks.
-  const { data: fullLesson, isLoading: lessonLoading } = trpc.lmsAdmin.getLessonAdmin.useQuery(
+  const { data: fullLesson, isLoading: lessonLoading, error: lessonError, refetch: refetchLesson } = trpc.lmsAdmin.getLessonAdmin.useQuery(
     { lessonId: lessonShallow.id },
     { enabled: !!lessonShallow.id, staleTime: 0 }
   );
   // Use the full lesson once loaded; fall back to the shallow object while loading
   const lesson = fullLesson ?? lessonShallow;
+  const parsedBlocks = React.useMemo(() => parseLessonBuilderBlocks(fullLesson?.contentBlocks), [fullLesson?.contentBlocks]);
+  const hydratedLessonRef = useRef<number | null>(null);
+  const savingRef = useRef(false);
+  const settingsRevisionRef = useRef(0);
 
   const [activeTab, setActiveTab] = useState<"settings" | "content">("settings");
+  const [contentVisited, setContentVisited] = useState(false);
   const [headerSaving, setHeaderSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [contentDirty, setContentDirty] = useState(false);
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const markSettingsDirty = () => { settingsRevisionRef.current += 1; setIsDirty(true); };
 
   const handleCloseWithConfirm = () => {
-    if (isDirty) {
+    if (headerSaving || update.isPending) return;
+    if (isDirty || contentDirty) {
       setShowDiscardDialog(true);
     } else {
       onClose();
@@ -4367,17 +4395,16 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
   };
 
   const handleHeaderSave = async (andClose = false) => {
+    if (savingRef.current || !fullLesson || parsedBlocks.error) return;
+    savingRef.current = true;
     setHeaderSaving(true);
     try {
-      if (activeTab === "content" && blockEditorRef.current) {
-        // Save lesson blocks from the content tab
-        await blockEditorRef.current.save(andClose);
-      } else {
-        // Save lesson settings from the settings tab
-        handleSave(andClose);
-      }
-      setIsDirty(false);
+      // Save both visited tabs atomically; tab visibility must never choose which draft survives.
+      await handleSave(andClose);
+    } catch {
+      // The mutation reports the error; retain both drafts and their dirty state for retry.
     } finally {
+      savingRef.current = false;
       setHeaderSaving(false);
     }
   };
@@ -4409,6 +4436,12 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
   // Reset all lesson state when navigating to a different lesson
   useEffect(() => {
+    hydratedLessonRef.current = null;
+    setIsDirty(false);
+    setContentDirty(false);
+    setContentVisited(false);
+    setActiveTab("settings");
+    setSelectedAsset(null);
     setTitle(lessonShallow.title ?? "");
     setLessonType(lessonShallow.type ?? "text");
     setContent(lessonShallow.content ?? "");
@@ -4433,13 +4466,33 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
   // Sync state when full lesson data arrives (content/videoContent/embedUrl may be empty until then)
   useEffect(() => {
-    if (fullLesson) {
+    if (fullLesson?.id === lessonShallow.id && hydratedLessonRef.current !== lessonShallow.id) {
+      hydratedLessonRef.current = lessonShallow.id;
+      setTitle(fullLesson.title ?? "");
       setLessonType(fullLesson.type ?? "text");
       setContent(fullLesson.content ?? "");
       setVideoContent(fullLesson.videoContent ?? "");
       setEmbedUrl(fullLesson.embedUrl ?? "");
+      setPreviewMode(fullLesson.previewMode ?? (fullLesson.isPreview ? "preview" : "none"));
+      setDurationMinutes(String(fullLesson.durationMinutes ?? ""));
+      setRequireVideoCompletion(fullLesson.requireVideoCompletion === 1);
+      setRequireManualComplete(fullLesson.requireManualComplete == null ? null : fullLesson.requireManualComplete === 1);
+      setDripDays(String(fullLesson.dripDays ?? ""));
+      setShowInstructor(fullLesson.showInstructor ?? "inherit");
+      setIsPrerequisite(!!fullLesson.isPrerequisite);
+      setCommentsEnabled(!!fullLesson.commentsEnabled);
+      setCountTowardCompletion(fullLesson.countTowardCompletion !== false && fullLesson.countTowardCompletion !== 0);
+      setMeetingLink(fullLesson.meetingLink ?? "");
+      setLessonStatus(fullLesson.lessonStatus ?? "published");
+      const localDateTime = (value: unknown) => {
+        if (!value) return "";
+        const date = new Date(value as string | number);
+        return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      };
+      setLiveStartAt(localDateTime(fullLesson.liveStartAt));
+      setLiveEndAt(localDateTime(fullLesson.liveEndAt));
     }
-  }, [fullLesson]);
+  }, [fullLesson, lessonShallow.id]);
 
   // Fetch all lessons in this course for the prerequisite selector
   const { data: courseLessonsData } = trpc.lmsAdmin.getLessonsWithBlocks.useQuery(
@@ -4461,8 +4514,10 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
     onError: e => toast.error(`Error: ${e.message}`),
   });
 
-  const handleSave = (andClose = false) => {
-    update.mutate({
+  const handleSave = async (andClose = false) => {
+    const revision = settingsRevisionRef.current;
+    const savedBlocks = blockEditorRef.current?.getBlocks();
+    await update.mutateAsync({
       id: lesson.id,
       title: title.trim(),
       type: lessonType,
@@ -4484,16 +4539,22 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
       videoContent: lessonType === "video_text" ? (videoContent || null) : undefined,
       embedUrl: lessonType === "embed" ? (embedUrl || null) : undefined,
       mediaAssetId: selectedAsset?.id ?? undefined,
-    }, {
-      onSuccess: () => { if (andClose && onSavedAndClose) { onSavedAndClose(); } else { onSaved(); } },
+      contentBlocks: savedBlocks ? JSON.stringify(savedBlocks) : undefined,
     });
+    const settingsUnchanged = revision === settingsRevisionRef.current;
+    const blocksUnchanged = !savedBlocks || blockEditorRef.current?.getBlocks() === savedBlocks;
+    if (settingsUnchanged) setIsDirty(false);
+    if (blocksUnchanged) setContentDirty(false);
+    if (blocksUnchanged) blockEditorRef.current?.markSaved();
+    if (andClose && settingsUnchanged && blocksUnchanged && onSavedAndClose) onSavedAndClose();
+    else onSaved();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-3 bg-white border-b border-gray-200 shrink-0">
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 mr-1">
+      <div className="flex flex-wrap items-center gap-3 px-3 sm:px-5 py-3 bg-white border-b border-gray-200 shrink-0">
+        <button onClick={handleCloseWithConfirm} aria-label="Close lesson editor" className="text-gray-400 hover:text-gray-700 mr-1">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex-1 min-w-0">
@@ -4518,7 +4579,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             size="sm"
             variant="outline"
             className="border-[var(--org-primary)] text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_5%,transparent)] h-7 text-xs font-semibold"
-            disabled={headerSaving || update.isPending}
+            disabled={headerSaving || update.isPending || !fullLesson || !!parsedBlocks.error}
             onClick={() => handleHeaderSave(false)}
           >
             <Save className="w-3 h-3 mr-1" />
@@ -4527,7 +4588,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           <Button
             size="sm"
             className="bg-[var(--org-primary)] hover:opacity-90 text-white h-7 text-xs font-semibold"
-            disabled={headerSaving || update.isPending}
+            disabled={headerSaving || update.isPending || !fullLesson || !!parsedBlocks.error}
             onClick={() => handleHeaderSave(true)}
           >
             {(headerSaving || update.isPending) ? "Saving..." : "Save & Close"}
@@ -4544,7 +4605,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             Settings
           </button>
           <button
-            onClick={() => setActiveTab("content")}
+            onClick={() => { setContentVisited(true); setActiveTab("content"); }}
             className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               activeTab === "content" ? "bg-[var(--org-primary)] text-white" : "text-gray-500 hover:text-gray-800"
             }`}
@@ -4556,8 +4617,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
         {/* Prev / Next lesson navigation — always at far right, never shifts */}
         <div className="flex items-center gap-1 shrink-0">
           <button
-            onClick={() => prevLesson && onNavigateLesson?.(prevLesson)}
-            disabled={!prevLesson}
+            onClick={() => { if (prevLesson && (!(isDirty || contentDirty) || window.confirm("Discard unsaved changes and open another lesson?"))) onNavigateLesson?.(prevLesson); }}
+            disabled={!prevLesson || headerSaving || update.isPending}
             title={prevLesson ? `← ${prevLesson.title}` : "No previous lesson"}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-gray-200 hover:border-[var(--org-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
@@ -4565,8 +4626,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             <span className="hidden md:inline max-w-[110px] truncate">{prevLesson ? prevLesson.title : "Prev"}</span>
           </button>
           <button
-            onClick={() => nextLesson && onNavigateLesson?.(nextLesson)}
-            disabled={!nextLesson}
+            onClick={() => { if (nextLesson && (!(isDirty || contentDirty) || window.confirm("Discard unsaved changes and open another lesson?"))) onNavigateLesson?.(nextLesson); }}
+            disabled={!nextLesson || headerSaving || update.isPending}
             title={nextLesson ? `${nextLesson.title} →` : "No next lesson"}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-[var(--org-primary)] hover:bg-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] border border-gray-200 hover:border-[var(--org-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
           >
@@ -4580,7 +4641,8 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
       <>
       {activeTab === "settings" && (
       <div className="flex-1 overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-6 py-6">
+      {lessonError && <p role="alert" className="p-4 text-sm text-red-600">{lessonError.message} <button type="button" onClick={() => refetchLesson()}>Retry</button></p>}
+      <fieldset disabled={!fullLesson || headerSaving || update.isPending} onChangeCapture={markSettingsDirty} className="max-w-2xl mx-auto px-6 py-6">
 
         <div className="space-y-4">
           <div>
@@ -4630,7 +4692,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           {/* Preview mode selector */}
           <div className="border border-[color:color-mix(in_srgb,var(--org-primary)_30%,transparent)] rounded-lg p-4 space-y-3 bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)]">
             <Label className="text-sm font-semibold text-[var(--org-primary)]">Free Preview Setting</Label>
-            <Select value={previewMode} onValueChange={(v) => setPreviewMode(v as typeof previewMode)}>
+            <Select value={previewMode} onValueChange={(v) => { setPreviewMode(v as typeof previewMode); markSettingsDirty(); }}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -4657,7 +4719,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
             <p className="text-sm font-medium text-gray-700">"Mark Complete" button</p>
             <div className="flex gap-1 border rounded-lg p-1 bg-gray-50 w-fit">
               {([null, true, false] as const).map(v => (
-                <button key={String(v)} onClick={() => setRequireManualComplete(v)}
+                <button key={String(v)} onClick={() => { setRequireManualComplete(v); markSettingsDirty(); }}
                   className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
                     requireManualComplete === v ? "bg-white shadow text-[var(--org-primary)] border border-gray-200" : "text-gray-500 hover:text-gray-700"
                   }`}>
@@ -4670,7 +4732,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
           {/* Comments toggle */}
           <div className="flex items-center gap-2">
-            <Switch checked={commentsEnabled} onCheckedChange={setCommentsEnabled} id="edit-comments-enabled" />
+            <Switch checked={commentsEnabled} onCheckedChange={value => { setCommentsEnabled(value); markSettingsDirty(); }} id="edit-comments-enabled" />
             <Label htmlFor="edit-comments-enabled" className="text-sm">Enable student discussion / comments on this lesson</Label>
           </div>
           {/* Count toward completion */}
@@ -4759,7 +4821,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               <User className="w-4 h-4 text-[var(--org-primary)]" /> Instructor Panel
             </p>
             <p className="text-xs text-gray-500">Override the course-level instructor panel setting for this specific lesson.</p>
-            <Select value={showInstructor} onValueChange={(v: any) => setShowInstructor(v)}>
+            <Select value={showInstructor} onValueChange={(v: any) => { setShowInstructor(v); markSettingsDirty(); }}>
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>
@@ -4781,6 +4843,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
                 checked={isPrerequisite}
                 onCheckedChange={v => {
                   setIsPrerequisite(v);
+                  markSettingsDirty();
                   // Auto-enable requireVideoCompletion for video lessons when marked as prerequisite
                   void v;
                 }}
@@ -4825,15 +4888,15 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
           </div>
         </div>
 
-      </div>
+      </fieldset>
       </div>
       )}
 
       {/* Lesson Editor Tab */}
-      {activeTab === "content" && (
-        <div className="flex-1 overflow-hidden flex flex-col">
+      {contentVisited && (
+        <div className={activeTab === "content" ? "flex-1 overflow-hidden flex flex-col" : "hidden"}>
           {/* Sub-toolbar: canvas actions */}
-          <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
             <Button
               size="sm"
               className="bg-[var(--org-primary)] hover:opacity-90 text-white h-7 text-xs font-semibold"
@@ -4850,7 +4913,9 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               <LayoutTemplate className="w-3 h-3 mr-1" /> Save as Template
             </Button>
           </div>
-          {!fullLesson ? (
+          {lessonError || parsedBlocks.error ? (
+            <div role="alert" className="p-4 text-sm text-red-600">{parsedBlocks.error || lessonError?.message}<Button variant="outline" size="sm" onClick={() => refetchLesson()}>Retry</Button></div>
+          ) : !fullLesson ? (
             <div className="flex items-center justify-center flex-1 gap-2 text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span className="text-sm">Loading lesson content...</span>
@@ -4863,13 +4928,22 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
               courseId={lesson.courseId}
               courseSlug={courseData?.slug ?? ""}
               lessonTitle={lesson.title}
-              initialBlocks={fullLesson.contentBlocks ? (typeof fullLesson.contentBlocks === "string" ? JSON.parse(fullLesson.contentBlocks) : fullLesson.contentBlocks) as Block[] : []}
+              initialBlocks={parsedBlocks.blocks}
+              onDirtyChange={setContentDirty}
+              parentSaving={headerSaving}
+              onAutoSave={async () => {
+                if (savingRef.current) throw new Error("A lesson save is already in progress");
+                savingRef.current = true;
+                setHeaderSaving(true);
+                try { await handleSave(false); }
+                finally { savingRef.current = false; setHeaderSaving(false); }
+              }}
               onClose={() => setActiveTab("settings")}
-              onSaved={() => { onSaved(); setIsDirty(false); }}
-              onSavedAndClose={() => { setIsDirty(false); if (onSavedAndClose) onSavedAndClose(); else onSaved(); }}
+              onSaved={onSaved}
+              onSavedAndClose={onSaved}
               prevLesson={prevLesson}
               nextLesson={nextLesson}
-              onNavigateLesson={onNavigateLesson}
+              onNavigateLesson={target => { if (!(isDirty || contentDirty) || window.confirm("Discard unsaved changes and open another lesson?")) onNavigateLesson?.(target); }}
               embedded
             />
           )}
@@ -4878,7 +4952,7 @@ function LessonEditorPage({ lesson: lessonShallow, onClose, onSaved, onSavedAndC
 
 
       </>
-      <MediaPickerDialog open={mediaPickerOpen} onClose={() => setMediaPickerOpen(false)} onSelect={asset => { setSelectedAsset(asset); setContent(asset.s3Url); }} />
+      <MediaPickerDialog open={mediaPickerOpen} onClose={() => setMediaPickerOpen(false)} onSelect={asset => { setSelectedAsset(asset); setContent(asset.s3Url); markSettingsDirty(); }} />
 
       {/* Discard changes confirmation dialog */}
       <Dialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>

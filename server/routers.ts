@@ -137,6 +137,9 @@ import { teachificPayRouter } from "./teachificPayRouter";
 import { zapierRouter } from "./zapierRouter";
 import { embeddedCheckoutRouter } from "./embeddedCheckoutRouter";
 import { funnelRouter, funnelPublicRouter, funnelAdminRouter } from "./routers/funnelRouter";
+import { funnelAiRouter } from "./routers/funnelAiRouter";
+import { funnel360NativeRouter } from "./routers/funnel360NativeRouter";
+import { funnel360PublicRouter } from "./routers/funnel360PublicRouter";
 import { lmsAdminRouter } from "./routers/lmsAdminRouter";
 import { lmsPublicRouter, lmsLearnerRouter, lmsGroupRouter } from "./routers/lmsRouter";
 import { lmsEnrollmentAdminRouter } from "./routers/lmsEnrollmentAdminRouter";
@@ -282,6 +285,9 @@ export const appRouter = router({
   funnel: funnelRouter,
   funnelPublic: funnelPublicRouter,
   funnelAdmin: funnelAdminRouter,
+  funnelAi: funnelAiRouter,
+  funnel360: funnel360NativeRouter,
+  funnel360Public: funnel360PublicRouter,
   lmsAdmin: lmsAdminRouter,
   lmsGroup: lmsGroupRouter,
   lmsLearner: lmsLearnerRouter,

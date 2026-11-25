@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import PromoCodeInput from "@/components/PromoCodeInput";
-import { useParams, useLocation } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { ButtonSubtext } from "@/lib/ctaSubtext";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -212,18 +212,19 @@ function resolveBtnAction(
   return onEnroll;
 }
 
-function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, ctaText, price, selectedPricingOptionId, onSelectPricingOption, slug, enrollment, user, onFreePreviewClick }: {
+export function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, ctaText, price, selectedPricingOptionId, onSelectPricingOption, slug, enrollment, user, onFreePreviewClick, isDraft, onDraftNotify }: {
   block: Block; course: any; onEnroll: () => void; onEnrollWithOption?: (pricingOptionId: number | undefined) => void; enrolling: boolean; ctaText: string; price: string;
   selectedPricingOptionId?: number; onSelectPricingOption?: (id: number | undefined) => void;
   slug?: string; enrollment?: any; user?: UserParamSource | null;
   onFreePreviewClick?: (lessonId: number) => void;
+  isDraft?: boolean; onDraftNotify?: () => void;
 }) {
   const d = block.data;
   switch (block.type) {
     case "column_layout": {
       const leftBlocks = Array.isArray(d.leftBlocks) ? d.leftBlocks as Block[] : [];
       const rightBlocks = Array.isArray(d.rightBlocks) ? d.rightBlocks as Block[] : [];
-      const renderChild = (child: Block) => <RenderBlock key={child.id} block={child} course={course} onEnroll={onEnroll} onEnrollWithOption={onEnrollWithOption} enrolling={enrolling} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={onSelectPricingOption} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={onFreePreviewClick} />;
+      const renderChild = (child: Block) => <RenderBlock key={child.id} block={child} course={course} onEnroll={onEnroll} onEnrollWithOption={onEnrollWithOption} enrolling={enrolling} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={onSelectPricingOption} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={onFreePreviewClick} isDraft={isDraft} onDraftNotify={onDraftNotify} />;
       return <section className="px-5 py-6" style={{ backgroundColor: d.bgColor ?? "transparent" }}><div className="mx-auto flex max-w-6xl flex-col gap-5 md:flex-row" style={{ gap: `${d.gap ?? 32}px` }}><div className="min-w-0 flex-1" style={{ flex: d.leftRatio ?? 50 }}>{leftBlocks.map(renderChild)}</div><div className="min-w-0 flex-1" style={{ flex: 100 - (d.leftRatio ?? 50) }}>{rightBlocks.map(renderChild)}</div></div></section>;
     }
     case "lms_course_embed": {
@@ -338,7 +339,7 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
     case "text":
       return (
         <div className="px-8 py-8" style={{ backgroundColor: d.bgColor ?? "#fff", color: d.textColor ?? "#1a1a1a", textAlign: d.align ?? "left" }}
-          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, handleEnroll, onEnrollWithOption)}>
+          onClick={e => handleCtaBtnClick(e as React.MouseEvent<HTMLElement>, onEnroll, onEnrollWithOption)}>
           <div className="max-w-3xl mx-auto prose" dangerouslySetInnerHTML={{ __html: d.html ?? "" }} />
         </div>
       );
@@ -507,10 +508,13 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
           {d.headline && <h2 className="text-2xl font-bold mb-8 text-center text-gray-900" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {(d.reviews ?? []).map((r: any, i: number) => (
-              <div key={i} className="bg-gray-50 rounded-xl p-5 shadow-sm">
+              <div key={i} className="bg-gray-50 rounded-xl p-5 shadow-sm" style={{ backgroundColor: d.cardBgColor ?? "#f9fafb" }}>
                 <div className="flex items-center gap-1 mb-2">{Array.from({ length: r.rating ?? 0 }).map((_, j) => <span key={j} className="text-yellow-400">★</span>)}</div>
                 <p className="text-gray-700 mb-3 italic">"{r.text}"</p>
-                <p className="text-sm font-semibold text-gray-900">— {r.name}</p>
+                <div className="flex items-center gap-3">
+                  {r.avatarUrl && <img src={r.avatarUrl} alt={r.name ?? "Reviewer"} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />}
+                  <p className="text-sm font-semibold text-gray-900">— {r.name}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -619,8 +623,8 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
               </p>
             </div>
           )}
-          <button onClick={resolveBtnAction(d.ctaBehavior, d.ctaLink, d.emailAddress, d.scrollAnchor, d.popupUrl, d.downloadUrl, onEnroll, onEnrollWithOption, d.ctaPricingOptionId ? Number(d.ctaPricingOptionId) : undefined)} disabled={enrolling} className={`px-10 py-4 rounded-xl font-bold text-lg shadow-lg disabled:opacity-60 transition-opacity hover:opacity-90 ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`} style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>
-            {enrolling ? "Processing…" : (d.ctaText ?? ctaText)}
+          <button onClick={isDraft ? onDraftNotify : resolveBtnAction(d.ctaBehavior, d.ctaLink, d.emailAddress, d.scrollAnchor, d.popupUrl, d.downloadUrl, onEnroll, onEnrollWithOption, d.ctaPricingOptionId ? Number(d.ctaPricingOptionId) : undefined)} disabled={enrolling || (isDraft && !onDraftNotify)} className={`px-10 py-4 rounded-xl font-bold text-lg shadow-lg disabled:opacity-60 transition-opacity hover:opacity-90 ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`} style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>
+            {isDraft ? "Enrollment Closed" : enrolling ? "Processing…" : (d.ctaText ?? ctaText)}
           </button>
           {/* Price below button */}
           {d.showPrice && d.priceSource !== "none" && (d.pricePosition ?? "above") === "below" && (
@@ -640,9 +644,9 @@ function RenderBlock({ block, course, onEnroll, onEnrollWithOption, enrolling, c
         <div className="px-8 py-12" style={{ backgroundColor: d.bgColor ?? "#f0fafa", textAlign: d.align ?? "center" }}>
           {d.headline && <h2 className="text-2xl font-bold text-gray-900 mb-3" dangerouslySetInnerHTML={{ __html: d.headline }} />}
           {d.subtext && <p className="text-gray-600 mb-6" dangerouslySetInnerHTML={{ __html: d.subtext }} />}
-          <button onClick={resolveBtnAction(d.ctaBehavior, d.ctaLink, d.emailAddress, d.scrollAnchor, d.popupUrl, d.downloadUrl, onEnroll, onEnrollWithOption, d.ctaPricingOptionId ? Number(d.ctaPricingOptionId) : undefined)} disabled={enrolling}
+          <button onClick={isDraft ? onDraftNotify : resolveBtnAction(d.ctaBehavior, d.ctaLink, d.emailAddress, d.scrollAnchor, d.popupUrl, d.downloadUrl, onEnroll, onEnrollWithOption, d.ctaPricingOptionId ? Number(d.ctaPricingOptionId) : undefined)} disabled={enrolling || (isDraft && !onDraftNotify)}
             className={`inline-block px-8 py-3 rounded-lg font-semibold shadow disabled:opacity-60 transition-opacity hover:opacity-90 ${d.ctaAnimation && d.ctaAnimation !== "none" ? `animate-${d.ctaAnimation}-btn` : ""}`} style={{ backgroundColor: d.ctaColor ?? "#179ca3", color: d.ctaTextColor ?? "#fff" }}>
-            {d.ctaText ?? ctaText}
+            {isDraft ? "Enrollment Closed" : (d.ctaText ?? ctaText)}
           </button>
           <ButtonSubtext d={d} />
         </div>
@@ -1082,6 +1086,7 @@ export default function CourseLanding() {
   });
 
   const handleFreePreviewClick = (lessonId: number) => {
+    if (isDraft) return;
     // If user is logged in, grant access directly via lmsLearner.createFreePreviewEnrollment
     if (user) {
       navigate(`/courses/${slug}/player?lesson=${lessonId}`);
@@ -1097,7 +1102,7 @@ export default function CourseLanding() {
 
   const handleFreePreviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!course || !freePreviewLessonId) return;
+    if (!course || !freePreviewLessonId || isDraft) return;
     setFpSubmitting(true);
     try {
       const params = new URLSearchParams(window.location.search);
@@ -1154,7 +1159,7 @@ export default function CourseLanding() {
 
   const handleGuestCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!slug || !guestName.trim() || !guestEmail.trim()) return;
+    if (!slug || !guestName.trim() || !guestEmail.trim() || isDraft) return;
     setGuestSubmitting(true);
     try {
       await guestCheckoutRegister.mutateAsync({
@@ -1172,7 +1177,10 @@ export default function CourseLanding() {
     }
   };
 
+  const isDraft = course?.status === "draft" || course?.status === "private" || course?.status === "archived";
+
   const handleEnroll = async () => {
+    if (isDraft) return;
     if (!enrollment && availability?.status === "waitlist") {
       openWaitlist();
       return;
@@ -1200,6 +1208,7 @@ export default function CourseLanding() {
 
   /** Enroll with a specific pricing option ID — avoids React state closure timing issues */
   const handleEnrollWithOption = async (pricingOptionId: number | undefined) => {
+    if (isDraft) return;
     if (!enrollment && availability?.status === "waitlist") {
       openWaitlist();
       return;
@@ -1239,7 +1248,7 @@ export default function CourseLanding() {
   // Auto-enroll as free_preview when ?free_preview=1 is in the URL
   // MUST be before early returns to comply with React Rules of Hooks
   useEffect(() => {
-    if (!autoFreePreview || !course || isLoading) return;
+    if (!autoFreePreview || !course || isLoading || isDraft) return;
     if (!user) {
       // Not logged in — redirect to login, then return to this page
       window.location.href = getLoginUrl(window.location.href);
@@ -1249,7 +1258,20 @@ export default function CourseLanding() {
       enrollFreePreviewMut.mutate({ courseSlug: slug! });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFreePreview, course?.id, isLoading, user]);
+  }, [autoFreePreview, course?.id, isLoading, user, isDraft]);
+
+  const landingOrganizationName = organization?.name
+    ?? (course as any)?.organizationName
+    ?? (course as any)?.orgName
+    ?? "Course360™";
+  const isOrganizationLanding = !!organizationSlug && !!organization?.id;
+  // Must run before loading/not-found/custom-block returns on every render.
+  useEffect(() => {
+    if (!course?.title) return;
+    const previousTitle = document.title;
+    document.title = `${course.title} | ${isOrganizationLanding ? landingOrganizationName : "Course360™"}`;
+    return () => { document.title = previousTitle; };
+  }, [course?.title, isOrganizationLanding, landingOrganizationName]);
 
   if (isLoading) {
     return (
@@ -1280,6 +1302,7 @@ export default function CourseLanding() {
   const price = formatPrice(course);
   const pricingType = course.pricingType ?? (course.isFree ? "free" : "one_time");
   const isEnrollmentClosed = !enrollment && (
+    isDraft ||
     availability?.status === "enrollment_closed" ||
     (course as any).enrollmentClosed ||
     (course.enrollmentCloseDate && new Date(course.enrollmentCloseDate) < new Date())
@@ -1332,6 +1355,129 @@ export default function CourseLanding() {
     try { blocks = typeof lp.blocks === "string" ? JSON.parse(lp.blocks) : lp.blocks; } catch { blocks = []; }
   }
 
+  // Render the same enrollment dialogs in both saved-block and fallback layouts.
+  const enrollmentDialogs = (
+    <>
+    {/* Org-scoped course waitlist capture */}
+    <Dialog open={waitlistOpen} onOpenChange={setWaitlistOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-teal-700">Join the waitlist</DialogTitle>
+          <DialogDescription>
+            {availability?.productTitle ? `Be first to know when ${availability.productTitle} opens for enrollment.` : "Be first to know when enrollment opens."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submitWaitlist} className="space-y-4 mt-2">
+          <div className="space-y-1">
+            <Label htmlFor="course-waitlist-name">Full Name <span className="text-red-500">*</span></Label>
+            <Input
+              id="course-waitlist-name"
+              value={waitlistName}
+              onChange={(event) => setWaitlistName(event.target.value)}
+              placeholder="Jane Smith"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="course-waitlist-email">Email Address <span className="text-red-500">*</span></Label>
+            <Input
+              id="course-waitlist-email"
+              type="email"
+              value={waitlistEmail}
+              onChange={(event) => setWaitlistEmail(event.target.value)}
+              placeholder="jane@example.com"
+              required
+            />
+          </div>
+          <p className="text-xs text-gray-500">This request stays with this school only. We will email you when enrollment becomes available.</p>
+          <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" disabled={waitlistSubmitting || joinWaitlist.isPending}>
+            {waitlistSubmitting || joinWaitlist.isPending ? "Joining…" : "Join Waitlist"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    {/* Guest Checkout Modal — shown to unauthenticated users who click a CTA — build:v3 */}
+    <Dialog open={guestModalOpen} onOpenChange={setGuestModalOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-teal-700">Almost there!</DialogTitle>
+          <DialogDescription>
+            Enter your name and email to continue to checkout. We'll create your account automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleGuestCheckoutSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1">
+            <Label htmlFor="gc-name">Full Name <span className="text-red-500">*</span></Label>
+            <Input
+              id="gc-name"
+              value={guestName}
+              onChange={e => setGuestName(e.target.value)}
+              placeholder="Jane Smith"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="gc-email">Email Address <span className="text-red-500">*</span></Label>
+            <Input
+              id="gc-email"
+              type="email"
+              value={guestEmail}
+              onChange={e => setGuestEmail(e.target.value)}
+              placeholder="jane@example.com"
+              required
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            Your account will be created automatically. You'll receive a login link by email after purchase.
+          </p>
+          <Button
+            type="submit"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+            disabled={guestSubmitting}
+          >
+            {guestSubmitting ? "Setting up…" : "Continue to Checkout"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+
+    {/* Free Preview Registration Modal */}
+    <Dialog open={freePreviewOpen} onOpenChange={setFreePreviewOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-teal-700">Access Free Preview</DialogTitle>
+          <DialogDescription>
+            Enter your details to unlock free access to this preview lesson. No payment required.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleFreePreviewSubmit} className="space-y-4 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="fp-first">First Name <span className="text-red-500">*</span></Label>
+              <Input id="fp-first" value={fpFirstName} onChange={e => setFpFirstName(e.target.value)} placeholder="Jane" required />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="fp-last">Last Name</Label>
+              <Input id="fp-last" value={fpLastName} onChange={e => setFpLastName(e.target.value)} placeholder="Smith" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fp-email">Email Address <span className="text-red-500">*</span></Label>
+            <Input id="fp-email" type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="jane@example.com" required />
+          </div>
+          <p className="text-xs text-gray-500">Your preview access link will be valid for 7 days. We may send you a follow-up email about this course.</p>
+          <Button type="submit" className="w-full hover:" disabled={fpSubmitting}>
+            {fpSubmitting ? "Granting Access..." : "Watch Free Preview"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+    </>
+  );
+
   // ── Blocks-based rendering ──
   if (blocks.length > 0) {
     return (
@@ -1348,10 +1494,10 @@ export default function CourseLanding() {
             <div key={block.id} style={{ marginTop: block.data?.marginTop || undefined, marginBottom: block.data?.marginBottom || undefined, paddingTop: block.data?.paddingTop || undefined, paddingBottom: block.data?.paddingBottom || undefined, paddingLeft: block.data?.paddingLeft || undefined, paddingRight: block.data?.paddingRight || undefined }}>
               {bwMaxCL ? (
                 <div style={{ maxWidth: bwMaxCL, marginLeft: "auto", marginRight: "auto", width: "100%" }}>
-                  <RenderBlock block={block} course={displayCourse} onEnroll={handleEnroll} onEnrollWithOption={handleEnrollWithOption} enrolling={enrolling || enrollFree.isPending || createCheckout.isPending} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={setSelectedPricingOptionId} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={handleFreePreviewClick} />
+                  <RenderBlock block={block} course={displayCourse} onEnroll={handleEnroll} onEnrollWithOption={handleEnrollWithOption} enrolling={enrolling || enrollFree.isPending || createCheckout.isPending} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={setSelectedPricingOptionId} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={handleFreePreviewClick} isDraft={isDraft} />
                 </div>
               ) : (
-                <RenderBlock block={block} course={displayCourse} onEnroll={handleEnroll} onEnrollWithOption={handleEnrollWithOption} enrolling={enrolling || enrollFree.isPending || createCheckout.isPending} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={setSelectedPricingOptionId} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={handleFreePreviewClick} />
+                <RenderBlock block={block} course={displayCourse} onEnroll={handleEnroll} onEnrollWithOption={handleEnrollWithOption} enrolling={enrolling || enrollFree.isPending || createCheckout.isPending} ctaText={ctaText} price={price} selectedPricingOptionId={selectedPricingOptionId} onSelectPricingOption={setSelectedPricingOptionId} slug={slug} enrollment={enrollment} user={user} onFreePreviewClick={handleFreePreviewClick} isDraft={isDraft} />
               )}
             </div>
           );
@@ -1375,6 +1521,7 @@ export default function CourseLanding() {
             )}
           </div>
         )}
+        {enrollmentDialogs}
       </div>
     );
   }
@@ -1385,21 +1532,10 @@ export default function CourseLanding() {
     ?? (organizationTheme as any)?.buttonColor
     ?? (organizationTheme as any)?.primaryColor
     ?? "#179ca3";
-  const landingOrganizationName = organization?.name
-    ?? (course as any)?.organizationName
-    ?? (course as any)?.orgName
-    ?? "Course360™";
-  const isOrganizationLanding = !!organizationSlug && !!organization?.id;
   const heroColor = lp?.heroImageUrl ? undefined : landingAccentColor;
   const heroBg = lp?.heroImageUrl
     ? { backgroundImage: `url(${lp.heroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
     : { backgroundColor: heroColor };
-
-  // Set page title
-  useEffect(() => {
-    if (course?.title) document.title = `${course.title} | ${isOrganizationLanding ? landingOrganizationName : "Course360™"}`;
-    return () => { document.title = isOrganizationLanding ? landingOrganizationName : "Course360™"; };
-  }, [course?.title, isOrganizationLanding, landingOrganizationName]);
 
   return (
     <>
@@ -1646,123 +1782,7 @@ export default function CourseLanding() {
       </div>
     </div>
 
-    {/* Org-scoped course waitlist capture */}
-    <Dialog open={waitlistOpen} onOpenChange={setWaitlistOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-teal-700">Join the waitlist</DialogTitle>
-          <DialogDescription>
-            {availability?.productTitle ? `Be first to know when ${availability.productTitle} opens for enrollment.` : "Be first to know when enrollment opens."}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submitWaitlist} className="space-y-4 mt-2">
-          <div className="space-y-1">
-            <Label htmlFor="course-waitlist-name">Full Name <span className="text-red-500">*</span></Label>
-            <Input
-              id="course-waitlist-name"
-              value={waitlistName}
-              onChange={(event) => setWaitlistName(event.target.value)}
-              placeholder="Jane Smith"
-              required
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="course-waitlist-email">Email Address <span className="text-red-500">*</span></Label>
-            <Input
-              id="course-waitlist-email"
-              type="email"
-              value={waitlistEmail}
-              onChange={(event) => setWaitlistEmail(event.target.value)}
-              placeholder="jane@example.com"
-              required
-            />
-          </div>
-          <p className="text-xs text-gray-500">This request stays with this school only. We will email you when enrollment becomes available.</p>
-          <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700 text-white" disabled={waitlistSubmitting || joinWaitlist.isPending}>
-            {waitlistSubmitting || joinWaitlist.isPending ? "Joining…" : "Join Waitlist"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Guest Checkout Modal — shown to unauthenticated users who click a CTA — build:v3 */}
-    <Dialog open={guestModalOpen} onOpenChange={setGuestModalOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-teal-700">Almost there!</DialogTitle>
-          <DialogDescription>
-            Enter your name and email to continue to checkout. We'll create your account automatically.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleGuestCheckoutSubmit} className="space-y-4 mt-2">
-          <div className="space-y-1">
-            <Label htmlFor="gc-name">Full Name <span className="text-red-500">*</span></Label>
-            <Input
-              id="gc-name"
-              value={guestName}
-              onChange={e => setGuestName(e.target.value)}
-              placeholder="Jane Smith"
-              required
-              autoFocus
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="gc-email">Email Address <span className="text-red-500">*</span></Label>
-            <Input
-              id="gc-email"
-              type="email"
-              value={guestEmail}
-              onChange={e => setGuestEmail(e.target.value)}
-              placeholder="jane@example.com"
-              required
-            />
-          </div>
-          <p className="text-xs text-gray-500">
-            Your account will be created automatically. You'll receive a login link by email after purchase.
-          </p>
-          <Button
-            type="submit"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white"
-            disabled={guestSubmitting}
-          >
-            {guestSubmitting ? "Setting up…" : "Continue to Checkout"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Free Preview Registration Modal */}
-    <Dialog open={freePreviewOpen} onOpenChange={setFreePreviewOpen}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-teal-700">Access Free Preview</DialogTitle>
-          <DialogDescription>
-            Enter your details to unlock free access to this preview lesson. No payment required.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleFreePreviewSubmit} className="space-y-4 mt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="fp-first">First Name <span className="text-red-500">*</span></Label>
-              <Input id="fp-first" value={fpFirstName} onChange={e => setFpFirstName(e.target.value)} placeholder="Jane" required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="fp-last">Last Name</Label>
-              <Input id="fp-last" value={fpLastName} onChange={e => setFpLastName(e.target.value)} placeholder="Smith" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="fp-email">Email Address <span className="text-red-500">*</span></Label>
-            <Input id="fp-email" type="email" value={fpEmail} onChange={e => setFpEmail(e.target.value)} placeholder="jane@example.com" required />
-          </div>
-          <p className="text-xs text-gray-500">Your preview access link will be valid for 7 days. We may send you a follow-up email about this course.</p>
-          <Button type="submit" className="w-full hover:" disabled={fpSubmitting}>
-            {fpSubmitting ? "Granting Access..." : "Watch Free Preview"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+    {enrollmentDialogs}
     </>
   );
 }

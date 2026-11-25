@@ -45,13 +45,15 @@ function renderSubmitIcon(icon: string | undefined, size: number) {
 }
 
 // Load Stripe outside of component to avoid re-creating on every render
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface CheckoutProduct {
   name: string;
   description: string;
+  productId?: number;
+  priceId?: number;
   price: number; // dollars
   imageUrl: string;
   type: string; // "course" | "quiz" | "product" | "external"
@@ -89,6 +91,8 @@ interface CheckoutFormData {
   submitText: string;
   submitIcon?: "none" | "lock" | "shield" | "shopping-cart" | "shopping-bag" | "zap" | "star" | "heart" | "gift" | "award" | "arrow-right" | "sparkles" | "rocket" | "badge-check" | "credit-card";
   successRedirect: string;
+  orgSlug?: string;
+  checkoutBlockId?: string;
 }
 
 interface CheckoutFormBlockProps {
@@ -150,6 +154,10 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
 
   // Payment intent state
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState("");
+  const [confirmationToken, setConfirmationToken] = useState("");
+  const [publishableKey, setPublishableKey] = useState("");
+  const stripePromise = useMemo(() => publishableKey ? loadStripe(publishableKey) : null, [publishableKey]);
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -167,13 +175,8 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
     return total;
   }, [selectedProductIdx, addedBumps, products, orderBumps]);
 
-  const createPaymentIntent = trpc.funnelPublic.createFunnelPaymentIntent.useMutation({
+  const createPaymentIntent = trpc.embeddedCheckout.createPaymentIntent.useMutation({
     onError: (e: any) => toast.error(e.message || "Failed to initialize payment"),
-  });
-
-  // Fallback to redirect checkout
-  const createCheckout = trpc.funnelPublic.createFunnelFormCheckout.useMutation({
-    onError: (e: any) => toast.error(e.message || "Checkout failed"),
   });
 
   const processFreeOrder = trpc.embeddedCheckout.processFreeOrder.useMutation({
@@ -198,6 +201,11 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
       try {
         const selectedProduct = products[selectedProductIdx];
         const result = await processFreeOrder.mutateAsync({
+          orgSlug: d.orgSlug,
+          checkoutBlockId: d.checkoutBlockId,
+          selectedProductIndex: selectedProductIdx,
+          addedBumpIndexes: Array.from(addedBumps),
+          priceId: selectedProduct?.priceId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
@@ -227,18 +235,28 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
     setIsCreatingIntent(true);
     try {
       const result = await createPaymentIntent.mutateAsync({
-        funnelId,
-        pageId,
+        orgSlug: d.orgSlug,
+        checkoutBlockId: d.checkoutBlockId,
+        sourceType: "funnel",
+        sourceFunnelId: funnelId,
+        sourceFunnelPageId: pageId,
         origin: window.location.origin,
-        email,
-        firstName,
-        lastName,
-        phone,
+        email, firstName, lastName, phone: phone || undefined,
+        productName: selectedProduct?.name ?? "Product",
+        productType: (selectedProduct?.type as any) ?? "other",
+        productId: selectedProduct?.productId,
+        priceId: selectedProduct?.priceId,
+        productPrice: selectedProduct?.price,
         selectedProductIndex: selectedProductIdx,
         addedBumpIndexes: Array.from(addedBumps),
         billingAddress: d.showBillingInfo ? { address, address2, country, state, city, postalCode } : undefined,
+        successRedirect: d.successRedirect,
+        lmsCourseId: (d as any).lmsCourseId,
         promoCode: promoCode || undefined,
       });
+      setPublishableKey(result.publishableKey);
+      setConfirmationToken(result.confirmationToken);
+      setPaymentIntentId(result.paymentIntentId);
 
       setClientSecret(result.clientSecret ?? null);
       setSuccessUrl(result.successUrl ?? null);
@@ -330,6 +348,9 @@ function CheckoutFormInner({ data, funnelId, pageId, funnelSlug }: CheckoutFormB
             submitText={d.submitText ?? "Pay Now"}
             submitIcon={d.submitIcon}
             successUrl={successUrl}
+            paymentIntentId={paymentIntentId}
+            confirmationToken={confirmationToken}
+            orgSlug={d.orgSlug}
             onSuccess={() => setPaymentSuccess(true)}
           />
         </Elements>
@@ -655,14 +676,21 @@ function PaymentStep({
   submitText,
   submitIcon,
   successUrl,
+  paymentIntentId,
+  confirmationToken,
+  orgSlug,
   onSuccess,
 }: {
   accent: string;
   submitText: string;
   submitIcon?: string;
   successUrl: string | null;
+  paymentIntentId: string;
+  confirmationToken: string;
+  orgSlug?: string;
   onSuccess: () => void;
 }) {
+  const confirmPayment = trpc.embeddedCheckout.confirmPayment.useMutation();
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -687,6 +715,7 @@ function PaymentStep({
       if (error) {
         setPaymentError(error.message || "Payment failed. Please try again.");
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
+        await confirmPayment.mutateAsync({ paymentIntentId, confirmationToken, orgSlug });
         toast.success("Payment successful!");
         onSuccess();
       } else if (paymentIntent && paymentIntent.status === "requires_action") {

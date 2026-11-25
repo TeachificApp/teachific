@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import LoadingScreen from "@/components/LoadingScreen";
+import { COURSE360_PRICES } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import {
   BookOpen,
   Users,
@@ -499,7 +501,7 @@ type PricingTier = {
 const PRICING_TIERS: PricingTier[] = [
   {
     name: "Starter",
-    price: "$39",
+    price: formatCourse360Dollars(COURSE360_PRICES.starter.monthly),
     period: "per month",
     description: "For creators building their course and membership catalog. Includes a 14-day card-backed trial.",
     cta: "Start 14-Day Trial",
@@ -515,7 +517,7 @@ const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: "Builder",
-    price: "$99",
+    price: formatCourse360Dollars(COURSE360_PRICES.builder.monthly),
     period: "per month",
     description: "For schools using courses, communities, and multiple instructors. Includes a 14-day card-backed trial.",
     cta: "Start 14-Day Trial",
@@ -532,7 +534,7 @@ const PRICING_TIERS: PricingTier[] = [
   },
   {
     name: "Pro",
-    price: "$199",
+    price: formatCourse360Dollars(COURSE360_PRICES.pro.monthly),
     period: "per month",
     description: "For schools using analytics, email marketing, and broader plan limits. Includes a 14-day card-backed trial.",
     cta: "Start 14-Day Trial",

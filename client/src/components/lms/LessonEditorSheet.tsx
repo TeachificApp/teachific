@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -151,6 +151,13 @@ function FlashcardEditor({
     },
     [onChange]
   );
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(value || "[]");
+      setCards(Array.isArray(parsed) ? parsed : []);
+    } catch { setCards([]); }
+  }, [value]);
 
   const addCard = () => update([...cards, { front: "", back: "" }]);
   const removeCard = (i: number) => update(cards.filter((_, idx) => idx !== i));
@@ -1097,9 +1104,12 @@ export function LessonEditorSheet({
 
   const [form, setForm] = useState<any>({});
   const [durationInput, setDurationInput] = useState("");
+  const hydratedLessonRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (lesson) {
+    if (!open) { hydratedLessonRef.current = null; return; }
+    if (lesson && hydratedLessonRef.current !== lesson.id) {
+      hydratedLessonRef.current = lesson.id;
       setForm({
         title: lesson.title ?? "",
         lessonType: lesson.lessonType ?? "text",
@@ -1132,7 +1142,7 @@ export function LessonEditorSheet({
       });
       setDurationInput(lesson.durationSeconds ? formatSeconds(lesson.durationSeconds) : "");
     }
-  }, [lesson]);
+  }, [lesson, open]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
@@ -1170,7 +1180,7 @@ export function LessonEditorSheet({
       case "video":
         return <VideoEditor form={form} set={set} orgId={orgId} />;
       case "text":
-        return <TextEditor form={form} set={set} lessonTitle={lesson.title} courseTitle={courseTitle} />;
+        return <TextEditor key={lesson.id} form={form} set={set} lessonTitle={lesson.title} courseTitle={courseTitle} />;
       case "audio":
         return <AudioEditor form={form} set={set} orgId={orgId} />;
       case "pdf":
@@ -1186,6 +1196,7 @@ export function LessonEditorSheet({
       case "flashcard":
         return (
           <FlashcardEditor
+            key={lesson.id}
             value={form.contentJson ?? "[]"}
             onChange={(v) => set("contentJson", v)}
           />
@@ -1197,7 +1208,7 @@ export function LessonEditorSheet({
       case "zoom":
         return <ZoomEditor form={form} set={set} />;
       default:
-        return <TextEditor form={form} set={set} lessonTitle={lesson.title} courseTitle={courseTitle} />;
+        return <TextEditor key={lesson.id} form={form} set={set} lessonTitle={lesson.title} courseTitle={courseTitle} />;
     }
   };
 
@@ -1220,7 +1231,7 @@ export function LessonEditorSheet({
 
         <div className="flex-1 overflow-y-auto">
           <Tabs defaultValue="content" className="flex flex-col h-full">
-            <TabsList className="mx-6 mt-4 mb-0 self-start">
+            <TabsList className="mx-3 sm:mx-6 mt-4 mb-0 self-start max-w-[calc(100%-1.5rem)] overflow-x-auto">
               <TabsTrigger value="content">Content</TabsTrigger>
               <TabsTrigger value="settings">Settings</TabsTrigger>
               {showRichTextAddOn && <TabsTrigger value="addon">Rich Text Add-on</TabsTrigger>}

@@ -7,9 +7,7 @@
  */
 
 import Stripe from "stripe";
-import { ENV } from "./_core/env";
-
-const platformStripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2024-06-20" as any });
+import { getStripe } from "./stripePlans";
 
 interface CreatePaymentLinkOptions {
   /** Product name shown on the Stripe checkout page */
@@ -46,7 +44,7 @@ function getStripeClient(orgStripeSecretKey?: string | null): Stripe {
   if (orgStripeSecretKey) {
     return new Stripe(orgStripeSecretKey, { apiVersion: "2024-06-20" as any });
   }
-  return platformStripe;
+  return getStripe();
 }
 
 /**

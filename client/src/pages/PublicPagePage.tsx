@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { renderBlockPreview } from "@/components/PageBuilder";
 import type { Block } from "@/components/PageBuilder";
 import { getSubdomain } from "@/hooks/useSubdomain";
+import { useEffect } from "react";
 
 export default function PublicPagePage() {
   const [, pathFallbackParams] = useRoute("/school/:orgSlug/p/:slug");
@@ -15,6 +16,14 @@ export default function PublicPagePage() {
     { slug, ...(orgSlug ? { orgSlug } : {}) },
     { enabled: !!slug, retry: false }
   );
+
+  // Keep hooks unconditional as the query moves between loading/error/ready.
+  useEffect(() => {
+    if (!page?.metaTitle || isLoading || error) return;
+    const previousTitle = document.title;
+    document.title = page.metaTitle;
+    return () => { document.title = previousTitle; };
+  }, [page?.metaTitle, isLoading, error]);
 
   if (isLoading) {
     return (
@@ -53,9 +62,6 @@ export default function PublicPagePage() {
       {page.customCss && (
         <style dangerouslySetInnerHTML={{ __html: sanitizeCss(page.customCss) }} />
       )}
-
-      {/* SEO meta (best effort via document.title) */}
-      {page.metaTitle && (() => { document.title = page.metaTitle; return null; })()}
 
       {/* Page blocks */}
       <div>

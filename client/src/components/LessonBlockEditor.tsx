@@ -31,6 +31,8 @@ import {
 } from "lucide-react";
 import { BlockTemplateLibraryProvider, OpenTemplateLibraryButton, SaveAsTemplateButton } from "@/components/BlockTemplateLibrary";
 import { cn } from "@/lib/utils";
+import { useOrgScope } from "@/hooks/useOrgScope";
+import { builderRowsForOrg, cloneLessonBuilderBlocks } from "./lessonBuilderState";
 
 export interface LessonBlockEditorHandle {
   save: (andClose?: boolean) => Promise<void>;
@@ -38,6 +40,8 @@ export interface LessonBlockEditorHandle {
   getBlocks: () => Block[];
   openAddBlock: () => void;
   openSaveLessonTemplate: () => void;
+  /** Parent has successfully persisted the exact current blocks snapshot. */
+  markSaved: () => void;
 }
 
 interface LessonBlockEditorProps {
@@ -63,6 +67,10 @@ interface LessonBlockEditorProps {
   onBlocksChange?: (blocks: Block[]) => void;
   /** Label shown in the header breadcrumb when in controlled/assignment mode */
   editorLabel?: string;
+  onDirtyChange?: (dirty: boolean) => void;
+  parentSaving?: boolean;
+  /** Save the parent's settings and these blocks together when embedded. */
+  onAutoSave?: () => Promise<void>;
 }
 
 // Picker tab type
@@ -83,7 +91,11 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   lessonTitle,
   onBlocksChange,
   editorLabel,
+  onDirtyChange,
+  parentSaving = false,
+  onAutoSave,
 }: LessonBlockEditorProps, ref: React.Ref<LessonBlockEditorHandle>) {
+  const { orgId } = useOrgScope();
   // In controlled/assignment mode, always use embedded layout (no internal overlay/header)
   const embedded = embeddedProp || !!onBlocksChange;
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
@@ -97,6 +109,19 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   // Resizable settings panel
   const [settingsPanelWidth, setSettingsPanelWidth] = useState(320);
   const isResizingPanel = useRef(false);
+  const [narrowViewport, setNarrowViewport] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
+  const savingRef = useRef(false);
+
+  useEffect(() => {
+    const onResize = () => {
+      setNarrowViewport(window.innerWidth < 768);
+      setSettingsPanelWidth(width => Math.min(width, Math.max(260, window.innerWidth - 280)));
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => { window.removeEventListener("resize", onResize); resizeCleanupRef.current?.(); };
+  }, []);
 
   // Refs for scroll-to-new-block
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -159,24 +184,38 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   // Fetch all courses for the course picker
   const { data: coursesData } = trpc.lmsAdmin.listCourses.useQuery(
     { status: "all", type: "all", page: 1, pageSize: 100 },
-    { enabled: addMenuOpen && pickerTab === "from_lessons" }
+    { enabled: !!orgId && addMenuOpen && pickerTab === "from_lessons" }
   );
+  const sourceCourses = builderRowsForOrg(coursesData?.courses, orgId);
+  const validSourceCourse = sourceCourses.some(course => course.id === selectedSourceCourseId);
 
   // Fetch lessons with blocks for the selected source course
   const { data: sourceLessons, isLoading: loadingSourceLessons } = trpc.lmsAdmin.getLessonsWithBlocks.useQuery(
     { courseId: selectedSourceCourseId! },
-    { enabled: addMenuOpen && pickerTab === "from_lessons" && !!selectedSourceCourseId }
+    { enabled: addMenuOpen && pickerTab === "from_lessons" && validSourceCourse }
   );
 
   // Fetch funnels with pages (for funnel page source)
-  const { data: funnelsWithPages } = trpc.funnelAdmin.getFunnelsWithPages.useQuery(
+  const { data: allFunnelsWithPages } = trpc.funnelAdmin.getFunnelsWithPages.useQuery(
     undefined,
-    { enabled: addMenuOpen && pickerTab === "from_lessons" }
+    { enabled: !!orgId && addMenuOpen && pickerTab === "from_lessons" }
   );
+  const funnelsWithPages = builderRowsForOrg(allFunnelsWithPages as any[] | undefined, orgId);
+  const sourceOrgRef = useRef(orgId);
+
+  useEffect(() => {
+    if (sourceOrgRef.current === orgId) return;
+    sourceOrgRef.current = orgId;
+    setSelectedSourceCourseId(null);
+    setSelectedSourceLessonId(null);
+    setSelectedSourceFunnelId(null);
+    setSelectedSourceFunnelPageId(null);
+    setBlockSearch("");
+  }, [orgId]);
 
   // Parse blocks for the selected source lesson
   const sourceLessonBlocks = useMemo<Block[]>(() => {
-    if (!selectedSourceLessonId || !sourceLessons) return [];
+    if (!validSourceCourse || !selectedSourceLessonId || !sourceLessons) return [];
     const lesson = sourceLessons.find(l => l.id === selectedSourceLessonId);
     if (!lesson?.contentBlocks) return [];
     try {
@@ -187,7 +226,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     } catch {
       return [];
     }
-  }, [selectedSourceLessonId, sourceLessons]);
+  }, [selectedSourceLessonId, sourceLessons, validSourceCourse]);
 
   // Parse blocks for the selected funnel page
   const sourceFunnelPageBlocks = useMemo<Block[]>(() => {
@@ -390,7 +429,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   const addBlock = (type: BlockType) => {
     const catalog = BLOCK_CATALOG.find(c => c.type === type);
     if (!catalog) return;
-    const newBlock: Block = { id: uid(), type, data: { ...catalog.defaultData } };
+    const [newBlock] = cloneLessonBuilderBlocks([{ id: "new", type, data: catalog.defaultData }], uid);
     setBlocks(bs => [...bs, newBlock]);
     setSelectedBlockId(newBlock.id);
     setAddMenuOpen(false);
@@ -398,7 +437,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   };
 
   const copyBlockFromLesson = (block: Block) => {
-    const copy: Block = { ...block, id: uid() };
+    const [copy] = cloneLessonBuilderBlocks([block], uid);
     setBlocks(bs => [...bs, copy]);
     setSelectedBlockId(copy.id);
     toast.success("Block copied!");
@@ -408,7 +447,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
 
   const copyAllBlocksFromLesson = () => {
     if (!activeSourceBlocks.length) return;
-    const copies = activeSourceBlocks.map(b => ({ ...b, id: uid() }));
+    const copies = cloneLessonBuilderBlocks(activeSourceBlocks, uid);
     setBlocks(bs => [...bs, ...copies]);
     toast.success(`${copies.length} block${copies.length > 1 ? "s" : ""} copied!`);
     setAddMenuOpen(false);
@@ -440,7 +479,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   const duplicateBlock = (id: string) => {
     const idx = blocks.findIndex(b => b.id === id);
     if (idx < 0) return;
-    const copy: Block = { ...blocks[idx], id: uid() };
+    const [copy] = cloneLessonBuilderBlocks([blocks[idx]], uid);
     setBlocks(bs => [...bs.slice(0, idx + 1), copy, ...bs.slice(idx + 1)]);
     setSelectedBlockId(copy.id);
     scrollToBlock(copy.id);
@@ -453,34 +492,41 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
     getBlocks: () => blocksRef.current,
     openAddBlock: () => setAddMenuOpen(true),
     openSaveLessonTemplate: () => { setLessonTemplateName(""); setLessonTemplateTags(""); setSaveLessonTemplateOpen(true); },
+    markSaved: () => autoSave.markClean(),
   }));
 
   const handleSave = async (andClose = false) => {
+    if (savingRef.current || parentSaving) return;
+    const snapshot = blocksRef.current;
     // Controlled mode: call onBlocksChange instead of the lesson API
     if (onBlocksChange) {
-      onBlocksChange(blocks);
+      onBlocksChange(snapshot);
       toast.success("Content saved!");
       autoSave.markClean();
       if (andClose && onSavedAndClose) onSavedAndClose();
       else if (onSaved) onSaved();
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     try {
       await updateLesson.mutateAsync({
         id: lessonId!,
-        contentBlocks: JSON.stringify(blocks),
+        contentBlocks: JSON.stringify(snapshot),
       });
       toast.success("Lesson content saved!");
-      autoSave.markClean();
-      if (andClose && onSavedAndClose) {
+      const unchanged = blocksRef.current === snapshot;
+      if (unchanged) autoSave.markClean();
+      if (andClose && unchanged && onSavedAndClose) {
         onSavedAndClose();
       } else {
-        onSaved();
+        onSaved?.();
       }
     } catch (e: any) {
       toast.error(`Save failed: ${e.message}`);
+      throw e;
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -488,14 +534,24 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
 
   const autoSave = useAutoSave({
     onSave: async () => {
-      if (onBlocksChange) {
-        onBlocksChange(blocks);
+      if (savingRef.current || parentSaving) throw new Error("A lesson save is already in progress");
+      const snapshot = blocksRef.current;
+      savingRef.current = true;
+      try {
+      if (onAutoSave) {
+        await onAutoSave();
+      } else if (onBlocksChange) {
+        onBlocksChange(snapshot);
       } else if (lessonId) {
-        await updateLesson.mutateAsync({ id: lessonId, contentBlocks: JSON.stringify(blocks) });
+        await updateLesson.mutateAsync({ id: lessonId, contentBlocks: JSON.stringify(snapshot) });
       }
+      if (blocksRef.current !== snapshot) throw new Error("New changes remain unsaved");
+      } finally { savingRef.current = false; }
     },
     intervalMs: 60_000,
   });
+
+  useEffect(() => { onDirtyChange?.(autoSave.isDirty); }, [autoSave.isDirty, onDirtyChange]);
 
   // Mark dirty after initial render (blocks come from props, not a server load)
   useEffect(() => {
@@ -617,7 +673,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
 
   return (
     <BlockTemplateLibraryProvider onInsert={(block) => {
-      const newBlock = { ...block, id: uid() };
+      const [newBlock] = cloneLessonBuilderBlocks([block], uid);
       setBlocks(prev => [...prev, newBlock]);
       setSelectedBlockId(newBlock.id);
       scrollToBlock(newBlock.id);
@@ -627,7 +683,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       {/* Main editor panel */}
       <div className={embedded ? "flex flex-col flex-1 overflow-hidden" : "flex flex-col w-full max-w-6xl mx-auto bg-white shadow-2xl overflow-hidden"}>
         {/* Header — hidden when embedded inside LessonEditorPage (which has its own header) */}
-        {!embedded && <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-200 shrink-0">
+        {!embedded && <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-white border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
             <span className="org-text font-bold text-sm uppercase tracking-wide">{editorLabel ?? "Lesson Editor"}</span>
             {lessonTitle ? (
@@ -658,7 +714,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!previewMode && (
               <Button
                 size="sm"
@@ -700,7 +756,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               size="sm"
               variant="outline"
               className="org-border org-text org-hover-bg-light text-xs h-7 font-semibold"
-              onClick={() => handleSave(false)}
+              onClick={() => { void handleSave(false).catch(() => {}); }}
               disabled={saving}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -709,7 +765,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             <Button
               size="sm"
               className="bg-[var(--org-primary)] hover:opacity-90 text-white text-xs h-7 font-semibold"
-              onClick={() => handleSave(true)}
+              onClick={() => { void handleSave(true).catch(() => {}); }}
               disabled={saving}
             >
               {saving ? "Saving..." : "Save & Close"}
@@ -732,7 +788,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Embedded mini-toolbar (shown only in controlled/assignment mode) */}
           {embedded && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 shrink-0">
               <span className="text-xs font-semibold org-text uppercase tracking-wide mr-1">{editorLabel ?? "Content Editor"}</span>
               <Button size="sm" className="bg-[var(--org-primary)] hover:opacity-90 text-white text-xs h-7" onClick={() => setAddMenuOpen(true)}>
                 <Plus className="w-3 h-3 mr-1" /> Add Block
@@ -750,7 +806,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             </div>
           )}
           {/* Canvas + Settings row */}
-          <div className="flex flex-1 overflow-hidden">
+          <div className="relative flex flex-1 overflow-hidden">
           {/* Left: Canvas */}
           <div ref={canvasRef} className="flex-1 overflow-y-auto bg-gray-50 p-4">
             {/* Blocks canvas */}
@@ -874,16 +930,17 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             <>
               {/* Resize handle */}
               <div
-                className="w-1.5 shrink-0 cursor-col-resize bg-gray-100 org-hover-bg-light org-active-bg transition-colors flex items-center justify-center group"
+                className="hidden md:flex w-1.5 shrink-0 cursor-col-resize bg-gray-100 org-hover-bg-light org-active-bg transition-colors items-center justify-center group"
                 onMouseDown={(e) => {
                   e.preventDefault();
+                  resizeCleanupRef.current?.();
                   isResizingPanel.current = true;
                   const startX = e.clientX;
                   const startWidth = settingsPanelWidth;
                   const onMove = (ev: MouseEvent) => {
                     if (!isResizingPanel.current) return;
                     const delta = startX - ev.clientX;
-                    setSettingsPanelWidth(Math.max(260, Math.min(700, startWidth + delta)));
+                    setSettingsPanelWidth(Math.max(260, Math.min(700, window.innerWidth - 280, startWidth + delta)));
                   };
                   const onUp = () => {
                     isResizingPanel.current = false;
@@ -894,16 +951,17 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   };
                   document.addEventListener("mousemove", onMove);
                   document.addEventListener("mouseup", onUp);
+                  resizeCleanupRef.current = onUp;
                   document.body.style.cursor = "col-resize";
                   document.body.style.userSelect = "none";
                 }}
               >
                 <GripVertical className="w-3 h-3 text-gray-400 group-hover:org-text" />
               </div>
-              <div style={{ width: settingsPanelWidth }} className="shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
+              <div style={{ width: narrowViewport ? "100%" : settingsPanelWidth }} className="absolute inset-0 z-10 md:static shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                   <span className="text-gray-700 text-xs font-bold uppercase tracking-wide">Block Settings</span>
-                  <button onClick={() => setSelectedBlockId(null)} className="text-gray-400 hover:text-gray-700">
+                  <button onClick={() => setSelectedBlockId(null)} aria-label="Close block settings" className="text-gray-400 hover:text-gray-700">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -996,9 +1054,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
 
         {/* ── From Lessons tab ── */}
         {pickerTab === "from_lessons" && (
-          <div className="flex flex-1 overflow-hidden gap-3 min-h-0">
+          <div className="flex flex-col sm:flex-row flex-1 overflow-hidden gap-3 min-h-0">
             {/* Left: Course + Lesson picker */}
-            <div className="w-52 shrink-0 flex flex-col gap-2 overflow-y-auto border-r border-gray-100 pr-2">
+            <div className="w-full sm:w-52 max-h-48 sm:max-h-none shrink-0 flex flex-col gap-2 overflow-y-auto sm:border-r border-gray-100 pr-2">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Course</label>
                 <select
@@ -1010,12 +1068,12 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                   }}
                 >
                   <option value="">— select course —</option>
-                  {coursesData?.courses.map(c => (
+                  {sourceCourses.map(c => (
                     <option key={c.id} value={c.id} title={c.title}>{c.title}</option>
                   ))}
                 </select>
               </div>
-              {selectedSourceCourseId && (
+              {validSourceCourse && selectedSourceCourseId && (
                 <div className="flex-1 overflow-y-auto">
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">Lesson</label>
                   {loadingSourceLessons ? (
@@ -1163,8 +1221,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           <LessonTemplatesTabContent
             lessonId={lessonId}
             onInsert={(templateBlocks) => {
-              setBlocks((current) => [...current, ...templateBlocks]);
-              setSelectedBlockId(templateBlocks[templateBlocks.length - 1]?.id ?? null);
+              const copies = cloneLessonBuilderBlocks(templateBlocks, uid);
+              setBlocks((current) => [...current, ...copies]);
+              setSelectedBlockId(copies[copies.length - 1]?.id ?? null);
               setAddMenuOpen(false);
               toast.success("Saved lesson template added. Save this lesson to keep the new blocks.");
             }}
@@ -1231,9 +1290,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                 <button
                   disabled={importSelectedBlocks.size === 0}
                   onClick={() => {
-                    const toAdd = importPreview.blocks
-                      .filter((_: any, i: number) => importSelectedBlocks.has(i))
-                      .map((b: any) => ({ ...b, id: uid() }));
+                    const toAdd = cloneLessonBuilderBlocks(importPreview.blocks.filter((_: any, i: number) => importSelectedBlocks.has(i)), uid);
                     setBlocks(prev => [...prev, ...toAdd]);
                     setAddMenuOpen(false);
                     toast.success(`Imported ${toAdd.length} block${toAdd.length !== 1 ? "s" : ""} from URL!`);
@@ -1352,7 +1409,9 @@ export default LessonBlockEditor;
 
 function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => void }) {
   const [search, setSearch] = useState("");
-  const { data: templates, isLoading } = trpc.blockTemplates.list.useQuery({ search: search || undefined });
+  const { orgId } = useOrgScope();
+  const { data: allTemplates, isLoading } = trpc.blockTemplates.list.useQuery({ search: search || undefined }, { enabled: !!orgId });
+  const templates = builderRowsForOrg(allTemplates, orgId);
   const deleteMutation = trpc.blockTemplates.delete.useMutation({
     onSuccess: () => { toast.success("Template deleted"); },
   });
@@ -1404,7 +1463,7 @@ function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => vo
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button size="sm" variant="outline" className="h-6 text-xs org-border org-text org-hover-bg-light opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onInsert({ ...block, id: uid() })}>
+                    onClick={() => onInsert(cloneLessonBuilderBlocks([block], uid)[0])}>
                     <Plus className="w-3 h-3 mr-1" /> Insert
                   </Button>
                   <button className="w-6 h-6 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
@@ -1423,13 +1482,14 @@ function BlockTemplatesTabContent({ onInsert }: { onInsert: (block: Block) => vo
 
 function LessonTemplatesTabContent({ lessonId, onInsert }: { lessonId: number; onInsert: (blocks: Block[]) => void }) {
   const [search, setSearch] = useState("");
-  const { data: templates, isLoading } = trpc.lmsAdmin.listLessonTemplates.useQuery();
+  const { orgId } = useOrgScope();
+  const { data: templates, isLoading } = trpc.lmsAdmin.listLessonTemplates.useQuery(undefined, { enabled: !!orgId });
   const applyTemplate = trpc.lmsAdmin.applyLessonTemplate.useMutation({
     onSuccess: (result) => onInsert(result.blocks as Block[]),
     onError: (error) => toast.error(error.message),
   });
   const normalizedSearch = search.trim().toLowerCase();
-  const visibleTemplates = (templates ?? []).filter((template: any) =>
+  const visibleTemplates = builderRowsForOrg(templates, orgId).filter((template: any) =>
     !normalizedSearch || `${template.title ?? ""} ${template.tags ?? ""}`.toLowerCase().includes(normalizedSearch),
   );
 

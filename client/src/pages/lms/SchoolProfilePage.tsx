@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { User, Mail, Calendar, LogOut, AlertCircle, Shield } from "lucide-react";
+import { AccountSubscriptionsCard } from "@/components/customer/AccountSubscriptionsCard";
 
 export default function SchoolProfilePage() {
   const params = useParams<{ orgSlug?: string }>();
@@ -97,6 +98,8 @@ export default function SchoolProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        <AccountSubscriptionsCard />
 
         {/* Membership Management */}
         <Card className="border-border/60">

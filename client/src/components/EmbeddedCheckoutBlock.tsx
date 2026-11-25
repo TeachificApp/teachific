@@ -56,7 +56,7 @@ function renderSubmitIcon(icon: string | undefined, size: number) {
   return null;
 }
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -64,8 +64,10 @@ export interface EmbeddedCheckoutProduct {
   name: string;
   description?: string;
   price: number; // dollars
+  productId?: number;
+  priceId?: number;
   imageUrl?: string;
-  type: "course" | "download" | "physical" | "membership" | "bundle" | "other" | "subscription";
+  type: "course" | "quiz" | "download" | "physical" | "membership" | "bundle" | "other" | "subscription";
   strikethroughPrice?: string; // display-only, e.g. "$197"
   billingInterval?: "monthly" | "quarterly" | "annual"; // for subscription type
 }
@@ -82,6 +84,10 @@ export interface EmbeddedCheckoutOrderBump {
   price: number; // dollars
   imageUrl?: string;
   ctaText?: string;
+  bumpId?: number;
+  productId?: number;
+  productType?: string;
+  bumpType?: string;
   animationStyle?: "pulse" | "glow" | "shake" | "bounce" | "none";
   highlightColor?: string;
 }
@@ -115,6 +121,8 @@ export interface EmbeddedCheckoutBlockData {
   termsLinkText?: string;
   termsLinkUrl?: string;
   // Source context (set by the page builder)
+  orgSlug?: string;
+  checkoutBlockId?: string;
   sourceType?: "funnel" | "landing_page" | "product_page" | "lms_lesson" | "other";
   sourceFunnelId?: number;
   sourceFunnelPageId?: number;
@@ -568,6 +576,8 @@ function PaymentStep({
   submitIcon,
   successUrl,
   paymentIntentId,
+  confirmationToken,
+  orgSlug,
   onSuccess,
 }: {
   accent: string;
@@ -575,6 +585,8 @@ function PaymentStep({
   submitIcon?: string;
   successUrl: string;
   paymentIntentId: string;
+  confirmationToken: string;
+  orgSlug?: string;
   onSuccess: () => void;
 }) {
   const stripe = useStripe();
@@ -598,7 +610,7 @@ function PaymentStep({
         setPaymentError(error.message || "Payment failed. Please try again.");
       } else if (paymentIntent && paymentIntent.status === "succeeded") {
         // Mark as paid in our DB
-        await confirmPayment.mutateAsync({ paymentIntentId });
+        await confirmPayment.mutateAsync({ paymentIntentId, confirmationToken, orgSlug });
         toast.success("Payment successful! Thank you for your purchase.");
         onSuccess();
       } else if (paymentIntent && paymentIntent.status === "requires_action") {
@@ -672,22 +684,27 @@ function EmbeddedCheckoutInner({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [successUrl, setSuccessUrl] = useState<string>("");
   const [paymentIntentId, setPaymentIntentId] = useState<string>("");
+  const [confirmationToken, setConfirmationToken] = useState("");
+  const [publishableKey, setPublishableKey] = useState("");
+  const stripePromise = useMemo(() => publishableKey ? loadStripe(publishableKey) : null, [publishableKey]);
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [purchasedProductId, setPurchasedProductId] = useState<number | undefined>(undefined);
   const [purchasedProductType, setPurchasedProductType] = useState<string | undefined>(undefined);
   const [workflowMessage, setWorkflowMessage] = useState<string | null>(null);
+  const [freeWorkflow, setFreeWorkflow] = useState<string | null>(null);
 
   // Fetch post-purchase workflow when success step is reached
   const workflowQuery = trpc.embeddedCheckout.getPostPurchaseWorkflow.useQuery(
-    { productId: purchasedProductId, productType: purchasedProductType as any },
-    { enabled: step === "success" && !!purchasedProductId }
+    { paymentIntentId, confirmationToken, orgSlug: d.orgSlug, productId: purchasedProductId, productType: purchasedProductType },
+    { enabled: step === "success" && !!paymentIntentId && !!confirmationToken }
   );
 
   // Execute workflow actions when workflow data arrives
   useEffect(() => {
-    if (step !== "success" || !workflowQuery.data?.workflow) return;
+    const workflow = freeWorkflow ?? workflowQuery.data?.workflow;
+    if (step !== "success" || !workflow) return;
     try {
-      const actions = JSON.parse(workflowQuery.data.workflow as string);
+      const actions = JSON.parse(workflow);
       if (!Array.isArray(actions)) return;
       let redirectDelay = 3000;
       for (const action of actions) {
@@ -707,7 +724,7 @@ function EmbeddedCheckoutInner({
     } catch (e) {
       // ignore parse errors
     }
-  }, [step, workflowQuery.data]);
+  }, [step, workflowQuery.data, freeWorkflow]);
 
   const createPaymentIntent = trpc.embeddedCheckout.createPaymentIntent.useMutation({
     onError: (e: any) => {
@@ -747,13 +764,19 @@ function EmbeddedCheckoutInner({
     const selectedBumps = Array.from(formData.addedBumps)
       .map((idx) => orderBumps[idx])
       .filter(Boolean)
-      .map((b) => ({ title: b.title, price: b.price, productType: b.title }));
+      .map((b) => ({ title: b.title, price: b.price, productType: b.productType, productId: b.productId, bumpId: b.bumpId, bumpType: b.bumpType }));
 
     setIsCreatingIntent(true);
     // ── Free order: skip Stripe entirely ──
     if (formData.totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
+          orgSlug: d.orgSlug,
+          checkoutBlockId: d.checkoutBlockId,
+          selectedProductIndex: formData.selectedProductIdx,
+          addedBumpIndexes: Array.from(formData.addedBumps),
+          selectedBumps,
+          priceId: selectedProduct.priceId,
           email: formData.email,
           firstName: formData.firstName || undefined,
           lastName: formData.lastName || undefined,
@@ -773,6 +796,7 @@ function EmbeddedCheckoutInner({
           additionalAccess: (d as any).additionalAccess ?? undefined,
         });
         setSuccessUrl(result.successUrl);
+        setFreeWorkflow(result.workflow);
         setPurchasedProductId((selectedProduct as any).productId ?? undefined);
         setPurchasedProductType(selectedProduct.type);
         setStep("success");
@@ -788,6 +812,11 @@ function EmbeddedCheckoutInner({
     }
     try {
       const result = await createPaymentIntent.mutateAsync({
+        orgSlug: d.orgSlug,
+        checkoutBlockId: d.checkoutBlockId,
+        selectedProductIndex: formData.selectedProductIdx,
+        addedBumpIndexes: Array.from(formData.addedBumps),
+        priceId: selectedProduct.priceId,
         email: formData.email,
         firstName: formData.firstName || undefined,
         lastName: formData.lastName || undefined,
@@ -810,6 +839,8 @@ function EmbeddedCheckoutInner({
         origin: window.location.origin,
         promoCode: formData.promoCode || undefined,
       });
+      setPublishableKey(result.publishableKey);
+      setConfirmationToken(result.confirmationToken);
       setClientSecret(result.clientSecret);
       setSuccessUrl(result.successUrl);
       setPaymentIntentId(result.paymentIntentId);
@@ -904,6 +935,8 @@ function EmbeddedCheckoutInner({
               submitIcon={d.submitIcon}
               successUrl={successUrl}
               paymentIntentId={paymentIntentId}
+              confirmationToken={confirmationToken}
+              orgSlug={d.orgSlug}
               onSuccess={handleSuccess}
             />
           </Elements>

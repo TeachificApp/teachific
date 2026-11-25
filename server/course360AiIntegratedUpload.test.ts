@@ -1,0 +1,29 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TRPCError } from "@trpc/server";
+import { orgMembers, orgSubscriptions, organizations } from "../drizzle/schema";
+const m = vi.hoisted(() => ({ user: { id: 8, role: "org_admin" } as any, org: 17 as number | null, role: "org_admin", active: true, plan: "pro", status: "active", storage: vi.fn(), authz: vi.fn(), dbAvailable: true }));
+vi.mock("./authHelper", () => ({ authenticateRequest: async () => m.user }));
+vi.mock("./db", () => ({ getDb: async () => m.dbAvailable ? { select: () => ({ from: (table: any) => ({ where: () => ({ limit: async () => table === orgMembers ? [{ role: m.role }] : table === organizations ? [{ isActive: m.active }] : table === orgSubscriptions ? [{ plan: m.plan, status: m.status }] : [] }) }) }) } : null, getOrgIdForUserWithFallback: async () => m.org, requireOrgAdmin: m.authz, isPlatformAdmin: (role: string) => ["site_admin", "site_owner"].includes(role) }));
+vi.mock("./storage", () => ({ storagePut: m.storage }));
+import router from "./routes/uploadAiGenerationSource";
+const handler = (router as any).stack[0].route.stack[1].handle;
+async function upload(options: any = {}) {
+  const req = { body: { orgId: "17", ...options.body }, file: { originalname: "owned.pdf", mimetype: "application/pdf", buffer: Buffer.from("original bytes"), ...options.file } };
+  let code = 200; let payload: any;
+  const res: any = { status: (value: number) => { code = value; return res; }, json: (value: any) => { payload = value; return res; } };
+  await handler(req, res); return { code, payload, req };
+}
+beforeEach(() => { vi.clearAllMocks(); m.user = { id: 8, role: "org_admin" }; m.org = 17; m.role = "org_admin"; m.active = true; m.plan = "pro"; m.status = "active"; m.dbAvailable = true; m.authz.mockResolvedValue(17); m.storage.mockResolvedValue({ url: "https://storage.test/owned" }); vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Unexpected network call"); })); });
+afterEach(() => vi.unstubAllGlobals());
+describe("Course-aware authorized source uploads", () => {
+  it.each([["owned.pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"], ["owned.ppt", "application/vnd.ms-powerpoint"]])("canonicalizes %s browser MIME and returns immutable key", async (name, mime) => { const result = await upload({ body: { purpose: "course" }, file: { originalname: name, mimetype: "application/octet-stream" } }); expect(result.code).toBe(200); expect(result.payload.sourceFile).toMatchObject({ name, mimeType: mime, storageKey: expect.stringMatching(/^ai-generation-sources\/17\/8\//) }); expect(result.payload.fileKey).toBe(result.payload.sourceFile.storageKey); expect(m.storage).toHaveBeenCalledWith(result.payload.fileKey, result.req.file.buffer, mime); expect(result.req.file.buffer.toString()).toBe("original bytes"); });
+  it("resolves school server-side without requiring a client org hint", async () => { const result = await upload({ body: { orgId: undefined, purpose: "course" } }); expect(result.code).toBe(200); expect(m.authz).toHaveBeenCalledWith(8, "org_admin", 17); });
+  it("rejects conflicting school even for platform admin before storage", async () => { m.user.role = "site_admin"; const result = await upload({ body: { orgId: "22", purpose: "course" } }); expect(result.code).toBe(403); expect(m.storage).not.toHaveBeenCalled(); });
+  it.each(["starter", "builder", "free"])("blocks course sources on %s while retaining legacy PDF/image uploads", async plan => { m.plan = plan; expect((await upload({ body: { purpose: "course" } })).code).toBe(403); expect(m.storage).not.toHaveBeenCalled(); expect((await upload()).code).toBe(200); expect((await upload({ file: { originalname: "source.png", mimetype: "image/png" } })).code).toBe(200); });
+  it("does not grant PowerPoint capability to a legacy question bank upload", async () => { expect((await upload({ file: { originalname: "owned.pptx", mimetype: "application/vnd.openxmlformats-officedocument.presentationml.presentation" } })).code).toBe(400); expect(m.storage).not.toHaveBeenCalled(); });
+  it.each(["past_due", "canceled", "unpaid"])("rejects %s course subscription without storage", async status => { m.status = status; expect((await upload({ body: { purpose: "course" } })).code).toBe(403); expect(m.storage).not.toHaveBeenCalled(); });
+  it("bounds actual bytes, not caller-reported size", async () => { expect((await upload({ file: { buffer: Buffer.alloc(50 * 1024 * 1024 + 1), size: 1 } })).code).toBe(400); expect(m.storage).not.toHaveBeenCalled(); });
+  it("rejects unknown purpose, empty bytes and unsupported types", async () => { expect((await upload({ body: { purpose: "bypass" } })).code).toBe(400); expect((await upload({ file: { buffer: Buffer.alloc(0) } })).code).toBe(400); expect((await upload({ file: { originalname: "file.exe", mimetype: "application/octet-stream" } })).code).toBe(400); expect(m.storage).not.toHaveBeenCalled(); });
+  it("returns safe authorization/unavailable errors without leaking storage credentials", async () => { m.authz.mockRejectedValue(new TRPCError({ code: "FORBIDDEN", message: "Admin access required" })); expect((await upload()).code).toBe(403); m.authz.mockResolvedValue(17); m.storage.mockRejectedValue(new Error("Bearer secret private provider HTML")); const result = await upload(); expect(result.code).toBe(503); expect(result.payload.error).not.toContain("secret"); });
+  it("denies guest, missing school, inactive school and non-admin membership", async () => { m.user = null; expect((await upload()).code).toBe(401); m.user = { id: 8, role: "org_admin" }; m.org = null; expect((await upload()).code).toBe(403); m.org = 17; m.active = false; expect((await upload()).code).toBe(403); m.active = true; m.role = "sub_admin"; expect((await upload()).code).toBe(403); expect(m.storage).not.toHaveBeenCalled(); });
+});

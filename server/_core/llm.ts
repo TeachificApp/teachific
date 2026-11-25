@@ -11,7 +11,8 @@
  *    Required: BUILT_IN_FORGE_API_URL, BUILT_IN_FORGE_API_KEY
  */
 
-import { ENV } from "./env";
+import { resolveCourse360ChatConfiguration } from "../lib/course360AiProviderConfig";
+import { getSafeAiProviderErrorCode, getAiProviderNotFoundHelp, readAiProviderChatResponse } from "../lib/course360AiProviderError";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -215,7 +216,8 @@ const normalizeResponseFormat = ({
 
 async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
   const { default: OpenAI } = await import("openai");
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const configuration = resolveCourse360ChatConfiguration();
+  const client = new OpenAI({ apiKey: configuration?.key, baseURL: configuration?.url.replace(/\/chat\/completions$/, "") });
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   const {
     messages, tools, toolChoice, tool_choice,
@@ -241,9 +243,7 @@ async function invokeOpenAI(params: InvokeParams): Promise<InvokeResult> {
 // ─── Manus Built-in LLM Backend ──────────────────────────────────────────────
 
 const resolveManusApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+  resolveCourse360ChatConfiguration()?.url ?? "https://forge.manus.im/v1/chat/completions";
 
 const MAX_FORGE_RETRY_AFTER_MS = 5_000;
 
@@ -258,7 +258,8 @@ function temporarilyUnavailableError() {
 }
 
 async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
-  if (!ENV.forgeApiKey) {
+  const configuration = resolveCourse360ChatConfiguration();
+  if (!configuration || configuration.backend !== "forge") {
     throw new Error(
       "No LLM backend configured. Set OPENAI_API_KEY for OpenAI, or BUILT_IN_FORGE_API_KEY for Manus."
     );
@@ -288,9 +289,10 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
     try {
       response = await fetch(resolveManusApiUrl(), {
         method: "POST",
+        redirect: "manual",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${ENV.forgeApiKey}`,
+          authorization: `Bearer ${configuration.key}`,
         },
         body: JSON.stringify(payload),
       });
@@ -300,12 +302,12 @@ async function invokeManusLLM(params: InvokeParams): Promise<InvokeResult> {
     }
 
     if (response.ok) {
-      try {
-        return (await response.json()) as InvokeResult;
-      } catch {
-        console.warn("[LLM] Forge returned an invalid completion response.");
-        throw temporarilyUnavailableError();
-      }
+      return (await readAiProviderChatResponse(response)) as InvokeResult;
+    }
+
+    if (response.status === 404) {
+      const code = await getSafeAiProviderErrorCode(response);
+      throw new Error(getAiProviderNotFoundHelp(code));
     }
 
     if (response.status === 429 && attempt === 0) {

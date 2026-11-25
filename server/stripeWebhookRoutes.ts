@@ -8,7 +8,7 @@ import type Stripe from "stripe";
 import { ENV } from "./_core/env";
 import { getStripe, PLAN_LIMITS, type PlanTier } from "./stripePlans";
 import { upsertOrgSubscription, createEnrollment, getEnrollment } from "./lmsDb";
-import { getUserByEmail, getOrCreateUserByEmail, getDb } from "./db";
+import { getUserByEmail, getOrCreateUserByEmail, getDb as getBaseDb } from "./db";
 import { sendEmail } from "./sendgrid";
 import { buildOrgAdminNewPurchaseEmail, sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail } from "./_core/email";
 import { accountSetupHtml, courseEnrollmentHtml, trialActivatedHtml } from "./emailTemplates";
@@ -26,7 +26,11 @@ import { fulfillPrintifyOrder } from "./lib/fulfillPrintifyOrder";
 import { emitEmailWorkflowEvent } from "./lib/emailWorkflowEngine";
 import { generateUniqueOrgSlug } from "../shared/slugUtils";
 import { randomBytes, randomUUID } from "node:crypto";
-import { getOrgSubscriptionTrialDates, isOrgPlatformSubscription } from "./lib/orgSubscriptionTrialDates";
+import { getOrgSubscriptionTrialDates, getOrgSubscriptionPeriodDates, isOrgPlatformSubscription } from "./lib/orgSubscriptionTrialDates";
+import { normalizeCourse360StripeStatus, invoiceSubscriptionId, stripeObjectId, isCourse360StripeEvent, assertCourse360PlatformEventBinding, currentCourse360EnrollmentStatus, projectCourse360AppSubscription } from "./lib/course360WebhookLifecycle";
+
+import { currentCourse360PaymentTransaction, getCourse360PaymentDb, processCourse360PaymentVerifiedEvent, completeCourse360PaymentSchoolCheckout, withCourse360PaymentAppCheckout, withCourse360PaymentSignupCompletion, persistCourse360PaymentOwnerClaim, upsertCourse360PaymentPlatformState, dispatchCourse360PaymentHostedPlatformEvent } from "./lib/course360PaymentLedger";
+async function getDb() { return currentCourse360PaymentTransaction() ?? getBaseDb(); }
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
   slug: string;
@@ -143,19 +147,17 @@ export async function fulfillNativePhysicalProductCheckout(session: Stripe.Check
   const metadataUserId = Number.parseInt(session.metadata.user_id ?? "", 10);
   const buyerEmail = session.customer_details?.email ?? session.customer_email ?? session.metadata.customer_email ?? "";
   if (!productId || !orgId || !buyerEmail || !session.id) {
-    console.warn("[Stripe Webhook] Skipped physical-product fulfillment: required checkout data is missing");
-    return;
+    throw new Error("Physical-product Checkout requires complete school-bound purchase data");
   }
 
   const db = await getDb();
-  if (!db) return;
+  if (!db) throw new Error("Database unavailable during physical-product fulfillment");
 
   const [product] = await db.select().from(physicalProducts)
     .where(and(eq(physicalProducts.id, productId), eq(physicalProducts.orgId, orgId)))
     .limit(1);
   if (!product) {
-    console.warn(`[Stripe Webhook] Skipped physical-product fulfillment: product ${productId} is not in organization ${orgId}`);
-    return;
+    throw new Error("Physical-product purchase does not match its school");
   }
 
   let userId = Number.isInteger(metadataUserId) && metadataUserId > 0 ? metadataUserId : 0;
@@ -197,23 +199,27 @@ export async function fulfillNativePhysicalProductCheckout(session: Stripe.Check
   }
 
   if (!orderId) {
-    console.error(`[Stripe Webhook] Could not persist physical-product order for Checkout session ${session.id}`);
-    return;
+    throw new Error("Physical-product order persistence did not return an order identity");
   }
 
   const providerOptions = { customerEmail: buyerEmail };
   try {
-    // A product should be linked to only one provider. The order remains
-    // retryable through the existing organization-admin fulfillment controls.
+    // A product should be linked to only one provider. Failed handoffs must
+    // remain retryable through Stripe and existing organization-admin controls.
+    let fulfillment: { submitted: boolean; reason?: string; error?: string } | undefined;
     if (product.bookvaultEnabled) {
-      await fulfillBookvaultOrder(db, orderId, providerOptions);
+      fulfillment = await fulfillBookvaultOrder(db, orderId, providerOptions);
     } else if (product.printfulEnabled) {
-      await fulfillPrintfulOrder(db, orderId, providerOptions);
+      fulfillment = await fulfillPrintfulOrder(db, orderId, providerOptions);
     } else if (product.printifyEnabled) {
-      await fulfillPrintifyOrder(db, orderId, providerOptions);
+      fulfillment = await fulfillPrintifyOrder(db, orderId, providerOptions);
+    }
+    if (fulfillment && !fulfillment.submitted && fulfillment.reason !== "already_submitted") {
+      throw new Error(fulfillment.error || fulfillment.reason || "Physical-product provider handoff did not complete");
     }
   } catch (error) {
     console.error(`[Stripe Webhook] Physical-product fulfillment handoff failed for order ${orderId}:`, error);
+    throw error;
   }
 }
 
@@ -271,19 +277,14 @@ async function notifyOrgAdminsOfPurchase(orgId: number, opts: {
 
 const router = express.Router();
 
-type DbSubStatus = "active" | "trialing" | "past_due" | "cancelled" | "unpaid";
-function normalizeStripeStatus(stripeStatus: string): DbSubStatus {
-  if (stripeStatus === "canceled") return "cancelled";
-  const valid: DbSubStatus[] = ["active", "trialing", "past_due", "cancelled", "unpaid"];
-  return valid.includes(stripeStatus as DbSubStatus) ? (stripeStatus as DbSubStatus) : "active";
-}
+const normalizeStripeStatus = normalizeCourse360StripeStatus;
 
 /** Resolve lifecycle ownership from signed Stripe metadata, with a saved subscription fallback for webhook ordering/retry safety. */
 async function resolveSubscriptionOrgId(subscription: Stripe.Subscription): Promise<number> {
-  const metadataOrgId = parseInt(subscription.metadata?.org_id ?? "0");
-  if (metadataOrgId) return metadataOrgId;
+  const metadataOrgId = Number(subscription.metadata?.org_id);
+  if (Number.isSafeInteger(metadataOrgId) && metadataOrgId > 0) return metadataOrgId;
   const db = await getDb();
-  if (!db) return 0;
+  if (!db) throw new Error("Database unavailable resolving subscription ownership");
   const [storedSubscription] = await db.select({ orgId: orgSubscriptions.orgId })
     .from(orgSubscriptions)
     .where(eq(orgSubscriptions.stripeSubscriptionId, subscription.id))
@@ -293,10 +294,43 @@ async function resolveSubscriptionOrgId(subscription: Stripe.Subscription): Prom
 
 async function isCurrentOrgPlatformSubscription(orgId: number, subscription: Stripe.Subscription): Promise<boolean> {
   const db = await getDb();
-  if (!db) return false;
+  if (!db) throw new Error("Database unavailable checking current subscription ownership");
   const [stored] = await db.select({ stripeSubscriptionId: orgSubscriptions.stripeSubscriptionId })
     .from(orgSubscriptions).where(eq(orgSubscriptions.orgId, orgId)).limit(1);
   return isOrgPlatformSubscription(subscription, stored?.stripeSubscriptionId);
+}
+
+/** Project only the freshly retrieved subscription; never trust event arrival order. */
+async function reconcileCurrentSubscription(subscription: Stripe.Subscription): Promise<void> {
+  if (subscription.metadata?.type === "course360_hosted_checkout_v1") {
+    throw new Error("Hosted school subscription requires the account-bound hosted reconciliation adapter");
+  }
+  if (await projectCourse360AppSubscription(subscription)) return;
+  const orgId = await resolveSubscriptionOrgId(subscription);
+  const userId = Number(subscription.metadata?.user_id);
+  const courseId = Number(subscription.metadata?.content_id);
+  if (subscription.metadata?.content_type === "course") {
+    if (!Number.isSafeInteger(orgId) || orgId <= 0 || !Number.isSafeInteger(userId) || userId <= 0 || !Number.isSafeInteger(courseId) || courseId <= 0) throw new Error("Course subscription requires school-bound ownership");
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable during course subscription reconciliation");
+    await db.update(lmsEnrollments).set({ status: currentCourse360EnrollmentStatus(subscription.status) }).where(and(
+      eq(lmsEnrollments.orgId, orgId), eq(lmsEnrollments.userId, userId),
+      eq(lmsEnrollments.courseId, courseId), eq(lmsEnrollments.stripeSubscriptionId, subscription.id),
+    ));
+    return;
+  }
+  if (subscription.metadata?.type === "membership" || subscription.metadata?.membership_plan_id) {
+    throw new Error("Recurring membership lifecycle requires a school-bound subscription ledger");
+  }
+  if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) return;
+  let rawPlan = subscription.metadata?.plan;
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  if (priceId) {
+    const price = await getStripe().prices.retrieve(priceId);
+    rawPlan = price.metadata?.course360_tier ?? price.metadata?.teachific_tier ?? rawPlan;
+  }
+  const plan = rawPlan && ["free", "starter", "builder", "pro", "enterprise"].includes(rawPlan) ? rawPlan as PlanTier : undefined;
+  await upsertCourse360PaymentPlatformState(orgId, subscription, plan);
 }
 
 /**
@@ -309,22 +343,22 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
   if (session.mode !== "subscription" || session.metadata?.type !== "platform_trial_signup") return;
 
   const sessionId = session.id;
-  const subscriptionId = typeof session.subscription === "string" ? session.subscription : null;
-  const customerId = typeof session.customer === "string" ? session.customer : null;
+  const subscriptionId = stripeObjectId(session.subscription);
+  const customerId = stripeObjectId(session.customer);
   const rawPlan = session.metadata?.plan;
   const email = (session.customer_details?.email ?? session.customer_email ?? session.metadata?.signup_email ?? "").trim().toLowerCase();
   const requestedName = (session.metadata?.signup_name ?? session.customer_details?.name ?? "").trim();
   const blueprintInstallToken = session.metadata?.blueprint_install_token?.trim() || null;
 
   if (!sessionId || !subscriptionId || !customerId || !email || !["starter", "builder", "pro"].includes(rawPlan ?? "")) {
-    console.error("[Stripe Webhook] Skipped platform trial signup fulfillment: required checkout data is missing");
-    return;
+    throw new Error("Platform trial signup fulfillment requires complete Checkout ownership data");
   }
   const plan = rawPlan as "starter" | "builder" | "pro";
 
   const stripe = getStripe();
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const item = subscription.items.data[0];
+  if (!["active", "trialing"].includes(subscription.status)) throw new Error("Platform signup subscription is not currently usable");
+  if (stripeObjectId(subscription.customer) !== customerId) throw new Error("Platform signup customer binding mismatch");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable during platform trial signup fulfillment");
 
@@ -338,7 +372,8 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
         userName: string | null;
         plan: "starter" | "builder" | "pro";
       }
-  ) = await db.transaction(async (tx) => {
+  ) = await withCourse360PaymentSignupCompletion(session, subscription, async () => {
+    const tx = await getCourse360PaymentDb();
     const [existingFulfillment] = await tx.select()
       .from(platformTrialSignupFulfillments)
       .where(eq(platformTrialSignupFulfillments.stripeCheckoutSessionId, sessionId))
@@ -354,6 +389,7 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
     });
 
     let [user] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+    const existingAccount = !!user;
     let setupToken: string | null = null;
     if (!user) {
       setupToken = randomBytes(32).toString("hex");
@@ -363,9 +399,8 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
         email,
         loginMethod: "email",
         role: "user",
-        // The email was supplied to and confirmed through Stripe Checkout. The
-        // separate password-setup token remains the account-access secret.
-        emailVerified: true,
+        // Checkout confirms payment, not control of the email address.
+        emailVerified: false,
         resetToken: setupToken,
         resetTokenExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         lastSignedIn: new Date(),
@@ -393,25 +428,30 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
     const [organization] = await tx.select().from(organizations).where(eq(organizations.slug, slug)).limit(1);
     if (!organization) throw new Error("Could not create the checkout organization");
 
-    await tx.insert(orgMembers).values({
+    if (existingAccount) {
+      await persistCourse360PaymentOwnerClaim(tx, { orgId: organization.id, userId: user.id, email, sessionId, subscriptionId });
+    } else await tx.insert(orgMembers).values({
       orgId: organization.id,
       userId: user.id,
       role: "org_super_admin",
       memberSubRole: "basic_member",
     }).onDuplicateKeyUpdate({ set: { role: "org_super_admin", memberSubRole: "basic_member" } });
-    if (!["site_owner", "site_admin"].includes(user.role)) {
+    if (!existingAccount && !["site_owner", "site_admin"].includes(user.role)) {
       await tx.update(users).set({ role: "org_super_admin" }).where(eq(users.id, user.id));
     }
-    await tx.insert(userActiveOrg).values({ userId: user.id, orgId: organization.id })
-      .onDuplicateKeyUpdate({ set: { orgId: organization.id } });
+    // An unauthenticated payer cannot switch an existing account's school.
+    // Existing account holders access this additional school only after login.
+    if (!existingAccount) {
+      await tx.insert(userActiveOrg).values({ userId: user.id, orgId: organization.id })
+        .onDuplicateKeyUpdate({ set: { orgId: organization.id } });
+    }
     await tx.insert(orgSubscriptions).values({
       orgId: organization.id,
       plan,
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscriptionId,
       status: normalizeStripeStatus(subscription.status),
-      currentPeriodStart: item ? new Date(item.current_period_start * 1000) : null,
-      currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : null,
+      ...getOrgSubscriptionPeriodDates(subscription),
       ...getOrgSubscriptionTrialDates(subscription),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       starterTrialClaimed: true,
@@ -494,42 +534,48 @@ router.post(
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
 
-    // Handle test events
+    const signingSecret = process.env.COURSE360_STRIPE_WEBHOOK_SECRET?.trim() || ENV.stripeWebhookSecret;
+    const platformKey = process.env.COURSE360_STRIPE_SECRET_KEY?.trim() || ENV.stripeSecretKey;
     let event: Stripe.Event;
-    try {
-      if (ENV.isProduction) {
-        if (!ENV.stripeWebhookSecret) {
-          console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET not set — rejecting event");
-          return res.status(500).json({ error: "Webhook secret not configured" });
-        }
-        if (!sig) {
-          return res.status(400).json({ error: "Missing stripe-signature header" });
-        }
-        const stripe = getStripe();
-        event = stripe.webhooks.constructEvent(req.body, sig as string, ENV.stripeWebhookSecret);
-      } else if (ENV.stripeWebhookSecret && sig) {
-        const stripe = getStripe();
-        event = stripe.webhooks.constructEvent(req.body, sig as string, ENV.stripeWebhookSecret);
-      } else {
-        event = JSON.parse(req.body.toString()) as Stripe.Event;
-      }
-    } catch (err: any) {
-      console.error("[Stripe Webhook] Signature verification failed:", err.message);
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    if (!signingSecret) {
+      return res.status(500).json({ error: "Webhook secret not configured" });
     }
-
-    // Test event detection
-    if (event.id.startsWith("evt_test_")) {
-      console.log("[Stripe Webhook] Test event detected, returning verification response");
-      return res.json({ verified: true });
+    if (typeof sig !== "string" || !sig) {
+      return res.status(400).json({ error: "Missing stripe-signature header" });
+    }
+    if (!/^(sk|rk)_(test|live)_/.test(platformKey)) {
+      return res.status(500).json({ error: "Webhook account/mode configuration unavailable" });
+    }
+    try {
+      const verified = getStripe().webhooks.constructEvent(req.body, sig, signingSecret);
+      if (!isCourse360StripeEvent(verified)) return res.status(400).json({ error: "Invalid Stripe event envelope" });
+      event = verified;
+      assertCourse360PlatformEventBinding(event, platformKey);
+    } catch (err: unknown) {
+      console.error("[Stripe Webhook] Authentication or binding failed:", err instanceof Error ? err.message : "Invalid event");
+      return res.status(400).json({ error: "Invalid Stripe webhook signature or account/mode binding" });
     }
 
     console.log(`[Stripe Webhook] Event: ${event.type} (${event.id})`);
 
     try {
+      const processEvent = async () => {
+      // Optional parent-configured hook receives only the already verified platform account.
+      // School own-account/Connect deliveries belong to the separate authenticated endpoint.
+      if (await dispatchCourse360PaymentHostedPlatformEvent(event)) return;
       switch (event.type) {
+        case "checkout.session.async_payment_succeeded":
         case "checkout.session.completed": {
-          const session = event.data.object as Stripe.Checkout.Session;
+          const session = await getStripe().checkout.sessions.retrieve((event.data.object as Stripe.Checkout.Session).id);
+          // Parent integrates hosted fulfillment only after verified endpoint/account binding.
+          // Never mistake a school product subscription for a platform plan purchase.
+          if (session.metadata?.type === "course360_hosted_checkout_v1") {
+            throw new Error("Hosted school Checkout requires the account-bound hosted reconciliation adapter");
+          }
+          if (session.mode === "payment" && session.payment_status !== "paid"
+            && !(session.payment_status === "no_payment_required" && session.amount_total === 0)) {
+            throw new Error("One-time Checkout payment is not settled; retry after confirmed payment");
+          }
           await recordCouponRedemption(session);
 
           // ── Checkout-first platform owner signup ────────────────────────────────
@@ -550,6 +596,9 @@ router.post(
             const orgId = parseInt(session.metadata?.org_id ?? "0");
             const buyerEmail = session.customer_details?.email ?? session.metadata?.customer_email ?? "";
             const amountPaid = session.amount_total ? session.amount_total / 100 : 0;
+            if (!courseId || !orgId || !buyerEmail) throw new Error("Course Checkout requires complete school-bound ownership");
+            const purchasedCourse = await getCourseById(courseId);
+            if (!purchasedCourse || purchasedCourse.orgId !== orgId) throw new Error("Course purchase does not match its school");
             if (courseId && orgId && buyerEmail) {
               try {
                 const user = await getUserByEmail(buyerEmail);
@@ -662,19 +711,21 @@ router.post(
                   }
                   // Fulfill order bump purchases even if the learner was already enrolled
                   const db2 = await getDb();
+                  if (!db2) throw new Error("Database unavailable during required course order bump fulfillment");
                   if (db2) {
                     const meta = (session.metadata ?? {}) as Record<string, string>;
                     await fulfillOrderBumpPurchase(db2, meta, {
                       userId: user.id,
                       sessionId: session.id as string,
                       triggerOrderType: "course",
-                    }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
+                    });
                   }
                 } else {
-                  console.warn(`[Stripe Webhook] No user for email ${buyerEmail} — enrollment deferred`);
+                  throw new Error("Course fulfillment owner not yet available; retry required");
                 }
               } catch (enrollErr: any) {
                 console.error("[Stripe Webhook] Course enrollment failed:", enrollErr.message);
+                throw enrollErr;
               }
             }
             break;
@@ -684,10 +735,16 @@ router.post(
           if (session.mode === "payment" && session.metadata?.type === "digital_download") {
             const productId = parseInt(session.metadata?.product_id ?? "0");
             const userId = parseInt(session.metadata?.user_id ?? "0");
+            const purchaseOrgId = Number(session.metadata?.org_id);
+            if (!productId || !userId || !Number.isSafeInteger(purchaseOrgId) || purchaseOrgId <= 0) throw new Error("Download Checkout requires complete school-bound ownership");
             if (productId && userId) {
               try {
                 const db = await getDb();
+                if (!db) throw new Error("Database unavailable during required fulfillment");
                 if (db) {
+                  const [purchaseProduct] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
+                    .where(and(eq(digitalProducts.id, productId), eq(digitalProducts.orgId, purchaseOrgId))).limit(1);
+                  if (!purchaseProduct) throw new Error("Download purchase does not match its school");
                   const [existing] = await db.select().from(digitalPurchases)
                     .where(and(eq(digitalPurchases.userId, userId), eq(digitalPurchases.productId, productId)))
                     .limit(1);
@@ -758,10 +815,11 @@ router.post(
                     userId,
                     sessionId: session.id,
                     triggerOrderType: "download",
-                  }).catch((e: any) => console.error("[Stripe Webhook] Order bump fulfillment error:", e.message));
+                  });
                 }
               } catch (e: any) {
                 console.error("[Stripe Webhook] Digital download fulfillment failed:", e.message);
+                throw e;
               }
             }
             break;
@@ -772,25 +830,35 @@ router.post(
             const bundleId = parseInt(session.metadata?.bundle_id ?? "0");
             const orgId2 = parseInt(session.metadata?.org_id ?? "0");
             const buyerEmail2 = session.customer_details?.email ?? session.metadata?.customer_email ?? "";
+            if (!bundleId || !orgId2 || !buyerEmail2) throw new Error("Bundle Checkout requires complete school-bound ownership");
             if (bundleId && buyerEmail2) {
               try {
                 const user = await getUserByEmail(buyerEmail2);
+                if (!user) throw new Error("Fulfillment owner not yet available; retry required");
                 if (user) {
                   const db = await getDb();
+                  if (!db) throw new Error("Database unavailable during required fulfillment");
                   if (db) {
+                    const [purchaseBundle] = await db.select({ id: digitalBundles.id }).from(digitalBundles)
+                      .where(and(eq(digitalBundles.id, bundleId), eq(digitalBundles.orgId, orgId2))).limit(1);
+                    if (!purchaseBundle) throw new Error("Bundle purchase does not match its school");
                     const existing = await db.select().from(digitalBundlePurchases)
                       .where(and(eq(digitalBundlePurchases.userId, user.id), eq(digitalBundlePurchases.bundleId, bundleId)))
                       .limit(1);
-                    if (!existing.length) {
-                      await db.insert(digitalBundlePurchases).values({ userId: user.id, bundleId, stripeCheckoutSessionId: session.id });
-                      const items = await db.select().from(digitalBundleItems).where(eq(digitalBundleItems.bundleId, bundleId));
+                    const items = await db.select().from(digitalBundleItems).where(eq(digitalBundleItems.bundleId, bundleId));
                       for (const item of items) {
+                        const [child] = await db.select({ id: digitalProducts.id }).from(digitalProducts)
+                          .where(and(eq(digitalProducts.id, item.productId), eq(digitalProducts.orgId, orgId2))).limit(1);
+                        if (!child) throw new Error("Bundle child product does not match its school");
                         const hasAccess = await db.select().from(digitalPurchases)
                           .where(and(eq(digitalPurchases.userId, user.id), eq(digitalPurchases.productId, item.productId))).limit(1);
                         if (!hasAccess.length) {
                           await db.insert(digitalPurchases).values({ userId: user.id, productId: item.productId, stripeCheckoutSessionId: session.id });
                         }
                       }
+                    if (!existing.length) {
+                      // Completion marker follows required grants. Retries resume each missing child.
+                      await db.insert(digitalBundlePurchases).values({ userId: user.id, bundleId, stripeCheckoutSessionId: session.id });
                       console.log(`[Stripe Webhook] User ${user.id} granted bundle ${bundleId} (${items.length} items)`);
                       // Send buyer confirmation via org sender
                       const bundleAmountPaid = session.amount_total ? session.amount_total / 100 : 0;
@@ -846,10 +914,10 @@ router.post(
                     }
                     // Fulfill order bumps
                     const meta = (session.metadata ?? {}) as Record<string, string>;
-                    await fulfillOrderBumpPurchase(db, meta, { userId: user.id, sessionId: session.id, triggerOrderType: "bundle" }).catch(() => {});
+                    await fulfillOrderBumpPurchase(db, meta, { userId: user.id, sessionId: session.id, triggerOrderType: "bundle" });
                   }
                 }
-              } catch (e: any) { console.error("[Stripe Webhook] Bundle fulfillment failed:", e.message); }
+              } catch (e: any) { console.error("[Stripe Webhook] Bundle fulfillment failed:", e.message); throw e; }
             }
             break;
           }
@@ -859,14 +927,26 @@ router.post(
             const membershipPlanId = parseInt(session.metadata?.membership_plan_id ?? "0");
             const orgId2 = parseInt(session.metadata?.org_id ?? "0");
             const buyerEmail2 = session.customer_details?.email ?? session.metadata?.customer_email ?? "";
+            if (!membershipPlanId || !orgId2 || !buyerEmail2) throw new Error("Membership Checkout requires complete school-bound ownership");
+            const membershipSubscriptionId = stripeObjectId(session.subscription);
+            if (!membershipSubscriptionId) throw new Error("Recurring membership Checkout is missing its subscription");
+            const currentMembership = await getStripe().subscriptions.retrieve(membershipSubscriptionId);
+            const membershipEnd = getOrgSubscriptionPeriodDates(currentMembership).currentPeriodEnd;
+            if (!["active", "trialing"].includes(currentMembership.status) || !membershipEnd) throw new Error("Membership subscription is not currently usable with a finite period");
+            if (Number(currentMembership.metadata?.org_id) !== orgId2 || Number(currentMembership.metadata?.membership_plan_id) !== membershipPlanId) throw new Error("Membership subscription ownership mismatch");
             if (membershipPlanId && buyerEmail2) {
               try {
                 const user = await getUserByEmail(buyerEmail2);
+                if (!user) throw new Error("Fulfillment owner not yet available; retry required");
                 if (user) {
                   const db = await getDb();
+                  if (!db) throw new Error("Database unavailable during required fulfillment");
                   if (db) {
+                    const [purchasedPlan] = await db.select({ id: membershipPlans.id }).from(membershipPlans)
+                      .where(and(eq(membershipPlans.id, membershipPlanId), eq(membershipPlans.orgId, orgId2))).limit(1);
+                    if (!purchasedPlan) throw new Error("Membership plan does not match its school");
                     const existing = await db.select().from(membershipSubscriptions)
-                      .where(and(eq(membershipSubscriptions.userId, user.id), eq(membershipSubscriptions.planId, membershipPlanId)))
+                      .where(and(eq(membershipSubscriptions.orgId, orgId2), eq(membershipSubscriptions.userId, user.id), eq(membershipSubscriptions.planId, membershipPlanId)))
                       .limit(1);
                     if (!existing.length) {
                       await db.insert(membershipSubscriptions).values({
@@ -875,7 +955,7 @@ router.post(
                         planId: membershipPlanId,
                         status: "active",
                         startDate: new Date(),
-                        endDate: null,
+                        endDate: membershipEnd,
                       });
                       console.log(`[Stripe Webhook] User ${user.id} granted membership plan ${membershipPlanId}`);
                       // Create invoice row for membership
@@ -897,7 +977,7 @@ router.post(
                     }
                   }
                 }
-              } catch (e: any) { console.error("[Stripe Webhook] Membership fulfillment failed:", e.message); }
+              } catch (e: any) { console.error("[Stripe Webhook] Membership fulfillment failed:", e.message); throw e; }
             }
             break;
           }
@@ -905,40 +985,11 @@ router.post(
           // ── Studio / Creator / QuizMaker subscription checkout ──────────────────────
           const appProductType = session.metadata?.product_type;
           if (session.mode === "subscription" && (appProductType === "studio" || appProductType === "creator" || appProductType === "quiz_creator")) {
-            const accessTier = session.metadata?.access_tier as string;
-            const userId = parseInt(session.metadata?.user_id ?? "0");
-            if (accessTier && userId) {
-              try {
-                const db = await getDb();
-                if (db) {
-                  const { users } = await import("../drizzle/schema");
-                  const { eq } = await import("drizzle-orm");
-                  // Fetch subscription to get trial end date
-                  let trialEndsAt: Date | null = null;
-                  if (session.subscription) {
-                    const stripe = getStripe();
-                    const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-                    if (sub.trial_end) trialEndsAt = new Date(sub.trial_end * 1000);
-                  }
-                  if (appProductType === "studio") {
-                    await db.update(users)
-                      .set({ studioAccess: accessTier as any, ...(trialEndsAt ? { studioTrialEndsAt: trialEndsAt } : {}) })
-                      .where(eq(users.id, userId));
-                  } else if (appProductType === "creator") {
-                    await db.update(users)
-                      .set({ creatorAccess: accessTier as any, ...(trialEndsAt ? { creatorTrialEndsAt: trialEndsAt } : {}) })
-                      .where(eq(users.id, userId));
-                  } else if (appProductType === "quiz_creator") {
-                    await db.update(users)
-                      .set({ quizCreatorAccess: accessTier as any, ...(trialEndsAt ? { quizCreatorTrialEndsAt: trialEndsAt } : {}) })
-                      .where(eq(users.id, userId));
-                  }
-                  console.log(`[Stripe Webhook] User ${userId} ${appProductType} access updated to ${accessTier}${trialEndsAt ? ` (trial until ${trialEndsAt.toISOString()})` : ""}`);
-                }
-              } catch (err: any) {
-                console.error(`[Stripe Webhook] ${appProductType} access update failed:`, err.message);
-              }
-            }
+            const subscriptionId = stripeObjectId(session.subscription);
+            if (!subscriptionId) throw new Error("App Checkout is missing its owned subscription");
+            const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+            if (stripeObjectId(subscription.customer) !== stripeObjectId(session.customer)) throw new Error("App Checkout customer binding mismatch");
+            await withCourse360PaymentAppCheckout(session, () => projectCourse360AppSubscription(subscription, session));
             break;
           }
 
@@ -947,124 +998,41 @@ router.post(
 
           const orgId = parseInt(session.metadata?.org_id ?? "0");
           const plan = (session.metadata?.plan ?? "starter") as PlanTier;
-          const customerId = session.customer as string;
-          const subscriptionId = session.subscription as string;
+          const customerId = stripeObjectId(session.customer);
+          const subscriptionId = stripeObjectId(session.subscription);
+          if (!customerId || !subscriptionId) throw new Error("Organization Checkout is missing customer/subscription ownership");
 
           if (!orgId) {
-            console.error("[Stripe Webhook] Missing org_id in checkout session metadata");
-            break;
+            throw new Error("Organization Checkout is missing school ownership");
           }
 
           // Fetch subscription details
           const stripe = getStripe();
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-          const item = subscription.items.data[0];
-          await upsertOrgSubscription(orgId, {
-            plan,
-            stripeCustomerId: customerId,
-            stripeSubscriptionId: subscriptionId,
-            status: normalizeStripeStatus(subscription.status),
-            currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
-            currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
-            ...getOrgSubscriptionTrialDates(subscription),
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            // A visitor has redeemed the introductory offer only after their
-            // first paid Checkout session completes and the subscription exists
-            // in Stripe. The retained column name preserves prior records.
-            ...(plan !== "free" ? { starterTrialClaimed: true } : {}),
-          });
+          if (Number(subscription.metadata?.org_id) !== orgId || stripeObjectId(subscription.customer) !== customerId) throw new Error("Organization Checkout ownership mismatch");
+          await completeCourse360PaymentSchoolCheckout(session, subscription);
 
           console.log(`[Stripe Webhook] Org ${orgId} upgraded to ${plan}`);
           break;
         }
 
-        case "customer.subscription.updated": {
-          const subscription = event.data.object as Stripe.Subscription;
-          const orgId = await resolveSubscriptionOrgId(subscription);
-          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
-
-          // Determine plan from price metadata
-          const priceId = subscription.items.data[0]?.price?.id;
-          let plan: PlanTier = "free";
-          if (priceId) {
-            const stripe = getStripe();
-            const price = await stripe.prices.retrieve(priceId);
-            plan = (price.metadata?.teachific_tier as PlanTier) ?? "free";
-          }
-
-          const item2 = subscription.items.data[0];
-          await upsertOrgSubscription(orgId, {
-            plan,
-            status: normalizeStripeStatus(subscription.status),
-            currentPeriodStart: item2 ? new Date(item2.current_period_start * 1000) : undefined,
-            currentPeriodEnd: item2 ? new Date(item2.current_period_end * 1000) : undefined,
-            ...getOrgSubscriptionTrialDates(subscription),
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          });
-
-          console.log(`[Stripe Webhook] Org ${orgId} subscription updated: ${subscription.status}`);
-          break;
-        }
-
+        case "customer.subscription.created":
+        case "customer.subscription.updated":
+        case "customer.subscription.paused":
+        case "customer.subscription.resumed":
         case "customer.subscription.deleted": {
-          const subscription = event.data.object as Stripe.Subscription;
-          const orgId = await resolveSubscriptionOrgId(subscription);
-          const productType = subscription.metadata?.product_type as string | undefined;
-          const userId = parseInt(subscription.metadata?.user_id ?? "0");
-          const contentType = subscription.metadata?.content_type as string | undefined;
-          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
-
-          // ── LMS course subscription cancelled ────────────────────────────────────────────────
-          if (contentType === "course" && contentId && userId) {
-            const db = await getDb();
-            if (db) {
-              await db.update(lmsEnrollments)
-                .set({ status: "cancelled" })
-                .where(and(
-                  eq(lmsEnrollments.userId, userId),
-                  eq(lmsEnrollments.courseId, contentId),
-                  eq(lmsEnrollments.stripeSubscriptionId, subscription.id),
-                ));
-              console.log(`[Stripe Webhook] LMS enrollment cancelled for user ${userId} course ${contentId} (sub ${subscription.id})`);
-            }
-            break;
-          }
-
-          // ── Platform app subscription cancelled ────────────────────────────────────
-          if (productType && userId) {
-            const db = await getDb();
-            if (db) {
-              const { users } = await import("../drizzle/schema");
-              const { eq } = await import("drizzle-orm");
-              if (productType === "studio") {
-                await db.update(users).set({ studioAccess: null }).where(eq(users.id, userId));
-              } else if (productType === "creator") {
-                await db.update(users).set({ creatorAccess: null }).where(eq(users.id, userId));
-              } else if (productType === "quiz_creator") {
-                await db.update(users).set({ quizCreatorAccess: null }).where(eq(users.id, userId));
-              }
-              console.log(`[Stripe Webhook] User ${userId} ${productType} access revoked (subscription cancelled)`);
-            }
-            break;
-          }
-
-          // ── Org subscription cancelled ────────────────────────────────────────
-          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
-          await upsertOrgSubscription(orgId, {
-            plan: "free",
-            status: "cancelled",
-            ...getOrgSubscriptionTrialDates(subscription),
-            cancelAtPeriodEnd: false,
-          });
-          console.log(`[Stripe Webhook] Org ${orgId} subscription cancelled, downgraded to free`);
+          const snapshot = event.data.object as Stripe.Subscription;
+          if (!stripeObjectId(snapshot)) throw new Error("Subscription event is missing identity");
+          const subscription = await getStripe().subscriptions.retrieve(snapshot.id);
+          await reconcileCurrentSubscription(subscription);
           break;
         }
 
         // ── Subscription renewal (invoice.paid) ───────────────────────────────
         case "invoice.paid": {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = (invoice as any).subscription as string;
+          const subscriptionId = invoiceSubscriptionId(invoice);
           if (!subscriptionId) break;
           // Only process subscription renewals (billing_reason = subscription_cycle or subscription_update)
           const billingReason = (invoice as any).billing_reason as string;
@@ -1072,68 +1040,17 @@ router.post(
 
           const stripe = getStripe();
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const productType = subscription.metadata?.product_type as string | undefined;
-          const userId = parseInt(subscription.metadata?.user_id ?? "0");
+          const currentInvoice = await stripe.invoices.retrieve(invoice.id);
+          await reconcileCurrentSubscription(subscription);
           const orgId = await resolveSubscriptionOrgId(subscription);
-          const item = subscription.items.data[0];
-          const contentType = subscription.metadata?.content_type as string | undefined;
-          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
-
-          // ── LMS course subscription renewal: restore access if suspended ─────────────────────────────────
-          if (contentType === "course" && contentId && userId) {
-            const db = await getDb();
-            if (db) {
-              await db.update(lmsEnrollments)
-                .set({ status: "active" })
-                .where(and(
-                  eq(lmsEnrollments.userId, userId),
-                  eq(lmsEnrollments.courseId, contentId),
-                  eq(lmsEnrollments.stripeSubscriptionId, subscriptionId),
-                ));
-              console.log(`[Stripe Webhook] LMS enrollment restored to active for user ${userId} course ${contentId} (renewal, sub ${subscriptionId})`);
-            }
-            break;
-          }
-
-          // ── Platform app renewal: re-confirm access ───────────────────────────────────────
-          if (productType && userId && (productType === "studio" || productType === "creator" || productType === "quiz_creator")) {
-            const accessTier = subscription.metadata?.access_tier as string;
-            if (accessTier) {
-              const db = await getDb();
-              if (db) {
-                const { users } = await import("../drizzle/schema");
-                const { eq } = await import("drizzle-orm");
-                if (productType === "studio") {
-                  await db.update(users).set({ studioAccess: accessTier as any }).where(eq(users.id, userId));
-                } else if (productType === "creator") {
-                  await db.update(users).set({ creatorAccess: accessTier as any }).where(eq(users.id, userId));
-                } else if (productType === "quiz_creator") {
-                  await db.update(users).set({ quizCreatorAccess: accessTier as any }).where(eq(users.id, userId));
-                }
-                console.log(`[Stripe Webhook] User ${userId} ${productType} access renewed (${accessTier}) — billing_reason: ${billingReason}`);
-              }
-            }
-            break;
-          }
-
-          // ── Org subscription renewal: update period dates ─────────────────────
-          if (orgId) {
-            if (!await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
-            const plan = subscription.metadata?.plan as string ?? "starter";
-            await upsertOrgSubscription(orgId, {
-              plan: plan as any,
-              status: normalizeStripeStatus(subscription.status),
-              currentPeriodStart: item ? new Date(item.current_period_start * 1000) : undefined,
-              currentPeriodEnd: item ? new Date(item.current_period_end * 1000) : undefined,
-              ...getOrgSubscriptionTrialDates(subscription),
-              cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            });
-            console.log(`[Stripe Webhook] Org ${orgId} subscription renewed — next period ends ${item ? new Date(item.current_period_end * 1000).toISOString() : "unknown"}`);
+          if (orgId && await isCurrentOrgPlatformSubscription(orgId, subscription)) {
+            console.log(`[Stripe Webhook] Org ${orgId} reconciled from current subscription ${subscription.status}`);
 
             // ── Blueprint referral commission on first subscription payment ────────
-            if (billingReason === "subscription_create") {
+            if (billingReason === "subscription_create" && currentInvoice.status === "paid" && subscription.status === "active") {
               try {
                 const db2 = await getDb();
+                if (!db2) throw new Error("Database unavailable during required commission persistence");
                 if (db2) {
                   // Find the most recent claimed pending install for this org
                   const [pendingInstall] = await db2
@@ -1152,7 +1069,7 @@ router.post(
                       const commissionRate = parseFloat(String(link.commissionRate));
                       const commissionCents = Math.round(amountCents * commissionRate);
                       const currency = (invoice.currency ?? "usd").toUpperCase();
-                      const paymentIntentId = typeof invoice.payment_intent === "string" ? invoice.payment_intent : null;
+                      const paymentIntentId = stripeObjectId((currentInvoice as unknown as { payment_intent?: unknown }).payment_intent);
                       // Check idempotency — don't double-record
                       const [existingComm] = await db2
                         .select({ id: blueprintCommissions.id })
@@ -1186,6 +1103,7 @@ router.post(
                 }
               } catch (commErr: any) {
                 console.error("[Stripe Webhook] Blueprint commission recording failed:", commErr.message);
+                throw commErr;
               }
             }
           }
@@ -1194,52 +1112,25 @@ router.post(
 
         case "invoice.payment_failed": {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = (invoice as any).subscription as string;
+          const subscriptionId = invoiceSubscriptionId(invoice);
           if (!subscriptionId) break;
 
           const stripe = getStripe();
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-          const productType = subscription.metadata?.product_type as string | undefined;
-          const userId = parseInt(subscription.metadata?.user_id ?? "0");
-          const orgId = await resolveSubscriptionOrgId(subscription);
-          const contentType = subscription.metadata?.content_type as string | undefined;
-          const contentId = parseInt(subscription.metadata?.content_id ?? "0");
-
-          // ── LMS course subscription payment failed — suspend access ─────────────────────────────────
-          if (contentType === "course" && contentId && userId) {
-            const db = await getDb();
-            if (db) {
-              await db.update(lmsEnrollments)
-                .set({ status: "suspended" })
-                .where(and(
-                  eq(lmsEnrollments.userId, userId),
-                  eq(lmsEnrollments.courseId, contentId),
-                  eq(lmsEnrollments.stripeSubscriptionId, subscriptionId),
-                ));
-              console.warn(`[Stripe Webhook] LMS enrollment suspended for user ${userId} course ${contentId} (payment failed, sub ${subscriptionId})`);
-            }
-            break;
-          }
-
-          // Platform app payment failed — log but don't revoke access immediately (Stripe retries)
-          if (productType && userId) {
-            console.warn(`[Stripe Webhook] User ${userId} ${productType} payment failed — subscription ${subscriptionId} is past_due`);
-            break;
-          }
-
-          // Org subscription payment failed
-          if (!orgId || !await isCurrentOrgPlatformSubscription(orgId, subscription)) break;
-          await upsertOrgSubscription(orgId, { status: "past_due", ...getOrgSubscriptionTrialDates(subscription) });
-          console.log(`[Stripe Webhook] Org ${orgId} payment failed, status: past_due`);
+          // Re-read invoice outcome as well as subscription status: a delayed failure
+          // must not suspend a recovered subscription or revive a canceled one.
+          await stripe.invoices.retrieve(invoice.id);
+          await reconcileCurrentSubscription(subscription);
           break;
         }
 
         // ── TeachificPay: log completed charges ──────────────────────────────
         case "charge.succeeded": {
-          const charge = event.data.object as Stripe.Charge;
+          const snapshot = event.data.object as Stripe.Charge;
+          const charge = await getStripe().charges.retrieve(snapshot.id);
           if (!charge.transfer_data?.destination) break; // Only log TeachificPay charges
           const db = await getDb();
-          if (!db) break;
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
           // Find org by Connect account ID
           const [org] = await db.select({ id: organizations.id })
             .from(organizations)
@@ -1247,6 +1138,9 @@ router.post(
             .limit(1);
           if (!org) break;
           const netAmount = charge.amount - (charge.application_fee_amount ?? 0);
+          const currentChargeStatus = charge.amount_refunded > 0
+            ? charge.amount_refunded >= charge.amount ? "refunded" : "partially_refunded"
+            : charge.paid ? "succeeded" : "failed";
           await db.insert(teachificPayCharges).values({
             orgId: org.id,
             stripeChargeId: charge.id,
@@ -1255,19 +1149,20 @@ router.post(
             platformFee: charge.application_fee_amount ?? 0,
             netAmount,
             currency: charge.currency,
-            status: "succeeded",
-            amountRefunded: 0,
+            status: currentChargeStatus,
+            amountRefunded: charge.amount_refunded,
             learnerEmail: charge.billing_details?.email ?? null,
-          }).onDuplicateKeyUpdate({ set: { status: "succeeded" } });
+          }).onDuplicateKeyUpdate({ set: { status: currentChargeStatus, amountRefunded: charge.amount_refunded } });
           console.log(`[Stripe Webhook] Charge ${charge.id} logged for org ${org.id}`);
           break;
         }
 
         // ── TeachificPay: dispute opened ──────────────────────────────────────
         case "charge.dispute.created": {
-          const dispute = event.data.object as Stripe.Dispute;
+          const snapshot = event.data.object as Stripe.Dispute;
+          const dispute = await getStripe().disputes.retrieve(snapshot.id);
           const db = await getDb();
-          if (!db) break;
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
           // Find org by charge
           const [chargeRow] = await db.select()
             .from(teachificPayCharges)
@@ -1275,8 +1170,7 @@ router.post(
             .limit(1);
           const orgId = chargeRow?.orgId ?? 0;
           if (!orgId) {
-            console.warn(`[Stripe Webhook] Dispute ${dispute.id} — no matching charge row, skipping`);
-            break;
+            throw new Error("Dispute charge prerequisite has not been persisted; retry required");
           }
           await db.insert(teachificPayDisputes).values({
             orgId,
@@ -1369,9 +1263,10 @@ router.post(
 
         // ── TeachificPay: dispute updated ─────────────────────────────────────
         case "charge.dispute.updated": {
-          const dispute = event.data.object as Stripe.Dispute;
+          const snapshot = event.data.object as Stripe.Dispute;
+          const dispute = await getStripe().disputes.retrieve(snapshot.id);
           const db = await getDb();
-          if (!db) break;
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
           await db.update(teachificPayDisputes)
             .set({
               status: dispute.status as any,
@@ -1384,9 +1279,10 @@ router.post(
 
         // ── TeachificPay: dispute closed (won or lost) ────────────────────────
         case "charge.dispute.closed": {
-          const dispute = event.data.object as Stripe.Dispute;
+          const snapshot = event.data.object as Stripe.Dispute;
+          const dispute = await getStripe().disputes.retrieve(snapshot.id);
           const db = await getDb();
-          if (!db) break;
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
           await db.update(teachificPayDisputes)
             .set({ status: dispute.status as any })
             .where(eq(teachificPayDisputes.stripeDisputeId, dispute.id));
@@ -1447,10 +1343,13 @@ router.post(
 
         // ── TeachificPay: charge refunded ─────────────────────────────────────
         case "charge.refunded": {
-          const charge = event.data.object as Stripe.Charge;
+          const snapshot = event.data.object as Stripe.Charge;
+          const charge = await getStripe().charges.retrieve(snapshot.id);
           const db = await getDb();
-          if (!db) break;
-          const newStatus = charge.amount_refunded >= charge.amount ? "refunded" : "partially_refunded";
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
+          const newStatus = charge.amount_refunded > 0
+            ? charge.amount_refunded >= charge.amount ? "refunded" : "partially_refunded"
+            : charge.paid ? "succeeded" : "failed";
           await db.update(teachificPayCharges)
             .set({ status: newStatus, amountRefunded: charge.amount_refunded })
             .where(eq(teachificPayCharges.stripeChargeId, charge.id));
@@ -1464,7 +1363,7 @@ router.post(
           const accountId = account.id;
           if (!accountId) break;
           const db = await getDb();
-          if (!db) break;
+          if (!db) throw new Error("Database unavailable during required webhook persistence");
           const { organizations } = await import("../drizzle/schema");
           const { eq } = await import("drizzle-orm");
           // Determine new status
@@ -1491,6 +1390,10 @@ router.post(
         default:
           console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
       }
+      };
+      // Platform-wide InnoDB lock also serializes historical school/app races across processes.
+      // The old process-local promise lock is not a durability boundary.
+      await processCourse360PaymentVerifiedEvent(event, "platform-account", processEvent);
     } catch (err: any) {
       console.error("[Stripe Webhook] Processing error:", err.message);
       return res.status(500).json({ error: "Webhook processing failed" });

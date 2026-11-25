@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,9 +53,9 @@ const PLAN_FEATURES = [
 ];
 
 const PLAN = {
-  monthlyPrice: 117,
-  annualPrice: 999,
-  annualMonthly: 83, // 999/12 rounded
+  monthlyPrice: COURSE360_PRICES.creator_desktop.monthly,
+  annualPrice: COURSE360_PRICES.creator_desktop.annual,
+  annualMonthly: course360AnnualSavings("creator_desktop").effectiveMonthly,
   description: "Core tools to build eLearning in one plan.",
   cta: "Start Free Trial",
   // kept for legacy shape compatibility
@@ -70,8 +72,8 @@ const TIERS = [
     id: "pro",
     name: "Course360 Creator™",
     badge: null,
-    monthlyPrice: 117,
-    annualPrice: 999,
+    monthlyPrice: COURSE360_PRICES.creator_desktop.monthly,
+    annualPrice: COURSE360_PRICES.creator_desktop.annual,
     description: "Core tools to build eLearning in one plan.",
     features: PLAN_FEATURES,
     cta: "Start Free Trial",
@@ -417,7 +419,7 @@ export default function CreatorLandingPage() {
                   ["Direct LMS publish", true, false, false],
                   ["AI content generation", true, false, false],
                   ["Team collaboration", true, false, true],
-                  ["Starting price/mo", "$117", "$770/yr", "$1,299/yr"],
+                  ["Starting price/mo", formatCourse360Dollars(COURSE360_PRICES.creator_desktop.monthly), "$770/yr", "$1,299/yr"],
                 ].map(([feature, tc, ispring, art], i) => (
                   <tr key={i} className="border-b border-white/5 hover:bg-white/5">
                     <td className="py-3 px-4 text-white/70">{feature}</td>
@@ -475,7 +477,7 @@ export default function CreatorLandingPage() {
               >
                 Annual
                 <span className="ml-1.5 text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">
-                  Save 20%
+                  Billed upfront
                 </span>
               </button>
             </div>
@@ -506,12 +508,12 @@ export default function CreatorLandingPage() {
                   {tier.monthlyPrice !== null ? (
                     <>
                       <span className="text-4xl font-extrabold text-white">
-                        ${billing === "monthly" ? tier.monthlyPrice : Math.round((tier.annualPrice ?? 0) / 12)}
+                        {formatCourse360Dollars(billing === "monthly" ? tier.monthlyPrice : tier.annualPrice!)}
                       </span>
-                      <span className="text-white/50 text-sm ml-1">/mo</span>
+                      <span className="text-white/50 text-sm ml-1">/{billing === "monthly" ? "mo" : "yr"}</span>
                       {billing === "annual" && (
                         <p className="text-xs text-green-400 mt-1">
-                          ${tier.annualPrice}/yr billed annually — save ${(tier.monthlyPrice! * 12) - (tier.annualPrice ?? 0)}
+                          Billed upfront annually — save {formatCourse360Dollars(course360AnnualSavings("creator_desktop").amount)} vs. 12 monthly payments
                         </p>
                       )}
                     </>

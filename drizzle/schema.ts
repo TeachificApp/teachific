@@ -6666,3 +6666,14 @@ export const newsletterSubscribers = mysqlTable("newsletter_subscribers", {
 });
 export type NewsletterSubscriber = typeof newsletterSubscribers.$inferSelect;
 export type InsertNewsletterSubscriber = typeof newsletterSubscribers.$inferInsert;
+
+// Additive Course360 payment ledgers and native funnel metadata (0107).
+export { course360HostedCheckoutPurchases } from "../server/lib/course360HostedCheckout";
+export { embeddedCheckoutSnapshots } from "../server/lib/embeddedCheckoutTables";
+export { funnel360DraftRequests, funnel360PageLearnSettings } from "../server/lib/funnel360Tables";
+
+// Additive tenant recurring sources, encrypted school ingress registry and template ownership (0108).
+export { course360RecurringBindings, course360EntitlementTargets, course360EntitlementSources, course360SchoolStripeEndpoints } from "../server/lib/course360HostedCheckoutTables";
+export { course360BuilderTemplateOwnership } from "../server/lib/course360BuilderTemplateOwnership";
+// Additive durable platform checkout, app access and verified webhook inbox (0109).
+export * from "../server/lib/course360PaymentTables";

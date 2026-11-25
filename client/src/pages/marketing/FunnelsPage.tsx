@@ -12,20 +12,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { GitBranch, Plus, MoreVertical, Pencil, Trash2, ArrowRight, Zap } from "lucide-react";
+import { FunnelAiCreateDialog } from "@/components/FunnelAiCreateDialog";
 
 export default function FunnelsPage() {
   const { orgId, ready } = useOrgScope();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: funnels, isLoading } = trpc.lms.funnels.list.useQuery(
-    { orgId: orgId! },
+  const { data: funnels, isLoading } = trpc.funnel360.list.useQuery(
+    { expectedOrgId: orgId! },
     { enabled: ready && !!orgId }
   );
 
-  const createFunnel = trpc.lms.funnels.create.useMutation({
+  const createFunnel = trpc.funnel360.create.useMutation({
     onSuccess: (funnel) => {
-      utils.lms.funnels.list.invalidate({ orgId: orgId! });
+      utils.funnel360.list.invalidate({ expectedOrgId: orgId! });
       setShowCreate(false);
       setName("");
       toast.success("Funnel created");
@@ -34,9 +35,9 @@ export default function FunnelsPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const deleteFunnel = trpc.lms.funnels.delete.useMutation({
+  const deleteFunnel = trpc.funnel360.delete.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.list.invalidate({ orgId: orgId! });
+      utils.funnel360.list.invalidate({ expectedOrgId: orgId! });
       toast.success("Funnel deleted");
     },
     onError: (e) => toast.error(e.message),
@@ -44,6 +45,7 @@ export default function FunnelsPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
+  const [showAi, setShowAi] = useState(false);
 
   const totalVisitors = (funnels ?? []).reduce((s, f) => s + f.totalVisitors, 0);
   const totalConversions = (funnels ?? []).reduce((s, f) => s + f.totalConversions, 0);
@@ -55,7 +57,10 @@ export default function FunnelsPage() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><GitBranch className="h-6 w-6 text-primary" />Funnels</h1>
           <p className="text-muted-foreground mt-0.5 text-sm">Build multi-step conversion funnels with landing pages and automated follow-ups</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" disabled={!ready} onClick={() => setShowAi(true)}>AI Generate</Button>
         <Button className="gap-2" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" />New Funnel</Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -105,15 +110,20 @@ export default function FunnelsPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent><DialogHeader><DialogTitle>New Funnel</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2"><Label>Funnel Name</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Course Launch Funnel" autoFocus onKeyDown={e => { if (e.key === "Enter" && name.trim()) createFunnel.mutate({ orgId: orgId!, name }); }} /></div>
+            <div className="space-y-2"><Label>Funnel Name</Label><Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Course Launch Funnel" autoFocus onKeyDown={e => { if (e.key === "Enter" && name.trim()) createFunnel.mutate({ expectedOrgId: orgId!, name }); }} /></div>
             <p className="text-xs text-muted-foreground">After creating the funnel, use the funnel builder to add landing pages, opt-in forms, and follow-up sequences.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-            <Button onClick={() => { if (!name.trim()) { toast.error("Name required"); return; } createFunnel.mutate({ orgId: orgId!, name }); }} disabled={createFunnel.isPending}>{createFunnel.isPending ? "Creating…" : "Create Funnel"}</Button>
+            <Button onClick={() => { if (!name.trim()) { toast.error("Name required"); return; } createFunnel.mutate({ expectedOrgId: orgId!, name }); }} disabled={createFunnel.isPending}>{createFunnel.isPending ? "Creating…" : "Create Funnel"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {showAi && <FunnelAiCreateDialog onClose={() => setShowAi(false)} onCreated={id => {
+        setShowAi(false);
+        toast.success("Unpublished draft created");
+        setLocation(`/marketing/funnels/${id}`);
+      }} />}
     </div>
   );
 }

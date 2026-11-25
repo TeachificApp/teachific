@@ -7,9 +7,9 @@ export const ENV = {
   isProduction: process.env.NODE_ENV === "production",
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
-  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
-  stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",
+  stripeSecretKey: process.env.COURSE360_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_SECRET_KEY || "",
+  stripeWebhookSecret: process.env.COURSE360_STRIPE_WEBHOOK_SECRET?.trim() || process.env.STRIPE_WEBHOOK_SECRET || "",
+  stripePublishableKey: process.env.VITE_COURSE360_STRIPE_PUBLISHABLE_KEY?.trim() || process.env.VITE_STRIPE_PUBLISHABLE_KEY || "",
   // Printful integration
   printfulApiKey: process.env.PRINTFUL_API_KEY ?? "",
   printfulDefaultStoreId: process.env.PRINTFUL_DEFAULT_STORE_ID ?? "",

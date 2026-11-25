@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 let stripeClient: Stripe | null = null;
+let cachedKey: string | null = null;
 
 /**
  * Lazy Stripe client.
@@ -8,13 +9,14 @@ let stripeClient: Stripe | null = null;
  * Falls back to STRIPE_SECRET_KEY (test mode) if the live key is not set.
  */
 export function getStripeClient(): Stripe {
-  const key = process.env.STRIPE_LIVE_SECRET_KEY || process.env.STRIPE_SECRET_KEY;
+  const key = process.env.COURSE360_STRIPE_SECRET_KEY?.trim() || process.env.STRIPE_LIVE_SECRET_KEY || process.env.STRIPE_SECRET_KEY;
   if (!key) {
     throw new Error("STRIPE_SECRET_KEY is not configured");
   }
   // Reset cached client if the key has changed (e.g., env hot-reload in dev)
-  if (!stripeClient) {
+  if (!stripeClient || cachedKey !== key) {
     stripeClient = new Stripe(key, { apiVersion: "2024-06-20" as Stripe.LatestApiVersion });
+    cachedKey = key;
   }
   return stripeClient;
 }

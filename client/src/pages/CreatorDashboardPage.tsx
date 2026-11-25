@@ -46,6 +46,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 
 // ─── Template options ─────────────────────────────────────────────────────────
 const TEMPLATES = [
@@ -376,7 +378,7 @@ export default function CreatorDashboardPage() {
               }`}
             >
               Annual
-              <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-300 rounded px-1 py-0.5">Save $405</span>
+              <span className="ml-1.5 text-[10px] bg-amber-500/20 text-amber-300 rounded px-1 py-0.5">Save {formatCourse360Dollars(course360AnnualSavings("creator_desktop").amount)} vs. 12 monthly payments</span>
             </button>
           </div>
           {/* Single plan card */}
@@ -388,11 +390,11 @@ export default function CreatorDashboardPage() {
               </div>
               <div className="text-right">
                 <p className="text-3xl font-extrabold text-[#4ad9e0]">
-                  ${upgradeInterval === "monthly" ? "117" : "83"}
-                  <span className="text-sm font-normal text-white/40">/mo</span>
+                  {formatCourse360Dollars(COURSE360_PRICES.creator_desktop[upgradeInterval])}
+                  <span className="text-sm font-normal text-white/40">/{upgradeInterval === "monthly" ? "mo" : "yr"}</span>
                 </p>
                 {upgradeInterval === "annual" && (
-                  <p className="text-xs text-white/40">$999/yr billed annually</p>
+                  <p className="text-xs text-white/40">Billed upfront annually</p>
                 )}
               </div>
             </div>

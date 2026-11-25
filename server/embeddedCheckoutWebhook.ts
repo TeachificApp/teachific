@@ -1,555 +1,77 @@
-/**
- * embeddedCheckoutWebhook.ts
- *
- * Handles Stripe webhook events for embedded checkout payments.
- * Fulfills purchases by:
- * - Enrolling users in courses
- * - Granting download access
- * - Granting quiz access
- * - Granting membership access
- * - Processing order bumps
- *
- * MUST be registered BEFORE express.json() middleware.
- */
-
+/** Register before express.json. A distinct endpoint MUST use its own signing secret. */
 import express from "express";
+import type { Request, Response } from "express";
 import type Stripe from "stripe";
-import { ENV } from "./_core/env";
-import { getStripe } from "./stripePlans";
-import { getDb, getUserByEmail, upsertUser } from "./db";
-import { funnelPurchases, courseEnrollments, mediaAccessGrants, membershipSubscriptions, digitalBundlePurchases, digitalBundleItems, digitalPurchases, orgMembers, users, organizations } from "../drizzle/schema";
-import { eq, and, inArray } from "drizzle-orm";
-import { sendEmailViaOrg, buildFunnelPurchaseConfirmationEmail, buildOrgAdminNewPurchaseEmail } from "./_core/email";
-import { fulfillOrderBumpPurchase } from "./lib/orderBumpCheckout";
-import { getOrgBaseUrl } from "./lib/orgUrl";
+import { and, eq } from "drizzle-orm";
+import { loadEmbeddedSnapshot } from "./lib/embeddedCheckoutTables";
+import { getDb } from "./db";
+import { funnelPurchases } from "../drizzle/schema";
+import { embeddedPlatformGateway, embeddedStripeClient } from "./embeddedCheckoutRouter";
+import { hashEmbedded, readEmbeddedManifest } from "./lib/embeddedCheckoutSelection";
+import { assertEmbeddedPayment, markEmbeddedPaymentFailed, reconcileEmbeddedPurchase } from "./lib/embeddedCheckoutFulfillment";
+import { notifyEmbeddedPurchase } from "./lib/embeddedCheckoutNotifications";
 
-const router = express.Router();
-
-/**
- * Fulfill a purchase by granting access to the purchased product
- * Idempotent: safe to call multiple times for the same purchase
- */
-async function fulfillPurchase(purchase: typeof funnelPurchases.$inferSelect, paymentIntentId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.error("[Embedded Checkout Webhook] Database unavailable for fulfillment");
-    return;
-  }
-
+export async function handleEmbeddedCheckoutWebhook(req: Request, res: Response) {
+  const sig = req.headers["stripe-signature"];
+  if (!process.env.COURSE360_EMBEDDED_STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: "Embedded webhook verification is not configured" });
+  if (typeof sig !== "string" || !Buffer.isBuffer(req.body)) return res.status(400).json({ error: "A raw signed Stripe delivery is required" });
+  let event: Stripe.Event;
+  let stripe: Stripe;
   try {
-    // Get or create user by email
-    let userId: number | null = purchase.userId;
-    if (!userId) {
-      const existingUser = await getUserByEmail(purchase.email);
-      if (existingUser) {
-        userId = existingUser.id;
-      } else {
-        // Create new user
-        const newUser = await upsertUser({
-          openId: `email_${purchase.email}_${Date.now()}`,
-          email: purchase.email,
-          name: purchase.name ?? undefined,
-          loginMethod: "email",
-        });
-        userId = newUser?.id ?? null;
-      }
+    stripe = await embeddedStripeClient();
+    event = stripe.webhooks.constructEvent(req.body, sig, embeddedPlatformGateway().signingSecret);
+  } catch { return res.status(400).json({ error: "Invalid Stripe signature or gateway configuration" }); }
+  // No event-id prefix is a bypass: signed fixtures follow the same checks as every event.
+  if (!["payment_intent.succeeded", "payment_intent.payment_failed", "charge.refunded"].includes(event.type)) return res.json({ received: true });
+  try {
+    const object: any = event.data.object;
+    const paymentIntentId = event.type === "charge.refunded" ? (typeof object.payment_intent === "string" ? object.payment_intent : object.payment_intent?.id) : object.id;
+    if (!paymentIntentId) throw new Error("Payment reference is missing");
+    const db = await getDb();
+    if (!db) throw new Error("Database unavailable");
+    const rows = await db.select().from(funnelPurchases).where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId)).limit(2);
+    if (!rows.length) {
+      // A delivery may arrive between intent creation and purchase insert. Retry embedded events.
+      if (object.metadata?.type === "embedded_checkout_purchase" || event.type === "charge.refunded") throw new Error("Checkout record not yet available");
+      return res.json({ received: true });
     }
-
-    if (!userId) {
-      console.error(`[Embedded Checkout Webhook] Could not create user for ${purchase.email}`);
-      return;
-    }
-
-    // Fulfill based on product type
-    switch (purchase.productType) {
-      case "course": {
-        if (!purchase.fulfillmentCourseId) break;
-        // Check if user is already enrolled (idempotent for webhook retries)
-        const existing = await db
-          .select()
-          .from(courseEnrollments)
-          .where(
-            and(
-              eq(courseEnrollments.courseId, purchase.fulfillmentCourseId),
-              eq(courseEnrollments.userId, userId)
-            )
-          )
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(courseEnrollments).values({
-            courseId: purchase.fulfillmentCourseId,
-            userId,
-            orgId: purchase.orgId,
-            enrolledAt: new Date(),
-            amountPaid: Number(purchase.amount),
-            currency: purchase.currency,
-            progressPct: 0,
-          });
-          console.log(`[Embedded Checkout Webhook] User ${userId} enrolled in course ${purchase.fulfillmentCourseId}`);
-        } else {
-          console.log(`[Embedded Checkout Webhook] User ${userId} already enrolled in course ${purchase.fulfillmentCourseId}`);
-        }
-        break;
-      }
-
-      case "download": {
-        if (!purchase.fulfillmentDownloadId) break;
-        // Check if grant already exists (idempotent for webhook retries)
-        const existing = await db
-          .select()
-          .from(mediaAccessGrants)
-          .where(
-            and(
-              eq(mediaAccessGrants.userId, userId),
-              eq(mediaAccessGrants.mediaId, purchase.fulfillmentDownloadId)
-            )
-          )
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(mediaAccessGrants).values({
-            orgId: purchase.orgId,
-            userId,
-            mediaId: purchase.fulfillmentDownloadId,
-            grantType: "purchase",
-            grantedAt: new Date(),
-            expiresAt: null, // Lifetime access
-          });
-          console.log(`[Embedded Checkout Webhook] User ${userId} granted download ${purchase.fulfillmentDownloadId}`);
-        } else {
-          console.log(`[Embedded Checkout Webhook] User ${userId} already has download access ${purchase.fulfillmentDownloadId}`);
-        }
-        break;
-      }
-
-      case "quiz": {
-        if (!purchase.fulfillmentQuizId) break;
-        // Check if grant already exists (idempotent for webhook retries)
-        const existing = await db
-          .select()
-          .from(mediaAccessGrants)
-          .where(
-            and(
-              eq(mediaAccessGrants.userId, userId),
-              eq(mediaAccessGrants.mediaId, purchase.fulfillmentQuizId)
-            )
-          )
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(mediaAccessGrants).values({
-            orgId: purchase.orgId,
-            userId,
-            mediaId: purchase.fulfillmentQuizId,
-            grantType: "purchase",
-            grantedAt: new Date(),
-            expiresAt: null, // Lifetime access
-          });
-          console.log(`[Embedded Checkout Webhook] User ${userId} granted quiz ${purchase.fulfillmentQuizId}`);
-        } else {
-          console.log(`[Embedded Checkout Webhook] User ${userId} already has quiz access ${purchase.fulfillmentQuizId}`);
-        }
-        break;
-      }
-
-      case "membership": {
-        if (!purchase.fulfillmentMembershipId) break;
-        // Check if subscription already exists (idempotent for webhook retries)
-        const existing = await db
-          .select()
-          .from(membershipSubscriptions)
-          .where(
-            and(
-              eq(membershipSubscriptions.userId, userId),
-              eq(membershipSubscriptions.planId, purchase.fulfillmentMembershipId)
-            )
-          )
-          .limit(1);
-
-        if (!existing.length) {
-          await db.insert(membershipSubscriptions).values({
-            orgId: purchase.orgId,
-            userId,
-            planId: purchase.fulfillmentMembershipId,
-            status: "active",
-            startDate: new Date(),
-            endDate: null, // Lifetime or until cancelled
-          });
-          console.log(`[Embedded Checkout Webhook] User ${userId} granted membership ${purchase.fulfillmentMembershipId}`);
-        } else {
-          console.log(`[Embedded Checkout Webhook] User ${userId} already has membership ${purchase.fulfillmentMembershipId}`);
-        }
-        break;
-      }
-
-      case "bundle": {
-        if (!purchase.fulfillmentBundleId) break;
-        // Check if bundle purchase already exists (idempotent)
-        const existingBundlePurchase = await db
-          .select()
-          .from(digitalBundlePurchases)
-          .where(
-            and(
-              eq(digitalBundlePurchases.userId, userId),
-              eq(digitalBundlePurchases.bundleId, purchase.fulfillmentBundleId)
-            )
-          )
-          .limit(1);
-
-        if (!existingBundlePurchase.length) {
-          // Record the bundle-level purchase
-          await db.insert(digitalBundlePurchases).values({
-            userId,
-            bundleId: purchase.fulfillmentBundleId,
-            stripeCheckoutSessionId: purchase.stripeSessionId ?? undefined,
-          });
-
-          // Grant access to each item in the bundle
-          const bundleItems = await db
-            .select()
-            .from(digitalBundleItems)
-            .where(eq(digitalBundleItems.bundleId, purchase.fulfillmentBundleId));
-
-          for (const item of bundleItems) {
-            // Check if individual product access already granted
-            const existingItemAccess = await db
-              .select()
-              .from(digitalPurchases)
-              .where(
-                and(
-                  eq(digitalPurchases.userId, userId),
-                  eq(digitalPurchases.productId, item.productId)
-                )
-              )
-              .limit(1);
-
-            if (!existingItemAccess.length) {
-              await db.insert(digitalPurchases).values({
-                userId,
-                productId: item.productId,
-                stripeCheckoutSessionId: purchase.stripeSessionId ?? undefined,
-              });
-            }
-          }
-          console.log(`[Embedded Checkout Webhook] User ${userId} granted bundle ${purchase.fulfillmentBundleId} (${bundleItems.length} items)`);
-        } else {
-          console.log(`[Embedded Checkout Webhook] User ${userId} already has bundle ${purchase.fulfillmentBundleId}`);
-        }
-        break;
-      }
-    }
-
-    // Process order bumps if any
-    if (purchase.orderBumps) {
-      try {
-        const bumps = JSON.parse(purchase.orderBumps) as Array<{
-          title: string; price: number;
-          bumpId?: number | null; bumpType?: string | null; productId?: number | null;
-        }>;
-        for (const bump of bumps) {
-          if (!bump.bumpId || !bump.bumpType) {
-            console.log(`[Embedded Checkout Webhook] Skipping bump "${bump.title}" — no bumpId/bumpType`);
-            continue;
-          }
-          const bumpMeta: Record<string, string> = {
-            order_bump_id: String(bump.bumpId),
-            order_bump_type: bump.bumpType,
-            order_bump_product_id: String(bump.productId ?? ""),
-            order_bump_price: String(bump.price),
-          };
-          await fulfillOrderBumpPurchase(db, bumpMeta, {
-            userId,
-            sessionId: paymentIntentId,
-            triggerOrderType: (purchase.productType as any) ?? "course",
-          }).catch((e: any) => console.error(`[Embedded Checkout Webhook] Bump fulfillment error: ${e.message}`));
-        }
-      } catch (e) {
-        console.error("[Embedded Checkout Webhook] Failed to parse order bumps:", e);
-      }
-    }
-
-    // Update purchase status to completed
-    await db
-      .update(funnelPurchases)
-      .set({ status: "completed", updatedAt: new Date() })
-      .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId));
-
-    // Send Teachific-branded confirmation email to buyer
-    const buyerFirstName = (purchase.name ?? purchase.email).split(/[\s@]/)[0] ?? "there";
-    // Resolve org base URL for org-scoped links
-    let orgBase: string | null = null;
-    if (purchase.orgId) {
-      try {
-        const [orgInfo] = await db.select({ slug: organizations.slug, customDomain: organizations.customDomain, domainVerificationStatus: organizations.domainVerificationStatus })
-          .from(organizations).where(eq(organizations.id, purchase.orgId)).limit(1);
-        if (orgInfo?.slug) orgBase = getOrgBaseUrl(orgInfo.slug, orgInfo.customDomain, orgInfo.domainVerificationStatus);
-      } catch { /* keep default */ }
-    }
-    if (orgBase) {
-      let loginUrl = `${orgBase}/my-courses`;
-      if (purchase.fulfillmentCourseId) {
-        try {
-          const { lmsCourses } = await import("../drizzle/schema");
-          const [courseRow] = await db.select({ slug: lmsCourses.slug }).from(lmsCourses)
-            .where(eq(lmsCourses.id, purchase.fulfillmentCourseId)).limit(1);
-          if (courseRow?.slug) loginUrl = `${orgBase}/courses/${courseRow.slug}`;
-        } catch { /* keep default */ }
-      } else if (purchase.productType === "download") {
-        loginUrl = `${orgBase}/my-downloads`;
-      }
-      const orderBumpsForEmail = purchase.orderBumps
-        ? (() => { try { return JSON.parse(purchase.orderBumps); } catch { return []; } })()
-        : [];
-      const { subject: confirmSubject, htmlBody: confirmHtml, previewText: confirmPreview } =
-        buildFunnelPurchaseConfirmationEmail({
-          firstName: buyerFirstName,
-          productName: purchase.productName,
-          amountPaid: Number(purchase.amount),
-          orderBumps: orderBumpsForEmail,
-          loginUrl,
-        });
-      await sendEmailViaOrg({
-        to: { name: purchase.name ?? purchase.email, email: purchase.email },
-        subject: confirmSubject,
-        htmlBody: confirmHtml,
-        previewText: confirmPreview,
-      }, purchase.orgId ?? null).catch((e: any) => console.error("[Embedded Checkout Webhook] Confirmation email failed:", e.message));
+    if (rows.length !== 1) throw new Error("Ambiguous payment ownership requires reconciliation");
+    const purchase = await loadEmbeddedSnapshot(db, rows[0]);
+    const manifest = readEmbeddedManifest(purchase.snapshotManifest);
+    const gateway = embeddedPlatformGateway();
+    if (manifest.orgId !== purchase.orgId || manifest.gateway.keyFingerprint !== gateway.keyFingerprint || manifest.gateway.accountId !== (event.account ?? null) || manifest.gateway.livemode !== event.livemode || event.livemode !== gateway.livemode) throw new Error("Wrong payment gateway, school or mode");
+    if (event.type === "payment_intent.succeeded") {
+      // Do not trust even a stale signed event to override current refunded/failed gateway state.
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      assertEmbeddedPayment(purchase, manifest, intent, event);
+      const chargeId = typeof intent.latest_charge === "string" ? intent.latest_charge : intent.latest_charge?.id;
+      if (!chargeId) throw new Error("Settled payment charge is unavailable");
+      const charge = await stripe.charges.retrieve(chargeId);
+      const linked = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      if (linked !== intent.id || charge.amount !== intent.amount_received || charge.currency !== manifest.currency || charge.livemode !== manifest.gateway.livemode) throw new Error("Settled charge linkage mismatch");
+      const refunded = charge.refunded && charge.amount_refunded >= charge.amount;
+      const result = await reconcileEmbeddedPurchase(purchase.id, purchase.orgId, { intent, event, refund: refunded });
+      if (result.changed && !refunded) await notifyEmbeddedPurchase(result.purchase);
+    } else if (event.type === "payment_intent.payment_failed") {
+      if (object.object !== "payment_intent" || object.currency !== manifest.currency || object.amount !== Math.round(Number(purchase.amount) * 100) || object.metadata?.org_id !== String(purchase.orgId) || object.metadata?.checkout_manifest_hash !== hashEmbedded(purchase.snapshotManifest)) throw new Error("Failed payment snapshot mismatch");
+      await markEmbeddedPaymentFailed(purchase.id, purchase.orgId);
     } else {
-      console.warn(`[Embedded Checkout Webhook] Confirmation email skipped for purchase ${purchase.id}: organization domain unavailable`);
+      if (object.object !== "charge" || object.livemode !== event.livemode) throw new Error("Invalid refund delivery");
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      assertEmbeddedPayment(purchase, manifest, intent, event);
+      const charge = await stripe.charges.retrieve(object.id);
+      const chargeIntent = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+      if (chargeIntent !== paymentIntentId || charge.currency !== manifest.currency || charge.amount !== intent.amount_received || charge.livemode !== manifest.gateway.livemode || (typeof intent.latest_charge === "string" ? intent.latest_charge : intent.latest_charge?.id) !== charge.id) throw new Error("Refund charge is not linked to this settled checkout");
+      // Partial-refund policy: keep access. Only the current fully-refunded charge revokes this purchase.
+      if (!charge.refunded || charge.amount_refunded < charge.amount) return res.json({ received: true, partialRefund: true });
+      await reconcileEmbeddedPurchase(purchase.id, purchase.orgId, { intent, event, refund: true });
     }
-
-    // Notify org admins via Teachific email (not Manus)
-    if (purchase.orgId) {
-      try {
-        const ORG_ADMIN_ROLES = ["org_super_admin", "org_admin"];
-        const [orgRow] = await db.select({ name: organizations.name })
-          .from(organizations).where(eq(organizations.id, purchase.orgId)).limit(1);
-        const orgName = orgRow?.name ?? `School #${purchase.orgId}`;
-        const adminMembers = await db
-          .select({ email: users.email, name: users.name })
-          .from(orgMembers)
-          .innerJoin(users, eq(orgMembers.userId, users.id))
-          .where(and(
-            eq(orgMembers.orgId, purchase.orgId),
-            inArray(orgMembers.role, ORG_ADMIN_ROLES),
-          ));
-        const adminDashboardUrl = `https://course360.app/admin?tab=enrollments`;
-        const { subject: adminSubject, htmlBody: adminHtml, previewText: adminPreview } =
-          buildOrgAdminNewPurchaseEmail({
-            orgName,
-            buyerName: purchase.name ?? purchase.email,
-            buyerEmail: purchase.email,
-            productName: purchase.productName,
-            amountPaid: Number(purchase.amount),
-            productType: purchase.productType,
-            adminDashboardUrl,
-          });
-        for (const admin of adminMembers) {
-          if (admin.email) {
-            await sendEmailViaOrg({
-              to: { name: admin.name ?? admin.email, email: admin.email },
-              subject: adminSubject,
-              htmlBody: adminHtml,
-              previewText: adminPreview,
-            }, purchase.orgId).catch(() => {});
-          }
-        }
-        console.log(`[Embedded Checkout Webhook] Notified ${adminMembers.length} org admin(s) of purchase`);
-      } catch (e: any) {
-        console.error("[Embedded Checkout Webhook] Org admin notification failed:", e.message);
-      }
-    }
-
-    console.log(`[Embedded Checkout Webhook] Purchase ${purchase.id} fulfilled successfully`);
-  } catch (error: any) {
-    console.error("[Embedded Checkout Webhook] Fulfillment failed:", error.message);
-    throw error;
+    return res.json({ received: true });
+  } catch (error) {
+    console.error("[Embedded checkout] Retryable webhook reconciliation failure", error);
+    return res.status(500).json({ error: "Checkout reconciliation failed; retry required" });
   }
 }
-
-/**
- * Revoke access to a purchased product (for refunds)
- */
-async function revokePurchaseAccess(purchase: typeof funnelPurchases.$inferSelect) {
-  const db = await getDb();
-  if (!db) {
-    console.error("[Embedded Checkout Webhook] Database unavailable for revocation");
-    return;
-  }
-
-  if (!purchase.userId) {
-    console.warn("[Embedded Checkout Webhook] No userId for revocation");
-    return;
-  }
-
-  try {
-    switch (purchase.productType) {
-      case "course":
-        if (purchase.fulfillmentCourseId) {
-          // Remove course enrollment
-          await db
-            .delete(courseEnrollments)
-            .where(
-              and(
-                eq(courseEnrollments.courseId, purchase.fulfillmentCourseId),
-                eq(courseEnrollments.userId, purchase.userId)
-              )
-            );
-          console.log(`[Embedded Checkout Webhook] Revoked course access for user ${purchase.userId}`);
-        }
-        break;
-
-      case "download":
-      case "quiz":
-        if (purchase.fulfillmentDownloadId || purchase.fulfillmentQuizId) {
-          // Remove media access grant
-          const mediaId = purchase.fulfillmentDownloadId || purchase.fulfillmentQuizId;
-          await db
-            .delete(mediaAccessGrants)
-            .where(
-              and(
-                eq(mediaAccessGrants.userId, purchase.userId),
-                eq(mediaAccessGrants.mediaId, mediaId),
-                eq(mediaAccessGrants.grantType, "purchase")
-              )
-            );
-          console.log(`[Embedded Checkout Webhook] Revoked media access for user ${purchase.userId}`);
-        }
-        break;
-
-      case "membership":
-        if (purchase.fulfillmentMembershipId) {
-          // Deactivate membership subscription
-          await db
-            .update(membershipSubscriptions)
-            .set({ status: "cancelled", endDate: new Date() })
-            .where(
-              and(
-                eq(membershipSubscriptions.userId, purchase.userId),
-                eq(membershipSubscriptions.planId, purchase.fulfillmentMembershipId)
-              )
-            );
-          console.log(`[Embedded Checkout Webhook] Revoked membership for user ${purchase.userId}`);
-        }
-        break;
-    }
-  } catch (error: any) {
-    console.error("[Embedded Checkout Webhook] Access revocation failed:", error.message);
-  }
-}
-
-// Webhook handler
-router.post(
-  "/embedded-checkout",
-  express.raw({ type: "application/json" }),
-  async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-
-    let event: Stripe.Event;
-    try {
-      if (!ENV.stripeWebhookSecret || !sig) {
-        // In development without webhook secret, parse directly
-        event = JSON.parse(req.body.toString()) as Stripe.Event;
-      } else {
-        const stripe = getStripe();
-        event = stripe.webhooks.constructEvent(req.body, sig as string, ENV.stripeWebhookSecret);
-      }
-    } catch (err: any) {
-      console.error("[Embedded Checkout Webhook] Signature verification failed:", err.message);
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
-    }
-
-    // Test event detection
-    if (event.id.startsWith("evt_test_")) {
-      console.log("[Embedded Checkout Webhook] Test event detected, returning verification response");
-      return res.json({ verified: true });
-    }
-
-    console.log(`[Embedded Checkout Webhook] Event: ${event.type} (${event.id})`);
-
-    try {
-      switch (event.type) {
-        case "payment_intent.succeeded": {
-          const paymentIntent = event.data.object as Stripe.PaymentIntent;
-          const paymentIntentId = paymentIntent.id;
-
-          // Find the corresponding purchase record
-          const db = await getDb();
-          if (!db) {
-            console.error("[Embedded Checkout Webhook] Database unavailable");
-            return res.status(500).json({ error: "Database unavailable" });
-          }
-
-          const [purchase] = await db
-            .select()
-            .from(funnelPurchases)
-            .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId))
-            .limit(1);
-
-          if (!purchase) {
-            console.warn(`[Embedded Checkout Webhook] No purchase found for payment intent ${paymentIntentId}`);
-            return res.json({ received: true });
-          }
-
-          // Fulfill the purchase
-          await fulfillPurchase(purchase, paymentIntentId);
-          break;
-        }
-
-        case "payment_intent.payment_failed": {
-          const paymentIntent = event.data.object as Stripe.PaymentIntent;
-          const paymentIntentId = paymentIntent.id;
-
-          const db = await getDb();
-          if (!db) return res.status(500).json({ error: "Database unavailable" });
-
-          // Mark purchase as failed
-          await db
-            .update(funnelPurchases)
-            .set({ status: "failed", updatedAt: new Date() })
-            .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId));
-
-          console.log(`[Embedded Checkout Webhook] Payment failed for intent ${paymentIntentId}`);
-          break;
-        }
-
-        case "charge.refunded": {
-          const charge = event.data.object as Stripe.Charge;
-          const paymentIntentId = charge.payment_intent as string;
-
-          const db = await getDb();
-          if (!db) return res.status(500).json({ error: "Database unavailable" });
-
-          // Get the purchase to revoke access
-          const [purchase] = await db
-            .select()
-            .from(funnelPurchases)
-            .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId))
-            .limit(1);
-
-          if (purchase) {
-            // Mark purchase as refunded
-            await db
-              .update(funnelPurchases)
-              .set({ status: "refunded", updatedAt: new Date() })
-              .where(eq(funnelPurchases.stripePaymentIntentId, paymentIntentId));
-
-            // Revoke access to the purchased product
-            await revokePurchaseAccess(purchase);
-          }
-
-          console.log(`[Embedded Checkout Webhook] Refund processed for intent ${paymentIntentId}`);
-          break;
-        }
-      }
-
-      res.json({ received: true });
-    } catch (error: any) {
-      console.error("[Embedded Checkout Webhook] Error processing event:", error.message);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  }
-);
-
+const router = express.Router();
+router.post("/embedded-checkout", express.raw({ type: "application/json" }), handleEmbeddedCheckoutWebhook);
 export const embeddedCheckoutWebhookRouter = router;

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,8 +128,8 @@ const PLANS = [
     id: "pro",
     name: "Course360 Quiz Creator™",
     badge: null,
-    monthlyPrice: 47,
-    annualPrice: 399,
+    monthlyPrice: COURSE360_PRICES.quiz_creator_desktop.monthly,
+    annualPrice: COURSE360_PRICES.quiz_creator_desktop.annual,
     description: "Every question type. Every export format. One simple plan.",
     features: PLAN_FEATURES,
     cta: "Start Free Trial",
@@ -403,7 +405,7 @@ export default function QuizCreatorLandingPage() {
               >
                 Annual{" "}
                 <span className="ml-1 text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">
-                  Save 29%
+                  Billed upfront
                 </span>
               </button>
             </div>
@@ -436,12 +438,12 @@ export default function QuizCreatorLandingPage() {
                   {plan.monthlyPrice !== null ? (
                     <>
                       <span className="text-4xl font-black text-white">
-                        ${billing === "monthly" ? plan.monthlyPrice : Math.round((plan.annualPrice ?? 0) / 12)}
+                        {formatCourse360Dollars(billing === "monthly" ? plan.monthlyPrice : plan.annualPrice!)}
                       </span>
-                      <span className="text-white/40 text-sm mb-1">/mo</span>
+                      <span className="text-white/40 text-sm mb-1">/{billing === "monthly" ? "mo" : "yr"}</span>
                       {billing === "annual" && (
                         <span className="text-xs text-green-400 mb-1 ml-2">
-                          ${plan.annualPrice}/yr — save ${(plan.monthlyPrice * 12) - (plan.annualPrice ?? 0)}
+                          Billed upfront annually — save {formatCourse360Dollars(course360AnnualSavings("quiz_creator_desktop").amount)} vs. 12 monthly payments
                         </span>
                       )}
                     </>
@@ -495,7 +497,7 @@ export default function QuizCreatorLandingPage() {
                   ["Branching & conditional logic", true, false, true],
                   ["Course360 LMS™ integration", true, false, false],
                   ["AI quiz generator", true, false, false],
-                  ["Starting price/mo", "$47", "Free", "$25"],
+                  ["Starting price/mo", formatCourse360Dollars(COURSE360_PRICES.quiz_creator_desktop.monthly), "Free", "$25"],
                 ].map(([feature, qc, gf, tf], i) => (
                   <tr
                     key={i}

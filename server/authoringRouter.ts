@@ -10,6 +10,7 @@ import { getDb, getOrgIdForUserWithFallback } from "./db";
 import { authoringProjects, authoringSlides, users } from "../drizzle/schema";
 import { storagePut } from "./storage";
 import JSZip from "jszip";
+import { getCourse360PaymentAppAccess, setCourse360PaymentManualRole } from "./lib/course360PaymentLedger";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -751,15 +752,9 @@ export const authoringRouter = router({
         .orderBy(asc(authoringSlides.slideIndex));
 
       // Check if user is on free/trial — apply watermark if so
-      const [userRow] = await db.select({
-        creatorAccess: users.creatorAccess,
-        creatorTrialEndsAt: users.creatorTrialEndsAt,
-      }).from(users).where(eq(users.id, ctx.user.id));
-      const creatorAccess = (userRow as any)?.creatorAccess ?? "none";
-      const trialEndsAt = (userRow as any)?.creatorTrialEndsAt ?? null;
-      const isTrialing = creatorAccess !== "none" && trialEndsAt && new Date(trialEndsAt) > new Date();
-      const isPaidCreator = creatorAccess !== "none" && !isTrialing;
-      const showWatermark = !isPaidCreator; // free or trial users get watermark
+      const creator = await getCourse360PaymentAppAccess(orgId, ctx.user.id, "creator");
+      // Reviewed manual grants are independent provenance, never mislabeled paid.
+      const showWatermark = !(creator.isPaid || creator.hasManualGrant);
 
       // Build ZIP
       const zip = new JSZip();
@@ -807,15 +802,9 @@ export const authoringRouter = router({
   getMyCreatorRole: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    const [user] = await db.select({
-      creatorAccess: users.creatorAccess,
-      creatorTrialEndsAt: users.creatorTrialEndsAt,
-    }).from(users).where(eq(users.id, ctx.user.id));
-    const role = (user as any)?.creatorAccess ?? "none";
-    const trialEndsAt = (user as any)?.creatorTrialEndsAt ?? null;
-    const isInTrial = role !== "none" && trialEndsAt && new Date(trialEndsAt) > new Date();
-    const isPaid = role !== "none" && !isInTrial;
-    return { role, trialEndsAt, isInTrial, isPaid };
+    const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+    const access = await getCourse360PaymentAppAccess(orgId, ctx.user.id, "creator");
+    return { role: access.tier, trialEndsAt: access.trialEndsAt, isInTrial: access.isInTrial, isPaid: access.isPaid, hasManualGrant: access.hasManualGrant };
   }),
 
   setCreatorRole: protectedProcedure
@@ -825,12 +814,9 @@ export const authoringRouter = router({
       if (!["site_owner", "site_admin"].includes(ctx.user.role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db
-        .update(users)
-        .set({ creatorAccess: input.role })
-        .where(eq(users.id, input.userId));
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+      await setCourse360PaymentManualRole({ orgId, userId: input.userId, product: "creator", tier: input.role,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant" });
       return { success: true };
     }),
 
@@ -865,9 +851,9 @@ export const authoringRouter = router({
       if (!["site_owner", "site_admin"].includes(ctx.user.role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.update(users).set({ creatorAccess: input.role }).where(eq(users.id, input.userId));
+      const orgId = await requireActiveAuthoringOrg(ctx.user.id, ctx.user.role);
+      await setCourse360PaymentManualRole({ orgId, userId: input.userId, product: "creator", tier: input.role,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant" });
       return { success: true };
     }),
 });

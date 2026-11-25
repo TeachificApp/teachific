@@ -10,7 +10,7 @@
  * Uses Stripe CardElement (not PaymentElement) for the classic inline card fields.
  * All purchases are recorded to funnelPurchases via embeddedCheckout.createPaymentIntent.
  */
-import { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -29,8 +29,6 @@ import {
   Gift, Award, ArrowRight, Sparkles, Rocket, BadgeCheck, ShoppingBag
 } from "lucide-react";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface InlineCheckoutProduct {
@@ -39,6 +37,8 @@ export interface InlineCheckoutProduct {
   price: number;          // dollars
   imageUrl?: string;
   type?: string;          // "course" | "download" | "physical" | "membership" | "other"
+  productId?: number;
+  priceId?: number;
 }
 
 export interface InlineCheckoutOrderBump {
@@ -92,6 +92,10 @@ export interface InlineCheckoutBlockData {
   sourceType?: "funnel" | "landing_page" | "product_page" | "lms_lesson" | "other";
   sourceFunnelId?: number;
   sourceLandingPageId?: number;
+  sourceFunnelPageId?: number;
+  sourceLmsLessonId?: number;
+  orgSlug?: string;
+  checkoutBlockId?: string;
   // Additional access items granted at no extra charge after payment
   additionalAccess?: AdditionalAccessItem[];
   // Legacy single-item fulfillment fields (deprecated — use additionalAccess)
@@ -160,9 +164,10 @@ const US_STATES = [
 interface InnerFormProps {
   data: InlineCheckoutBlockData;
   onSuccess: (successUrl: string) => void;
+  publishableKey: string;
 }
 
-function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
+function InlineCheckoutInner({ data, onSuccess, publishableKey }: InnerFormProps) {
   const stripe  = useStripe();
   const elements = useElements();
 
@@ -223,7 +228,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (totalAmount > 0 && (!stripe || !elements)) return;
 
     if (data.termsText && !termsOk) {
       toast.error("Please accept the terms to continue.");
@@ -245,6 +250,13 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     if (totalAmount === 0) {
       try {
         const result = await processFreeOrder.mutateAsync({
+          orgSlug: data.orgSlug,
+          checkoutBlockId: data.checkoutBlockId,
+          selectedProductIndex: selectedIdx,
+          addedBumpIndexes: Array.from(addedBumps),
+          priceId: selectedProduct.priceId,
+          sourceFunnelPageId: data.sourceFunnelPageId,
+          sourceLmsLessonId: data.sourceLmsLessonId,
           email,
           firstName: firstName || undefined,
           lastName:  lastName  || undefined,
@@ -273,6 +285,13 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
     try {
       // 1. Create PaymentIntent on server
       const intentResult = await createPaymentIntent.mutateAsync({
+        orgSlug: data.orgSlug,
+        checkoutBlockId: data.checkoutBlockId,
+        selectedProductIndex: selectedIdx,
+        addedBumpIndexes: Array.from(addedBumps),
+        priceId: selectedProduct.priceId,
+        sourceFunnelPageId: data.sourceFunnelPageId,
+        sourceLmsLessonId: data.sourceLmsLessonId,
         email,
         firstName: firstName || undefined,
         lastName:  lastName  || undefined,
@@ -300,11 +319,14 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
         promoCode: promoCode || undefined,
       });
 
+      if (intentResult.publishableKey !== publishableKey) {
+        throw new Error("Payment configuration changed. Refresh checkout before paying.");
+      }
       // 2. Confirm card payment with Stripe
-      const cardNumber = elements.getElement(CardNumberElement);
+      const cardNumber = elements!.getElement(CardNumberElement);
       if (!cardNumber) throw new Error("Card element not found");
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+      const { error: stripeError, paymentIntent } = await stripe!.confirmCardPayment(
         intentResult.clientSecret,
         {
           payment_method: {
@@ -336,16 +358,19 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
         return;
       }
 
-      // 3. Confirm on server (marks purchase as paid)
-      if (paymentIntent?.id) {
-        await confirmPayment.mutateAsync({ paymentIntentId: paymentIntent.id });
+      // Only verified settled payment can complete this buyer-bound purchase.
+      if (paymentIntent?.status !== "succeeded") {
+        setCardError("Payment is still processing. Access will be confirmed after settlement.");
+        return;
       }
+      const confirmed = await confirmPayment.mutateAsync({ paymentIntentId: paymentIntent.id, confirmationToken: intentResult.confirmationToken, orgSlug: data.orgSlug });
+      if (!confirmed.success || confirmed.status !== "completed") throw new Error("Payment access has not been confirmed yet.");
 
       // 4. Success
       onSuccess(intentResult.successUrl);
 
-    } catch {
-      // Errors already toasted by mutation onError
+    } catch (error: any) {
+      setCardError(error?.message || "Payment could not be completed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -715,7 +740,7 @@ function InlineCheckoutInner({ data, onSuccess }: InnerFormProps) {
           {/* ── Submit ──────────────────────────────────────────────────── */}
           <button
             type="submit"
-            disabled={submitting || !stripe}
+            disabled={submitting || (totalAmount > 0 && !stripe)}
             className="w-full py-4 rounded-xl font-bold text-white text-base transition-all disabled:opacity-60 flex items-center justify-center gap-2"
             style={{ backgroundColor: accent }}
           >
@@ -774,6 +799,9 @@ export default function InlineCheckoutBlock({
   sourceLandingPageId,
 }: InlineCheckoutBlockProps) {
   const [successUrl, setSuccessUrl] = useState<string | null>(null);
+  const configuration = trpc.billing.getPaymentConfiguration.useQuery();
+  const publishableKey = configuration.data?.ready ? configuration.data.publishableKey ?? "" : "";
+  const stripePromise = useMemo(() => publishableKey ? loadStripe(publishableKey) : null, [publishableKey]);
 
   const d: InlineCheckoutBlockData = {
     ...(data as InlineCheckoutBlockData),
@@ -790,6 +818,7 @@ export default function InlineCheckoutBlock({
 
   return (
     <Elements
+      key={publishableKey || "payment-configuration-pending"}
       stripe={stripePromise}
       options={{
         appearance: {
@@ -798,7 +827,8 @@ export default function InlineCheckoutBlock({
         },
       }}
     >
-      <InlineCheckoutInner data={d} onSuccess={setSuccessUrl} />
+      <InlineCheckoutInner data={d} onSuccess={setSuccessUrl} publishableKey={publishableKey} />
+      {!publishableKey && <p role="status" className="mx-auto max-w-2xl px-4 py-2 text-sm text-amber-800">{configuration.isLoading ? "Loading secure payment configuration..." : "Card payments are temporarily unavailable. Please contact this school."}</p>}
     </Elements>
   );
 }

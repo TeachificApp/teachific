@@ -91,6 +91,10 @@ import {
 } from "../../drizzle/schema";
 import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 import { canUseAiCourseGenerator } from "../lib/aiCourseGeneratorEntitlement";
+import { course360AiPreviewInput, generateCourse360AiPreview } from "../lib/course360AiCoursePreview";
+import { requireCourse360AiIntegrationSchool } from "../lib/course360AiIntegrationScope";
+import { validateCourse360ReviewedDraft, course360ReviewedLessonBlocks } from "../lib/course360AiIntegrationDraft";
+import { generateImage } from "../_core/imageGeneration";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 import { assertAdmin, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
@@ -764,171 +768,70 @@ export const lmsEnrollmentAdminRouter = router({
 
   // ── AI Generate ──
   aiGenerateCourse: protectedProcedure
-    .input(z.object({
-      topics: z.string().min(3).max(10000),
-      productType: z.enum(["course", "quiz"]).default("course"),
-      targetAudience: z.string().max(500).optional(),
-      difficultyLevel: z.enum(["beginner", "intermediate", "advanced"]).optional(),
-      estimatedDurationMinutes: z.number().int().min(5).max(600).optional(),
-      // New: configurable structure
-      moduleCount: z.number().int().min(3).max(6).default(5),
-      lessonsPerModule: z.number().int().min(3).max(5).default(4),
-      starterContent: z.string().max(20000).optional(), // optional outline / existing content
-      generateQuizzes: z.boolean().default(true), // generate 5-question quiz per lesson
-      generateCourseQuiz: z.boolean().default(false), // generate a final 5-question course assessment
-    }))
+    .input(course360AiPreviewInput)
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireCourse360AiIntegrationSchool(db, ctx.user);
       await requireAiCourseGeneratorPlan(ctx);
-
-      const systemPrompt = `You are an expert instructional designer for Course360.
-You create structured, accurate, original, and pedagogically sound course content for the subject supplied by the author.
-Always use United States English spelling.
-Return ONLY valid JSON — no markdown, no code fences, no extra text.
-IMPORTANT: Each lesson content must be comprehensive — minimum 300 words of rich HTML with clear context, key concepts, practical examples, and useful tips.
-IMPORTANT: Each requested lesson quiz must include exactly 5 MCQ questions with 4 options each.
-IMPORTANT: The landing page must have fully written, publication-ready content — not placeholders.`;
-
-      const isQuiz = input.productType === "quiz";
-      const { moduleCount, lessonsPerModule, starterContent, generateQuizzes, generateCourseQuiz } = input;
-
-      const starterSection = starterContent
-        ? `\n\nSTARTER CONTENT / OUTLINE PROVIDED BY AUTHOR (use this as the primary source of truth for topics, structure, and terminology):\n---\n${starterContent}\n---\n`
-        : "";
-
-      const userPrompt = isQuiz
-        ? `Create a standalone quiz on the following topics:
-"${input.topics}"
-${input.targetAudience ? `Target audience: ${input.targetAudience}` : ""}
-${input.difficultyLevel ? `Difficulty: ${input.difficultyLevel}` : ""}${starterSection}
-
-Return a JSON object with this exact structure:
-{
-  "title": "Quiz title (concise, clinical)",
-  "subtitle": "One-line subtitle",
-  "questions": [
-    {
-      "question": "Question text",
-      "type": "mcq",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": "Option A",
-      "explanation": "Brief clinical explanation of the correct answer"
-    }
-  ],
-  "landingPage": {
-    "heroTitle": "Engaging hero headline",
-    "heroSubtitle": "One sentence description",
-    "ctaText": "Start Quiz",
-    "whatYouLearn": "<ul><li>Key topic 1</li><li>Key topic 2</li><li>Key topic 3</li></ul>",
-    "bodyContent": "<p>2-3 paragraph HTML description of the quiz</p>",
-    "requirements": "<p>Who this quiz is for and any prerequisites</p>"
-  }
-}
-Generate 10-20 high-quality MCQ questions. Each question must have exactly 4 options.`
-        : `Create a comprehensive course on the following topics:
-"${input.topics}"
-${input.targetAudience ? `Target audience: ${input.targetAudience}` : ""}
-${input.difficultyLevel ? `Difficulty: ${input.difficultyLevel}` : ""}
-${input.estimatedDurationMinutes ? `Estimated duration: ${input.estimatedDurationMinutes} minutes` : ""}${starterSection}
-
-Generate EXACTLY ${moduleCount} modules (sections) with EXACTLY ${lessonsPerModule} lessons each.
-
-Return a JSON object with this exact structure:
-{
-  "title": "Course title (concise and specific)",
-  "subtitle": "One-line subtitle",
-  "sections": [
-    {
-      "title": "Module title",
-      "lessons": [
-        {
-          "title": "Lesson title",
-          "type": "text",
-          "durationMinutes": 15,
-          "learningObjectives": ["Objective 1", "Objective 2", "Objective 3"],
-          "content": "<h2>Introduction</h2><p>Detailed lesson content in HTML — minimum 300 words. Include useful context, key concepts, practical examples, and concrete tips. Use <h2>, <h3>, <ul>, <ol>, <strong>, <em> tags for structure.</p>",
-          "imageSearchQuery": "specific educational image topic",
-          ${generateQuizzes ? `"quiz": {
-            "questions": [
-              {
-                "question": "Assessment question text?",
-                "options": ["Option A", "Option B", "Option C", "Option D"],
-                "correctAnswer": "Option A",
-                "explanation": "Explanation of why this is correct"
-              }
-            ]
-          }` : '"quiz": null'}
-        }
-      ]
-    }
-  ],
-  "courseQuiz": ${generateCourseQuiz ? `{
-    "title": "Course Assessment",
-    "questions": [
-      { "question": "Assessment question", "options": ["Option A", "Option B", "Option C", "Option D"], "correctAnswer": "Option A", "explanation": "Explain why the answer is correct" }
-    ]
-  }` : "null"},
-  "landingPage": {
-    "heroTitle": "Compelling course headline (not a placeholder)",
-    "heroSubtitle": "One powerful sentence describing the transformation or outcome",
-    "ctaText": "Enroll Now",
-    "whatYouLearn": "<ul><li>Specific learning outcome 1</li><li>Specific learning outcome 2</li><li>Specific learning outcome 3</li><li>Specific learning outcome 4</li><li>Specific learning outcome 5</li><li>Specific learning outcome 6</li></ul>",
-    "bodyContent": "<h2>About This Course</h2><p>3-4 paragraph fully written HTML description. First paragraph: what the course covers and why it matters clinically. Second paragraph: who will benefit most. Third paragraph: what makes this course unique. Fourth paragraph: what students will be able to do after completing it.</p>",
-    "requirements": "<h3>Who This Course Is For</h3><ul><li>Specific audience type 1</li><li>Specific audience type 2</li></ul><h3>Prerequisites</h3><p>Any required background knowledge or equipment.</p>",
-    "heroImageSearchQuery": "${input.topics.split(' ').slice(0,3).join(' ')} professional educational visual"
-  }
-}
-
-CRITICAL REQUIREMENTS:
-- EXACTLY ${moduleCount} sections in the sections array
-- EXACTLY ${lessonsPerModule} lessons in each section's lessons array
-- Each lesson content must be minimum 300 words of rich HTML
-- Each requested lesson quiz and optional course-wide assessment must have EXACTLY 5 questions with 4 options each
-- All landing page fields must be fully written — NO placeholders like "[Topic]" or "[Description]"
-- imageSearchQuery should be a specific, descriptive search query for a relevant course image`;
-
-      const response = await invokeLLM({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
+      const [subscription] = await db.select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status })
+        .from(orgSubscriptions).where(eq(orgSubscriptions.orgId, orgId)).limit(1);
+      const result = await generateCourse360AiPreview(input, {
+        orgId, userId: ctx.user.id, plan: subscription?.plan, status: subscription?.status,
       });
-
-      const raw = String(response?.choices?.[0]?.message?.content ?? "{}");
-      let parsed: any;
-      try {
-        parsed = extractJson(raw);
-      } catch {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
-      }
-
-      return { generated: parsed, productType: input.productType };
+      try { validateCourse360ReviewedDraft(result.generated, input.productType); }
+      catch (error) { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "AI returned an incomplete draft." }); }
+      return result;
     }),
 
   aiCommitCourse: protectedProcedure
     .input(z.object({
-      courseId: z.number(),
+      courseId: z.number().int().positive(),
       productType: z.enum(["course", "quiz"]),
-      generated: z.any(),
+      generated: z.unknown(),
+      reviewedOutline: z.boolean().default(false),
+      includeUnsplashImages: z.boolean().default(true),
+      includeAiImages: z.boolean().default(true),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const { courseId, generated, productType } = input;
-      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, courseId)).limit(1);
-      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
-      const activeOrgId = await requireAiCourseGeneratorPlan(ctx);
-      if (course.orgId !== activeOrgId) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the course organization before applying an AI draft." });
+      const { courseId, productType } = input;
+      let generated: ReturnType<typeof validateCourse360ReviewedDraft>;
+      try { generated = validateCourse360ReviewedDraft(input.generated, productType); }
+      catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Invalid AI draft." }); }
+      const activeOrgId = await requireCourse360AiIntegrationSchool(db, ctx.user);
+      await requireAiCourseGeneratorPlan(ctx);
+      const [ownedCourse] = await db.select({ orgId: lmsCourses.orgId, title: lmsCourses.title, primaryColor: lmsCourses.primaryColor, type: lmsCourses.type })
+        .from(lmsCourses).where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, activeOrgId))).limit(1);
+      if (!ownedCourse) throw new TRPCError({ code: "FORBIDDEN", message: "Switch to the course organization before applying an AI draft." });
+      if ((productType === "quiz") !== (ownedCourse.type === "quiz") || (input.reviewedOutline && productType !== "course")) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "The AI draft does not match this course's product type." });
       }
+      const aiVisuals = new Map<number, string>();
+      // Optional paid visuals occur only after explicit review and full validation.
+      if (input.reviewedOutline && input.includeAiImages) {
+        for (const [index, section] of (generated.sections ?? []).entries()) {
+          try {
+            const image = await generateImage({ prompt: `Create an original text-free, logo-free, respectful 16:9 editorial illustration. Course: ${ownedCourse.title}. Module: ${section.title}. Lesson: ${section.lessons[0].title}. No patient-identifying details or inaccurate clinical claims.`.slice(0, 1000) });
+            if (image.url) aiVisuals.set(index, image.url);
+          } catch { /* Retain reviewed content and optional curated visual on image failure. */ }
+        }
+      }
+      return db.transaction(async (tx) => {
+        const [course] = await tx.select({ orgId: lmsCourses.orgId, title: lmsCourses.title, primaryColor: lmsCourses.primaryColor, type: lmsCourses.type })
+          .from(lmsCourses).where(and(eq(lmsCourses.id, courseId), eq(lmsCourses.orgId, activeOrgId))).limit(1).for("update");
+        if (!course || course.type !== ownedCourse.type) throw new TRPCError({ code: "FORBIDDEN", message: "Course ownership or type changed. Review the draft again." });
+        const [{ lastPosition }] = await tx.select({ lastPosition: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, courseId));
+        const sectionStart = Number(lastPosition ?? -1) + 1;
 
       // Upsert landing page
-      if (generated.landingPage) {
+      if (generated.landingPage && !input.reviewedOutline) {
         const lp = generated.landingPage;
-        const [existing] = await db.select({ id: lmsLandingPages.id }).from(lmsLandingPages).where(eq(lmsLandingPages.courseId, courseId)).limit(1);
+        const [existing] = await tx.select({ id: lmsLandingPages.id }).from(lmsLandingPages).where(eq(lmsLandingPages.courseId, courseId)).limit(1);
         const lpData = {
           heroTitle: lp.heroTitle ?? null,
           heroSubtitle: lp.heroSubtitle ?? null,
@@ -939,13 +842,13 @@ CRITICAL REQUIREMENTS:
           isCustom: true,
         };
         if (existing) {
-          await db.update(lmsLandingPages).set(lpData).where(eq(lmsLandingPages.courseId, courseId));
+          await tx.update(lmsLandingPages).set(lpData).where(eq(lmsLandingPages.courseId, courseId));
         } else {
-          await db.insert(lmsLandingPages).values({ courseId, ...lpData });
+          await tx.insert(lmsLandingPages).values({ courseId, ...lpData });
         }
         // Also update course title/subtitle if provided
         if (generated.title) {
-          await db.update(lmsCourses).set({ title: generated.title, subtitle: generated.subtitle ?? null }).where(eq(lmsCourses.id, courseId));
+          await tx.update(lmsCourses).set({ title: generated.title, subtitle: generated.subtitle ?? null }).where(eq(lmsCourses.id, courseId));
         }
       }
 
@@ -953,21 +856,26 @@ CRITICAL REQUIREMENTS:
         // Insert sections and lessons
         for (let si = 0; si < generated.sections.length; si++) {
           const sec = generated.sections[si];
-          const [secResult] = await db.insert(lmsSections).values({ orgId: course.orgId, courseId, title: sec.title, position: si }).$returningId();
+          const [secResult] = await tx.insert(lmsSections).values({ orgId: course.orgId, courseId, title: sec.title, position: sectionStart + si }).$returningId();
           const sectionId = secResult.id;
           if (Array.isArray(sec.lessons)) {
+            let lessonPosition = 0;
             for (let li = 0; li < sec.lessons.length; li++) {
               const les = sec.lessons[li];
               // Always use "text" type for AI-generated lessons (quiz is attached separately)
-              const lesType = ["video", "download", "embed", "video_text"].includes(les.type) ? les.type : "text";
-              const [lesResult] = await db.insert(lmsLessons).values({
+              const lesType = ["video", "download", "embed", "video_text"].includes(les.type ?? "") ? les.type : "text";
+              const [lesResult] = await tx.insert(lmsLessons).values({
                 orgId: course.orgId,
                 courseId,
                 sectionId,
                 title: les.title,
                 type: lesType as "video" | "text" | "quiz" | "download" | "embed" | "video_text",
-                position: li,
-                content: les.content ?? null,
+                position: lessonPosition++,
+                content: les.content,
+                ...(input.reviewedOutline ? { contentBlocks: course360ReviewedLessonBlocks({
+                  courseTitle: course.title, sectionTitle: sec.title, lesson: les, primaryColor: course.primaryColor,
+                  includeUnsplashImages: input.includeUnsplashImages, aiImageUrl: li === 0 ? aiVisuals.get(si) : undefined,
+                }) } : {}),
                 durationMinutes: les.durationMinutes ?? null,
                 learningObjectives: Array.isArray(les.learningObjectives) ? JSON.stringify(les.learningObjectives) : null,
                 mediaAssetId: null,
@@ -976,21 +884,21 @@ CRITICAL REQUIREMENTS:
               // If the lesson has an embedded quiz, create a separate quiz lesson right after it
               if (les.quiz && Array.isArray(les.quiz.questions) && les.quiz.questions.length > 0) {
                 const quizLessonTitle = `${les.title} — Quiz`;
-                const [quizLesResult] = await db.insert(lmsLessons).values({
+                const [quizLesResult] = await tx.insert(lmsLessons).values({
                   orgId: course.orgId,
                   courseId,
                   sectionId,
                   title: quizLessonTitle,
                   type: "quiz",
-                  position: li + 0.5, // will be re-ordered below
+                  position: lessonPosition++,
                   content: null,
                   durationMinutes: 5,
                   mediaAssetId: null,
                 }).$returningId();
-                const [quizResult] = await db.insert(lmsQuizzes).values({ lessonId: quizLesResult.id, title: quizLessonTitle }).$returningId();
+                const [quizResult] = await tx.insert(lmsQuizzes).values({ lessonId: quizLesResult.id, title: quizLessonTitle }).$returningId();
                 for (let qi = 0; qi < les.quiz.questions.length; qi++) {
                   const q = les.quiz.questions[qi];
-                  await db.insert(lmsQuizQuestions).values({
+                  await tx.insert(lmsQuizQuestions).values({
                     quizId: quizResult.id,
                     question: q.question,
                     type: "mcq",
@@ -1003,24 +911,24 @@ CRITICAL REQUIREMENTS:
               }
             }
             // Fix positions after inserting (re-number sequentially)
-            const allLessons = await db.select({ id: lmsLessons.id }).from(lmsLessons)
+            const allLessons = await tx.select({ id: lmsLessons.id }).from(lmsLessons)
               .where(eq(lmsLessons.sectionId, sectionId))
               .orderBy(asc(lmsLessons.position));
             for (let idx = 0; idx < allLessons.length; idx++) {
-              await db.update(lmsLessons).set({ position: idx }).where(eq(lmsLessons.id, allLessons[idx].id));
+              await tx.update(lmsLessons).set({ position: idx }).where(eq(lmsLessons.id, allLessons[idx].id));
             }
           }
         }
         if (generated.courseQuiz && Array.isArray(generated.courseQuiz.questions) && generated.courseQuiz.questions.length > 0) {
-          const [{ lastPosition }] = await db.select({ lastPosition: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, courseId));
+          const [{ lastPosition }] = await tx.select({ lastPosition: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, courseId));
           const assessmentTitle = generated.courseQuiz.title ?? "Course Assessment";
-          const [assessmentSection] = await db.insert(lmsSections).values({
+          const [assessmentSection] = await tx.insert(lmsSections).values({
             orgId: course.orgId,
             courseId,
             title: "Course Assessment",
             position: Number(lastPosition ?? -1) + 1,
           }).$returningId();
-          const [assessmentLesson] = await db.insert(lmsLessons).values({
+          const [assessmentLesson] = await tx.insert(lmsLessons).values({
             orgId: course.orgId,
             courseId,
             sectionId: assessmentSection.id,
@@ -1031,10 +939,10 @@ CRITICAL REQUIREMENTS:
             durationMinutes: 10,
             mediaAssetId: null,
           }).$returningId();
-          const [assessmentQuiz] = await db.insert(lmsQuizzes).values({ lessonId: assessmentLesson.id, title: assessmentTitle }).$returningId();
+          const [assessmentQuiz] = await tx.insert(lmsQuizzes).values({ lessonId: assessmentLesson.id, title: assessmentTitle }).$returningId();
           for (let qi = 0; qi < generated.courseQuiz.questions.length; qi++) {
             const question = generated.courseQuiz.questions[qi];
-            await db.insert(lmsQuizQuestions).values({
+            await tx.insert(lmsQuizQuestions).values({
               quizId: assessmentQuiz.id,
               question: question.question,
               type: "mcq",
@@ -1047,18 +955,18 @@ CRITICAL REQUIREMENTS:
         }
       } else if (productType === "quiz" && Array.isArray(generated.questions)) {
         // For standalone quiz: create a single section + quiz lesson + questions
-        const [secResult] = await db.insert(lmsSections).values({ orgId: course.orgId, courseId, title: "Quiz Questions", position: 0 }).$returningId();
-        const [lesResult] = await db.insert(lmsLessons).values({
+        const [secResult] = await tx.insert(lmsSections).values({ orgId: course.orgId, courseId, title: "Quiz Questions", position: sectionStart }).$returningId();
+        const [lesResult] = await tx.insert(lmsLessons).values({
           orgId: course.orgId,
           courseId,
           sectionId: secResult.id,
           title: generated.title ?? "Quiz",
           type: "quiz", position: 0, content: null, mediaAssetId: null,
         }).$returningId();
-        const [quizResult] = await db.insert(lmsQuizzes).values({ lessonId: lesResult.id, title: generated.title ?? "Quiz" }).$returningId();
+        const [quizResult] = await tx.insert(lmsQuizzes).values({ lessonId: lesResult.id, title: generated.title ?? "Quiz" }).$returningId();
         for (let qi = 0; qi < generated.questions.length; qi++) {
           const q = generated.questions[qi];
-          await db.insert(lmsQuizQuestions).values({
+          await tx.insert(lmsQuizQuestions).values({
             quizId: quizResult.id,
             question: q.question,
             type: q.type === "truefalse" ? "truefalse" : "mcq",
@@ -1070,7 +978,8 @@ CRITICAL REQUIREMENTS:
         }
       }
 
-      return { success: true };
+        return { success: true };
+      });
     }),
 
   // ── Import from Media Library ──
@@ -1359,6 +1268,10 @@ CRITICAL REQUIREMENTS:
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireCourse360AiIntegrationSchool(db, ctx.user);
+      const [course] = await db.select({ id: lmsCourses.id }).from(lmsCourses)
+        .where(and(eq(lmsCourses.id, input.courseId), eq(lmsCourses.orgId, orgId))).limit(1);
+      if (!course) throw new TRPCError({ code: "FORBIDDEN", message: "This course does not belong to the active organization." });
       const lessons = await db.select({
         id: lmsLessons.id,
         title: lmsLessons.title,

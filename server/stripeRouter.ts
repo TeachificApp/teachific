@@ -4,14 +4,33 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
-import { protectedProcedure, publicProcedure, adminProcedure, router } from "./_core/trpc";
-import { getStripe, STRIPE_PRICE_IDS, PLAN_LIMITS, type PlanTier } from "./stripePlans";
+import { and, eq } from "drizzle-orm";
+import {
+  protectedProcedure,
+  publicProcedure,
+  adminProcedure,
+  router,
+} from "./_core/trpc";
+import {
+  getStripe,
+  getPlatformStripeSecretKey,
+  getPlatformStripePublishableKey,
+  getPlatformPaymentReadiness,
+  STRIPE_PRICE_IDS,
+  PLAN_LIMITS,
+  type PlanTier,
+} from "./stripePlans";
 import { getOrgSubscription, upsertOrgSubscription } from "./lmsDb";
 import { ENV } from "./_core/env";
 import { getOrgBaseUrl } from "./lib/orgUrl";
-import { canonicalizeCourse360Origin } from "./lib/canonicalCourse360Domain";
-import { getOrgSubscriptionTrialDates } from "./lib/orgSubscriptionTrialDates";
+import {
+  confirmedPlatformBillingState,
+  isTerminalPlatformSubscription,
+  preservedSchoolSchedulePhase,
+  nextSchoolBillingPeriodEnd,
+} from "./course360BillingState";
+import type Stripe from "stripe";
+import { createCourse360PaymentCheckout, getCourse360PaymentAppAccess, claimCourse360PaymentSchoolOwner, listCourse360PaymentOwnerClaims, course360PaymentLedgerReady, setCourse360PaymentManualRole, course360PaymentAppTrialEligible } from "./lib/course360PaymentLedger";
 
 async function getDb() {
   const { getDb: _getDb } = await import("./db");
@@ -23,8 +42,6 @@ async function getDb() {
 const COURSE360_CHECKOUT_PLATFORM_HOSTS = new Set([
   "course360.app",
   "www.course360.app",
-  "teachific.app",
-  "www.teachific.app",
 ]);
 
 function hostFromUrl(url: string | undefined): string | null {
@@ -43,17 +60,30 @@ function getConfiguredPreviewUrl(): string | undefined {
   return (ENV as { appUrl?: string }).appUrl;
 }
 
-export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPreviewUrl = getConfiguredPreviewUrl()): string | null {
+export function parseApprovedPlatformCheckoutOrigin(
+  origin: string,
+  configuredPreviewUrl = getConfiguredPreviewUrl()
+): string | null {
   try {
     const parsed = new URL(origin);
     const hostname = parsed.hostname.toLowerCase();
     const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-    const isConfiguredPreview = hostname === hostFromUrl(configuredPreviewUrl);
-    const isPlatformSubdomain = hostname.endsWith(".course360.app") || hostname.endsWith(".teachific.app");
-    const isSecure = parsed.protocol === "https:" || isLocalhost;
+    const isConfiguredPreview =
+      !!configuredPreviewUrl &&
+      parsed.origin === new URL(configuredPreviewUrl).origin;
+    const isSecure =
+      parsed.protocol === "https:" ||
+      (isLocalhost && parsed.protocol === "http:");
 
-    if (isSecure && (isLocalhost || isConfiguredPreview || isPlatformSubdomain || COURSE360_CHECKOUT_PLATFORM_HOSTS.has(hostname))) {
-      return canonicalizeCourse360Origin(parsed.origin) ?? parsed.origin;
+    if (
+      !parsed.username &&
+      !parsed.password &&
+      isSecure &&
+      (isLocalhost ||
+        isConfiguredPreview ||
+        (COURSE360_CHECKOUT_PLATFORM_HOSTS.has(hostname) && !parsed.port))
+    ) {
+      return parsed.origin;
     }
   } catch {
     // The request schema validates URL syntax; this is a separate, fail-closed host check.
@@ -66,8 +96,14 @@ export function parseApprovedPlatformCheckoutOrigin(origin: string, configuredPr
  * Tenant/custom-domain checkout returns are intentionally supported only for
  * authenticated product billing paths that prove organization membership.
  */
-export function parseApprovedPlatformSignupOrigin(origin: string, configuredPreviewUrl = getConfiguredPreviewUrl()): string | null {
-  const approved = parseApprovedPlatformCheckoutOrigin(origin, configuredPreviewUrl);
+export function parseApprovedPlatformSignupOrigin(
+  origin: string,
+  configuredPreviewUrl = getConfiguredPreviewUrl()
+): string | null {
+  const approved = parseApprovedPlatformCheckoutOrigin(
+    origin,
+    configuredPreviewUrl
+  );
   if (!approved) return null;
   const hostname = hostFromUrl(approved);
   const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
@@ -77,22 +113,32 @@ export function parseApprovedPlatformSignupOrigin(origin: string, configuredPrev
     : null;
 }
 
-function normalizeConfiguredDomain(domain: string | null | undefined): string | null {
+function normalizeConfiguredDomain(
+  domain: string | null | undefined
+): string | null {
   if (!domain) return null;
   return hostFromUrl(domain.includes("://") ? domain : `https://${domain}`);
 }
 
 export function matchesVerifiedMemberCustomDomain(
   hostname: string,
-  organizations: Array<{ customDomain: string | null; domainVerificationStatus: string | null }>,
+  organizations: Array<{
+    customDomain: string | null;
+    domainVerificationStatus: string | null;
+  }>
 ): boolean {
-  return organizations.some((organization) =>
-    organization.domainVerificationStatus === "verified"
-    && normalizeConfiguredDomain(organization.customDomain) === hostname,
+  return organizations.some(
+    organization =>
+      organization.domainVerificationStatus === "verified" &&
+      normalizeConfiguredDomain(organization.customDomain) === hostname
   );
 }
 
-export async function resolveProductCheckoutReturnOrigin(origin: string, userId: number): Promise<string> {
+export async function resolveProductCheckoutReturnOrigin(
+  origin: string,
+  userId: number,
+  userRole = "org_admin"
+): Promise<string> {
   const approvedPlatformOrigin = parseApprovedPlatformCheckoutOrigin(origin);
   if (approvedPlatformOrigin) return approvedPlatformOrigin;
 
@@ -100,32 +146,37 @@ export async function resolveProductCheckoutReturnOrigin(origin: string, userId:
   let normalizedOrigin: string;
   try {
     const parsed = new URL(origin);
-    if (parsed.protocol !== "https:") throw new Error("Custom organization origins must use HTTPS");
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.port ||
+      parsed.username ||
+      parsed.password
+    )
+      throw new Error("Custom organization origins must use HTTPS");
     hostname = parsed.hostname.toLowerCase();
     normalizedOrigin = parsed.origin;
   } catch {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Checkout return URL is not permitted" });
   }
 
-  const db = await getDb();
-  const { orgMembers, organizations } = await import("../drizzle/schema");
-  const memberOrganizations = await db
-    .select({
-      customDomain: organizations.customDomain,
-      domainVerificationStatus: organizations.domainVerificationStatus,
-    })
-    .from(orgMembers)
-    .innerJoin(organizations, eq(organizations.id, orgMembers.orgId))
-    .where(eq(orgMembers.userId, userId));
-
-  if (!matchesVerifiedMemberCustomDomain(hostname, memberOrganizations)) {
+  const orgCtx = await getOrgContext(userId, userRole);
+  if (
+    !orgCtx ||
+    !(
+      hostname === `${orgCtx.orgSlug}.course360.app` ||
+      matchesVerifiedMemberCustomDomain(hostname, [orgCtx])
+    )
+  ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "Checkout return URL is not permitted" });
   }
   return normalizedOrigin;
 }
 
 // ─── Helper: get org context for the current user ─────────────────────────────
-async function getOrgContext(userId: number) {
+async function getOrgContext(userId: number, userRole = "org_admin") {
+  const { getOrgIdForUserWithFallback } = await import("./db");
+  const orgId = await getOrgIdForUserWithFallback(userId, userRole);
+  if (!orgId) return null;
   const db = await getDb();
   const { orgMembers, organizations } = await import("../drizzle/schema");
   const rows = await db
@@ -134,12 +185,61 @@ async function getOrgContext(userId: number) {
       role: orgMembers.role,
       orgName: organizations.name,
       orgSlug: organizations.slug,
+      customDomain: organizations.customDomain,
+      domainVerificationStatus: organizations.domainVerificationStatus,
     })
     .from(orgMembers)
     .innerJoin(organizations, eq(organizations.id, orgMembers.orgId))
-    .where(eq(orgMembers.userId, userId))
+    .where(
+      and(
+        eq(orgMembers.userId, userId),
+        eq(orgMembers.orgId, orgId),
+        eq(organizations.isActive, true)
+      )
+    )
     .limit(1);
   return rows[0] ?? null;
+}
+
+async function requireBillingOrg(userId: number, userRole: string) {
+  const orgCtx = await getOrgContext(userId, userRole);
+  if (!orgCtx || !["org_super_admin", "org_admin"].includes(orgCtx.role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only admins of the active school can manage billing",
+    });
+  }
+  return orgCtx;
+}
+
+function assertSchoolSubscription(
+  subscription: Stripe.Subscription,
+  orgId: number
+) {
+  if (
+    (subscription.metadata.org_id &&
+      subscription.metadata.org_id !== String(orgId)) ||
+    subscription.metadata.product_type ||
+    subscription.metadata.content_type
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Subscription does not belong to this school's platform billing",
+    });
+  }
+}
+
+async function liveSchoolSubscription(orgId: number, subscriptionId: string) {
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
+  assertSchoolSubscription(subscription, orgId);
+  if (isTerminalPlatformSubscription(subscription.status)) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "This subscription has ended. Start a replacement checkout instead.",
+    });
+  }
+  return subscription;
 }
 
 // ─── Helper: ensure org payment settings row ──────────────────────────────────
@@ -162,18 +262,31 @@ export async function getOrCreateOrgPaymentSettings(orgId: number) {
 }
 
 export const stripeRouter = router({
+  getPaymentConfiguration: publicProcedure.query(() => {
+    const readiness = getPlatformPaymentReadiness();
+    return {
+      ready: readiness.ready && course360PaymentLedgerReady(),
+      ledgerReady: course360PaymentLedgerReady(),
+      mode: readiness.secretMode,
+      publishableKey: readiness.ready && course360PaymentLedgerReady()
+        ? getPlatformStripePublishableKey()
+        : null,
+    };
+  }),
   // ── New school-owner checkout (account and organization are webhook-created) ──
   createPlatformTrialCheckout: publicProcedure
-    .input(z.object({
-      name: z.string().trim().min(1).max(100),
-      email: z.string().trim().email().max(320),
-      plan: z.enum(["starter", "builder", "pro"]),
-      interval: z.enum(["monthly", "annual"]),
-      origin: z.string().url(),
-      blueprintInstallToken: z.string().min(32).max(255).optional(),
-    }))
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(100),
+        email: z.string().trim().email().max(320),
+        plan: z.enum(["starter", "builder", "pro"]),
+        interval: z.enum(["monthly", "annual"]),
+        origin: z.string().url(),
+        blueprintInstallToken: z.string().min(32).max(255).optional(),
+      })
+    )
     .mutation(async ({ input }) => {
-      if (!ENV.stripeSecretKey) {
+      if (!getPlatformStripeSecretKey()) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
       }
 
@@ -193,7 +306,7 @@ export const stripeRouter = router({
 
       const email = input.email.toLowerCase();
       const stripe = getStripe();
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCourse360PaymentCheckout({ orgId: null, userId: null, product: "signup", selection: input.plan, interval: input.interval, email, trialEligible: true, params: {
         mode: "subscription",
         payment_method_types: ["card"],
         // A saved card is mandatory even during the $0 introductory period so
@@ -214,23 +327,30 @@ export const stripeRouter = router({
           trial_period_days: 14,
           metadata: {
             type: "platform_trial_signup",
+            signup_email: email,
             plan: input.plan,
             interval: input.interval,
           },
         },
         success_url: `${returnOrigin}/account-setup?checkout=platform_trial&session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${returnOrigin}/register?cancelled=1`,
-      });
+      } }, stripe);
 
       return { url: session.url };
     }),
+
+  listPaidSchoolClaims: protectedProcedure.query(({ ctx }) => listCourse360PaymentOwnerClaims(ctx.user.id)),
+  claimPaidSchool: protectedProcedure.input(z.object({ claimId: z.string().uuid() })).mutation(async ({ ctx, input }) => {
+    const orgId = await claimCourse360PaymentSchoolOwner({ claimId: input.claimId, authenticatedUserId: ctx.user.id });
+    return { orgId };
+  }),
 
   // ── Get current subscription ───────────────────────────────────────────────
   getSubscription: protectedProcedure.query(async ({ ctx }) => {
     // Platform owners/admins always get enterprise-level access — no subscription needed
     const isPlatformAdmin = ctx.user.role === "site_owner" || ctx.user.role === "site_admin";
     if (isPlatformAdmin) {
-      const orgCtx = await getOrgContext(ctx.user.id);
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
       return {
         orgId: orgCtx?.orgId ?? 0,
         orgName: orgCtx?.orgName ?? "Platform",
@@ -242,24 +362,92 @@ export const stripeRouter = router({
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
         customPriceLabel: "Owner",
+        canManageBilling: false,
+        canChangeExistingSubscription: false,
+        introductoryTrialAvailable: false,
+        billingInterval: null as "monthly" | "annual" | null,
+        pendingChange: null as {
+          plan: string;
+          interval: string;
+          effectiveAt: Date;
+        } | null,
+        paymentMode: "unavailable" as "test" | "live" | "unavailable",
       };
     }
-    const orgCtx = await getOrgContext(ctx.user.id);
+    const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
     if (!orgCtx) return null;
     const sub = await getOrgSubscription(orgCtx.orgId);
     const plan = sub?.plan ?? "free";
     const limits = PLAN_LIMITS[plan as PlanTier];
+    let pendingChange: {
+      plan: string;
+      interval: string;
+      effectiveAt: Date;
+    } | null = null;
+    let billingInterval: "monthly" | "annual" | null = null;
+    let confirmedState: ReturnType<
+      typeof confirmedPlatformBillingState
+    > | null = null;
+    const paymentReadiness = getPlatformPaymentReadiness();
+    if (
+      sub?.stripeSubscriptionId &&
+      getPlatformStripeSecretKey() &&
+      (!ENV.isProduction || paymentReadiness.ready)
+    ) {
+      const live = await getStripe().subscriptions.retrieve(
+        sub.stripeSubscriptionId
+      );
+      assertSchoolSubscription(live, orgCtx.orgId);
+      confirmedState = confirmedPlatformBillingState(live);
+      billingInterval =
+        live.items.data[0]?.price.recurring?.interval === "year"
+          ? "annual"
+          : "monthly";
+      if (live.schedule) {
+        const schedule = await getStripe().subscriptionSchedules.retrieve(
+          typeof live.schedule === "string" ? live.schedule : live.schedule.id
+        );
+        if (
+          schedule.status === "active" &&
+          schedule.metadata?.type === "course360_school_plan_change"
+        ) {
+          pendingChange = {
+            plan: schedule.metadata.pending_plan,
+            interval: schedule.metadata.pending_interval,
+            effectiveAt: new Date(
+              Number(schedule.metadata.effective_at) * 1000
+            ),
+          };
+        }
+      }
+    }
     return {
       orgId: orgCtx.orgId,
       orgName: orgCtx.orgName,
       plan: plan as PlanTier,
       limits,
-      status: sub?.status ?? "active",
+      status: confirmedState?.status ?? sub?.status ?? "active",
       stripeSubscriptionId: sub?.stripeSubscriptionId ?? null,
       stripeCustomerId: sub?.stripeCustomerId ?? null,
-      currentPeriodEnd: sub?.currentPeriodEnd ?? null,
-      cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
+      currentPeriodEnd: confirmedState
+        ? confirmedState.currentPeriodEnd
+        : (sub?.currentPeriodEnd ?? null),
+      cancelAtPeriodEnd:
+        confirmedState?.cancelAtPeriodEnd ?? sub?.cancelAtPeriodEnd ?? false,
       customPriceLabel: sub?.customPriceLabel ?? null,
+      canManageBilling: ["org_admin", "org_super_admin"].includes(orgCtx.role),
+      canChangeExistingSubscription:
+        !!sub?.stripeSubscriptionId &&
+        !isTerminalPlatformSubscription(
+          confirmedState?.rawStripeStatus ?? sub?.rawStripeStatus ?? sub?.status
+        ),
+      introductoryTrialAvailable:
+        !sub?.stripeSubscriptionId && !sub?.starterTrialClaimed,
+      billingInterval,
+      pendingChange,
+      paymentMode: paymentReadiness.ready
+        ? (paymentReadiness.secretMode as "test" | "live")
+        : ("unavailable" as const),
     };
   }),
 
@@ -273,17 +461,15 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ENV.stripeSecretKey) {
+      if (!getPlatformStripeSecretKey()) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
       }
-      const orgCtx = await getOrgContext(ctx.user.id);
-      if (!orgCtx) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
-      }
-      if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
-      }
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
+      const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
 
       const priceKey = `${input.plan}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
@@ -296,6 +482,19 @@ export const stripeRouter = router({
 
       const stripe = getStripe();
       const sub = await getOrgSubscription(orgCtx.orgId);
+      if (sub?.stripeSubscriptionId) {
+        const existing = await stripe.subscriptions.retrieve(
+          sub.stripeSubscriptionId
+        );
+        assertSchoolSubscription(existing, orgCtx.orgId);
+        if (!isTerminalPlatformSubscription(existing.status)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "This school already has a subscription. Use Change Plan or the billing portal.",
+          });
+        }
+      }
       const isIntroductoryTrial = !sub?.stripeSubscriptionId && !sub?.starterTrialClaimed;
       const subscriptionData = {
         ...(isIntroductoryTrial
@@ -307,51 +506,54 @@ export const stripeRouter = router({
         metadata: {
           org_id: String(orgCtx.orgId),
           plan: input.plan,
+          interval: input.interval,
         },
       };
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        payment_method_types: ["card"],
-        payment_method_collection: "always",
-        line_items: [{ price: priceId, quantity: 1 }],
-        allow_promotion_codes: true,
-        customer: sub?.stripeCustomerId ?? undefined,
-        customer_email: sub?.stripeCustomerId ? undefined : ctx.user.email ?? undefined,
-        client_reference_id: String(ctx.user.id),
-        metadata: {
-          user_id: String(ctx.user.id),
-          org_id: String(orgCtx.orgId),
-          plan: input.plan,
-          interval: input.interval,
-          customer_email: ctx.user.email ?? "",
-          customer_name: ctx.user.name ?? "",
-        },
-        subscription_data: subscriptionData,
-        success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isIntroductoryTrial ? "&trial=1" : ""}`,
-        cancel_url: `${returnOrigin}/billing?cancelled=1`,
-      });
-
-      return { url: session.url };
+      try {
+        const session = await createCourse360PaymentCheckout({
+          orgId: orgCtx.orgId, userId: ctx.user.id, product: "platform", selection: input.plan,
+          interval: input.interval, previousSubscriptionId: sub?.stripeSubscriptionId,
+          customerId: sub?.stripeCustomerId, trialEligible: isIntroductoryTrial,
+          params: {
+            mode: "subscription", payment_method_types: ["card"], payment_method_collection: "always",
+            line_items: [{ price: priceId, quantity: 1 }], allow_promotion_codes: true,
+            customer: sub?.stripeCustomerId ?? undefined,
+            customer_email: sub?.stripeCustomerId ? undefined : (ctx.user.email ?? undefined),
+            client_reference_id: String(ctx.user.id),
+            metadata: { user_id: String(ctx.user.id), org_id: String(orgCtx.orgId), plan: input.plan,
+              interval: input.interval, customer_email: ctx.user.email ?? "", customer_name: ctx.user.name ?? "" },
+            subscription_data: { ...subscriptionData, metadata: { ...subscriptionData.metadata, user_id: String(ctx.user.id) } },
+            success_url: `${returnOrigin}/billing?success=1&plan=${input.plan}${isIntroductoryTrial ? "&trial=1" : ""}`,
+            cancel_url: `${returnOrigin}/billing?cancelled=1`,
+          },
+        }, stripe);
+        return { url: session.url };
+      } catch (error) {
+        if (error instanceof Error && /already pending|subscription already|CAS lost/.test(error.message))
+          throw new TRPCError({ code: "CONFLICT", message: error.message });
+        throw error;
+      }
     }),
 
   // ── Create customer portal session ────────────────────────────────────────
   createPortalSession: protectedProcedure
     .input(z.object({ origin: z.string().url() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ENV.stripeSecretKey) {
+      if (!getPlatformStripeSecretKey()) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
       }
-      const orgCtx = await getOrgContext(ctx.user.id);
-      if (!orgCtx) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
-      }
+      const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
       const sub = await getOrgSubscription(orgCtx.orgId);
       if (!sub?.stripeCustomerId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No Stripe customer found. Please subscribe first." });
       }
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
       const session = await stripe.billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
         return_url: `${returnOrigin}/billing`,
@@ -361,110 +563,280 @@ export const stripeRouter = router({
 
   // ── Change plan (upgrade / downgrade with proration) ────────────────────────
   changePlan: protectedProcedure
-    .input(z.object({
-      plan: z.enum(["starter", "builder", "pro"]),
-      interval: z.enum(["monthly", "annual"]),
-    }))
+    .input(
+      z.object({
+        plan: z.enum(["starter", "builder", "pro"]),
+        interval: z.enum(["monthly", "annual"]),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
-      const orgCtx = await getOrgContext(ctx.user.id);
-      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
-      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
-      }
+      if (!getPlatformStripeSecretKey())
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Stripe not configured",
+        });
+      const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
       const sub = await getOrgSubscription(orgCtx.orgId);
-      if (!sub?.stripeSubscriptionId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found. Please subscribe first." });
-      }
-      const priceKey = `${input.plan}_${input.interval}`;
-      const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Price not configured for ${priceKey}` });
-      }
+      if (!sub?.stripeSubscriptionId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No Stripe subscription found. Please subscribe first.",
+        });
       const stripe = getStripe();
-      const stripeSub = await stripe.subscriptions.retrieve(sub.stripeSubscriptionId);
+      const stripeSub = await liveSchoolSubscription(
+        orgCtx.orgId,
+        sub.stripeSubscriptionId
+      );
+      if (!["active", "trialing"].includes(stripeSub.status)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Resolve the current subscription's payment status in the billing portal before changing plans.",
+        });
+      }
+      if (stripeSub.cancel_at_period_end)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Reactivate the pending cancellation before changing plans.",
+        });
+      const priceId = STRIPE_PRICE_IDS[`${input.plan}_${input.interval}`];
+      if (!priceId)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Requested plan price is not configured",
+        });
       const currentItem = stripeSub.items.data[0];
-      if (!currentItem) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Subscription item not found" });
-
-      // Determine proration behaviour: upgrades are immediate (prorated), downgrades take effect at period end
-      const PLAN_ORDER: Record<string, number> = { starter: 1, builder: 2, pro: 3 };
-      const currentPlanName = (sub.plan ?? "free") as string;
-      const isUpgrade = (PLAN_ORDER[input.plan] ?? 0) > (PLAN_ORDER[currentPlanName] ?? 0);
-
-      const updatedSubscription = await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+      if (
+        !currentItem ||
+        stripeSub.items.data.length !== 1 ||
+        currentItem.quantity !== 1
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Custom subscription items must be managed in the billing portal.",
+        });
+      }
+      const currentPlan =
+        currentItem.price.metadata?.teachific_tier ??
+        stripeSub.metadata.plan ??
+        sub.plan;
+      const currentInterval =
+        currentItem.price.recurring?.interval === "year" ? "annual" : "monthly";
+      if (currentItem.price.id === priceId)
+        return {
+          success: true,
+          isUpgrade: false,
+          scheduled: false,
+          effectiveAt: null,
+          paymentActionRequired: false,
+        };
+      // Preserve unrelated/manual schedules rather than replacing them silently.
+      if (stripeSub.schedule)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "A billing schedule already exists. Manage it in the billing portal before changing plans.",
+        });
+      const order: Record<string, number> = { starter: 1, builder: 2, pro: 3 };
+      if (!(currentPlan in order))
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This manually configured plan must be managed by support.",
+        });
+      const isUpgrade = order[input.plan] > order[currentPlan];
+      // Any interval switch is deferred, even when paired with a tier increase.
+      const deferred = !isUpgrade || currentInterval !== input.interval;
+      if (deferred) {
+        const periodEnd = currentItem.current_period_end;
+        if (!periodEnd || periodEnd <= Math.floor(Date.now() / 1000))
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Current billing period is unavailable. Please use the billing portal.",
+          });
+        const adopted = await stripe.subscriptionSchedules.create({
+          from_subscription: stripeSub.id,
+        });
+        let updatedSchedule: Stripe.SubscriptionSchedule;
+        try {
+          const currentPhase =
+            adopted.phases.find(
+              phase => phase.start_date === adopted.current_phase?.start_date
+            ) ?? adopted.phases[0];
+          if (!currentPhase)
+            throw new Error("Current schedule phase unavailable");
+          const preserved = preservedSchoolSchedulePhase(currentPhase);
+          updatedSchedule = await stripe.subscriptionSchedules.update(
+            adopted.id,
+            {
+              end_behavior: "release",
+              proration_behavior: "none",
+              metadata: {
+                org_id: String(orgCtx.orgId),
+                pending_plan: input.plan,
+                pending_interval: input.interval,
+                effective_at: String(periodEnd),
+                type: "course360_school_plan_change",
+              },
+              phases: [
+                {
+                  ...preserved,
+                  end_date: periodEnd,
+                  metadata: {
+                    ...stripeSub.metadata,
+                    plan: currentPlan,
+                    interval: currentInterval,
+                    org_id: String(orgCtx.orgId),
+                  },
+                  ...(stripeSub.status === "trialing"
+                    ? { trial: true, trial_end: undefined }
+                    : {}),
+                },
+                {
+                  ...preserved,
+                  start_date: periodEnd,
+                  end_date: nextSchoolBillingPeriodEnd(
+                    periodEnd,
+                    input.interval
+                  ),
+                  trial_end: undefined,
+                  trial: false,
+                  billing_cycle_anchor: "phase_start",
+                  items: [
+                    { ...preserved.items[0], price: priceId, quantity: 1 },
+                  ],
+                  metadata: {
+                    ...stripeSub.metadata,
+                    plan: input.plan,
+                    interval: input.interval,
+                    org_id: String(orgCtx.orgId),
+                  },
+                },
+              ],
+            }
+          );
+        } catch (error) {
+          // Undo only the schedule we just adopted, preserving the original subscription.
+          await stripe.subscriptionSchedules
+            .release(adopted.id)
+            .catch(() => undefined);
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Unable to schedule this plan change safely. Please use the billing portal.",
+            cause: error,
+          });
+        }
+        if (updatedSchedule.status !== "active")
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Stripe did not confirm an active plan-change schedule.",
+          });
+        return {
+          success: true,
+          isUpgrade,
+          scheduled: true,
+          effectiveAt: new Date(periodEnd * 1000),
+          paymentActionRequired: false,
+        };
+      }
+      // Fail closed when payment or SCA cannot complete; do not claim an unpaid upgrade.
+      const updated = await stripe.subscriptions.update(stripeSub.id, {
         items: [{ id: currentItem.id, price: priceId }],
-        proration_behavior: isUpgrade ? "create_prorations" : "none",
-        billing_cycle_anchor: isUpgrade ? "now" : "unchanged",
-        metadata: { org_id: String(orgCtx.orgId), plan: input.plan, interval: input.interval },
+        payment_behavior: "error_if_incomplete",
+        proration_behavior: "always_invoice",
+        billing_cycle_anchor: "unchanged",
+        metadata: {
+          ...stripeSub.metadata,
+          org_id: String(orgCtx.orgId),
+          plan: input.plan,
+          interval: input.interval,
+        },
       });
-
-      // Immediately update the DB so the UI reflects the change without waiting for webhook
+      const confirmedPlan =
+        updated.items.data[0]?.price.id === priceId ? input.plan : sub.plan;
       await upsertOrgSubscription(orgCtx.orgId, {
-        plan: input.plan,
-        status: updatedSubscription.status === "trialing" ? "trialing" : sub.status,
-        ...getOrgSubscriptionTrialDates(updatedSubscription),
-        stripeSubscriptionId: sub.stripeSubscriptionId,
-        stripeCustomerId: sub.stripeCustomerId ?? undefined,
-        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
-        cancelAtPeriodEnd: false,
+        plan: confirmedPlan,
+        ...confirmedPlatformBillingState(updated),
       });
-
-      return { success: true, isUpgrade };
+      const paymentActionRequired = !["active", "trialing"].includes(
+        updated.status
+      );
+      return {
+        success: !paymentActionRequired,
+        isUpgrade,
+        scheduled: false,
+        effectiveAt: null,
+        paymentActionRequired,
+      };
     }),
 
   // ── Cancel subscription (at period end) ──────────────────────────────────────
-  cancelSubscription: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
-      const orgCtx = await getOrgContext(ctx.user.id);
-      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
-      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can cancel the subscription" });
-      }
-      const sub = await getOrgSubscription(orgCtx.orgId);
-      if (!sub?.stripeSubscriptionId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
-      }
-      const stripe = getStripe();
-      await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: true });
-      // Reflect immediately in DB
-      await upsertOrgSubscription(orgCtx.orgId, {
-        plan: sub.plan ?? "free",
-        status: sub.status ?? "active",
-        stripeSubscriptionId: sub.stripeSubscriptionId,
-        stripeCustomerId: sub.stripeCustomerId ?? undefined,
-        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
-        cancelAtPeriodEnd: true,
+  cancelSubscription: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!getPlatformStripeSecretKey())
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Stripe not configured",
       });
-      return { success: true, currentPeriodEnd: sub.currentPeriodEnd };
-    }),
+    const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
+    const sub = await getOrgSubscription(orgCtx.orgId);
+    if (!sub?.stripeSubscriptionId)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No Stripe subscription found",
+      });
+    const stripe = getStripe();
+    const live = await liveSchoolSubscription(
+      orgCtx.orgId,
+      sub.stripeSubscriptionId
+    );
+    if (live.schedule)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message:
+          "Manage the existing billing schedule in the billing portal before cancelling.",
+      });
+    const updated = await stripe.subscriptions.update(live.id, {
+      cancel_at_period_end: true,
+    });
+    const state = confirmedPlatformBillingState(updated);
+    await upsertOrgSubscription(orgCtx.orgId, { plan: sub.plan, ...state });
+    return {
+      success: state.cancelAtPeriodEnd,
+      currentPeriodEnd: state.currentPeriodEnd,
+    };
+  }),
 
   // ── Reactivate subscription (undo pending cancellation) ──────────────────────
-  reactivateSubscription: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      if (!ENV.stripeSecretKey) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Stripe not configured" });
-      const orgCtx = await getOrgContext(ctx.user.id);
-      if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN", message: "No organization found" });
-      if (!([ "org_super_admin", "org_admin"] as string[]).includes(orgCtx.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only org admins can manage billing" });
-      }
-      const sub = await getOrgSubscription(orgCtx.orgId);
-      if (!sub?.stripeSubscriptionId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No active subscription found" });
-      }
-      const stripe = getStripe();
-      const updatedSubscription = await stripe.subscriptions.update(sub.stripeSubscriptionId, { cancel_at_period_end: false });
-      await upsertOrgSubscription(orgCtx.orgId, {
-        plan: sub.plan ?? "free",
-        status: updatedSubscription.status === "trialing" ? "trialing" : sub.status,
-        ...getOrgSubscriptionTrialDates(updatedSubscription),
-        stripeSubscriptionId: sub.stripeSubscriptionId,
-        stripeCustomerId: sub.stripeCustomerId ?? undefined,
-        currentPeriodEnd: sub.currentPeriodEnd ?? undefined,
-        cancelAtPeriodEnd: false,
+  reactivateSubscription: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!getPlatformStripeSecretKey())
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Stripe not configured",
       });
-      return { success: true };
-    }),
+    const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
+    const sub = await getOrgSubscription(orgCtx.orgId);
+    if (!sub?.stripeSubscriptionId)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "No Stripe subscription found",
+      });
+    const stripe = getStripe();
+    const live = await liveSchoolSubscription(
+      orgCtx.orgId,
+      sub.stripeSubscriptionId
+    );
+    const updated = await stripe.subscriptions.update(live.id, {
+      cancel_at_period_end: false,
+    });
+    const state = confirmedPlatformBillingState(updated);
+    await upsertOrgSubscription(orgCtx.orgId, { plan: sub.plan, ...state });
+    return {
+      success: !state.cancelAtPeriodEnd,
+      paymentActionRequired: !["active", "trialing"].includes(updated.status),
+    };
+  }),
 
   // ── Subuser: leave org (self-cancel membership) ───────────────────────────────
   leaveOrg: protectedProcedure
@@ -477,7 +849,12 @@ export const stripeRouter = router({
       const [membership] = await db
         .select()
         .from(orgMembers)
-        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)))
+        .where(
+          and(
+            eq(orgMembers.orgId, input.orgId),
+            eq(orgMembers.userId, ctx.user.id)
+          )
+        )
         .limit(1);
       if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Membership not found" });
       if (["org_super_admin", "org_admin"].includes(membership.role)) {
@@ -485,13 +862,18 @@ export const stripeRouter = router({
       }
       await db
         .delete(orgMembers)
-        .where(and(eq(orgMembers.orgId, input.orgId), eq(orgMembers.userId, ctx.user.id)));
+        .where(
+          and(
+            eq(orgMembers.orgId, input.orgId),
+            eq(orgMembers.userId, ctx.user.id)
+          )
+        );
       return { success: true };
     }),
 
   // ── Get org payment settings ───────────────────────────────────────────────
   getPaymentSettings: protectedProcedure.query(async ({ ctx }) => {
-    const orgCtx = await getOrgContext(ctx.user.id);
+    const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
     if (!orgCtx) return null;
     if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) {
       throw new TRPCError({ code: "FORBIDDEN" });
@@ -500,6 +882,7 @@ export const stripeRouter = router({
     // Never expose secrets to frontend
     return {
       ...settings,
+      stripeSecretKey: settings.stripeSecretKey ? "••••••••••••••••" : null,
       paypalClientSecret: settings.paypalClientSecret ? "••••••••" : null,
     };
   }),
@@ -518,7 +901,7 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContext(ctx.user.id);
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
       if (!orgCtx) throw new TRPCError({ code: "FORBIDDEN" });
       if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -547,7 +930,7 @@ export const stripeRouter = router({
   getOrgPaymentSettings: protectedProcedure
     .input(z.object({ orgId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContext(ctx.user.id);
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
       if (!orgCtx || orgCtx.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN" });
       if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const settings = await getOrCreateOrgPaymentSettings(input.orgId);
@@ -590,7 +973,7 @@ export const stripeRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const orgCtx = await getOrgContext(ctx.user.id);
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
       if (!orgCtx || orgCtx.orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN" });
       if (!["org_super_admin", "org_admin"].includes(orgCtx.role)) throw new TRPCError({ code: "FORBIDDEN" });
       const db = await getDb();
@@ -681,20 +1064,23 @@ export const stripeRouter = router({
       const feePercent = planLimits.transactionFeePercent; // 0, 1, or 3
 
       const prices = await listProductPrices(input.productId);
-      const price = prices.find((p) => p.id === input.priceId);
+      const price = prices.find(p => p.id === input.priceId);
       if (!price) throw new TRPCError({ code: "NOT_FOUND", message: "Price not found" });
 
       // Use the org's own Stripe secret key
-      const orgStripe = new (await import("stripe")).default(paySettings.stripeSecretKey, {
-        apiVersion: "2025-02-24.acacia" as any,
-      });
+      const orgStripe = new (await import("stripe")).default(
+        paySettings.stripeSecretKey,
+        {
+          apiVersion: "2025-02-24.acacia" as any,
+        }
+      );
 
       const amountCents = Math.round(Number(price.amount) * 100);
       const applicationFeeCents = feePercent > 0 ? Math.round(amountCents * feePercent / 100) : undefined;
       const organizationBaseUrl = getOrgBaseUrl(
         organization.slug,
         organization.customDomain,
-        organization.domainVerificationStatus,
+        organization.domainVerificationStatus
       );
       const productPath = `/shop/${encodeURIComponent(product.slug)}`;
 
@@ -755,17 +1141,30 @@ export const stripeRouter = router({
 
   // ── Studio subscription checkout ───────────────────────────────────────
   createStudioCheckout: protectedProcedure
-    .input(z.object({
-      tier: z.enum(["web", "desktop", "bundle"]),
-      interval: z.enum(["monthly", "annual"]),
-      origin: z.string().url(),
-    }))
+    .input(
+      z.object({
+        tier: z.enum(["web", "desktop", "bundle"]),
+        interval: z.enum(["monthly", "annual"]),
+        origin: z.string().url(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!orgCtx)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "An active school membership is required for this purchase",
+        });
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
       const stripe = getStripe();
       const priceKey = `studio_${input.tier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Studio price not found. Please try again shortly." });
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "studio", selection: input.tier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "studio"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
@@ -776,15 +1175,33 @@ export const stripeRouter = router({
           customer_email: ctx.user.email ?? "",
           customer_name: ctx.user.name ?? "",
           studio_tier: input.tier,
+          access_tier: input.tier,
+          org_id: String(orgCtx.orgId),
+          interval: input.interval,
           product_type: "studio",
         },
-        success_url: `${input.origin}/studio?upgraded=1`,
-        cancel_url: `${input.origin}/studio-pro`,
+        subscription_data: {
+          metadata: {
+            user_id: String(ctx.user.id),
+            org_id: String(orgCtx.orgId),
+          interval: input.interval,
+            product_type: "studio",
+            access_tier: input.tier,
+          },
+        },
+        success_url: `${returnOrigin}/studio?upgraded=1`,
+        cancel_url: `${returnOrigin}/studio-pro`,
         allow_promotion_codes: true,
-      });
+      } }, stripe);
       return { checkoutUrl: session.url };
     }),
 
+  getAppSubscription: protectedProcedure.input(z.object({ product: z.enum(["studio", "creator", "quiz_creator"]) })).query(async ({ ctx, input }) => {
+    if (["site_owner", "site_admin"].includes(ctx.user.role)) return { tier: "bundle" as const, isActive: true, trialEndsAt: null, isInTrial: false, isPaid: true, hasManualGrant: true };
+    const org = await getOrgContext(ctx.user.id, ctx.user.role);
+    if (!org) return { tier: "none" as const, isActive: false, trialEndsAt: null, isInTrial: false, isPaid: false, hasManualGrant: false };
+    return getCourse360PaymentAppAccess(org.orgId, ctx.user.id, input.product);
+  }),
   // ── Studio subscription status ────────────────────────────────────────────
   getStudioSubscription: protectedProcedure.query(async ({ ctx }) => {
     // Platform owners/admins always get full Studio access
@@ -798,22 +1215,9 @@ export const stripeRouter = router({
         isPaid: true,
       };
     }
-    const db = await getDb();
-    const { users } = await import("../drizzle/schema");
-    const rows = await db.select({
-      studioAccess: users.studioAccess,
-      studioTrialEndsAt: users.studioTrialEndsAt,
-    }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
-    const studioAccess = (rows[0]?.studioAccess ?? "none") as string;
-    const trialEndsAt = rows[0]?.studioTrialEndsAt ?? null;
-    const isInTrial = studioAccess !== "none" && trialEndsAt && new Date(trialEndsAt) > new Date();
-    return {
-      tier: studioAccess as "none" | "web" | "desktop" | "bundle",
-      isActive: studioAccess !== "none",
-      trialEndsAt,
-      isInTrial: !!isInTrial,
-      isPaid: studioAccess !== "none" && !isInTrial,
-    };
+    const org = await getOrgContext(ctx.user.id, ctx.user.role);
+    if (!org) return { tier: "none" as const, isActive: false, trialEndsAt: null, isInTrial: false, isPaid: false };
+    return getCourse360PaymentAppAccess(org.orgId, ctx.user.id, "studio");
   }),
 
   // ── Admin: list all Studio users ────────────────────────────────────────
@@ -828,95 +1232,144 @@ export const stripeRouter = router({
       studioTrialEndsAt: users.studioTrialEndsAt,
       createdAt: users.createdAt,
     }).from(users).orderBy(users.createdAt);
-    return allUsers.map((u) => ({
+    return allUsers.map(u => ({
       ...u,
       studioAccess: (u.studioAccess ?? "none") as "none" | "web" | "desktop" | "bundle",
     }));
   }),
   // ── Admin: set a user's Studio role ──────────────────────────────────────
   adminSetStudioRole: adminProcedure
-    .input(z.object({
-      userId: z.number(),
-      role: z.enum(["none", "web", "desktop", "bundle"]),
-    }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      const { users } = await import("../drizzle/schema");
-      await db.update(users).set({ studioAccess: input.role }).where(eq(users.id, input.userId));
+    .input(
+      z.object({
+        userId: z.number(),
+        role: z.enum(["none", "web", "desktop", "bundle"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
+      await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "studio", tier: input.role,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: null });
       return { success: true };
     }),
   // ── Admin: list all Creator users ─────────────────────────────────────────
   adminListCreatorUsers: adminProcedure.query(async () => {
     const db = await getDb();
     const { users } = await import("../drizzle/schema");
-    const allUsers = await db.select({
-      id: users.id, name: users.name, email: users.email,
-      creatorAccess: users.creatorAccess, creatorTrialEndsAt: users.creatorTrialEndsAt, createdAt: users.createdAt,
-    }).from(users).orderBy(users.createdAt);
-    return allUsers.map((u) => ({ ...u, creatorAccess: (u.creatorAccess ?? "none") as "none" | "web" | "desktop" | "bundle" }));
+    const allUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        creatorAccess: users.creatorAccess,
+        creatorTrialEndsAt: users.creatorTrialEndsAt,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .orderBy(users.createdAt);
+    return allUsers.map(u => ({
+      ...u,
+      creatorAccess: (u.creatorAccess ?? "none") as
+        | "none"
+        | "web"
+        | "desktop"
+        | "bundle",
+    }));
   }),
   // ── Admin: set a user's Creator role ─────────────────────────────────────
   adminSetCreatorRole: adminProcedure
-    .input(z.object({
-      userId: z.number(),
-      role: z.enum(["none", "web", "desktop", "bundle"]),
-      trialDays: z.number().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      const { users } = await import("../drizzle/schema");
-      const trialEndsAt = input.trialDays ? new Date(Date.now() + input.trialDays * 86400000) : null;
-      await db.update(users).set({ creatorAccess: input.role, creatorTrialEndsAt: trialEndsAt }).where(eq(users.id, input.userId));
+    .input(
+      z.object({
+        userId: z.number(),
+        role: z.enum(["none", "web", "desktop", "bundle"]),
+        trialDays: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
+      await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "creator", tier: input.role,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: input.trialDays ? new Date(Date.now() + (input.trialDays ?? 0) * 86400000) : null });
       return { success: true };
     }),
   // ── Admin: list all QuizMaker users ────────────────────────────────────
   adminListQuizCreatorUsers: adminProcedure.query(async () => {
     const db = await getDb();
     const { users } = await import("../drizzle/schema");
-    const allUsers = await db.select({
-      id: users.id, name: users.name, email: users.email,
-      quizCreatorAccess: users.quizCreatorAccess, quizCreatorTrialEndsAt: users.quizCreatorTrialEndsAt, createdAt: users.createdAt,
-    }).from(users).orderBy(users.createdAt);
-    return allUsers.map((u) => ({ ...u, quizCreatorAccess: (u.quizCreatorAccess ?? "none") as "none" | "web" | "desktop" | "bundle" }));
+    const allUsers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        quizCreatorAccess: users.quizCreatorAccess,
+        quizCreatorTrialEndsAt: users.quizCreatorTrialEndsAt,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .orderBy(users.createdAt);
+    return allUsers.map(u => ({
+      ...u,
+      quizCreatorAccess: (u.quizCreatorAccess ?? "none") as
+        | "none"
+        | "web"
+        | "desktop"
+        | "bundle",
+    }));
   }),
   // ── Admin: set a user's QuizMaker role ─────────────────────────────────
   adminSetQuizCreatorRole: adminProcedure
-    .input(z.object({
-      userId: z.number(),
-      role: z.enum(["none", "web", "desktop", "bundle"]),
-      trialDays: z.number().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      const { users } = await import("../drizzle/schema");
-      const trialEndsAt = input.trialDays ? new Date(Date.now() + input.trialDays * 86400000) : null;
-      await db.update(users).set({ quizCreatorAccess: input.role, quizCreatorTrialEndsAt: trialEndsAt }).where(eq(users.id, input.userId));
+    .input(
+      z.object({
+        userId: z.number(),
+        role: z.enum(["none", "web", "desktop", "bundle"]),
+        trialDays: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!org) throw new TRPCError({ code: "FORBIDDEN", message: "Select an active school for manual grants" });
+      await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "quiz_creator", tier: input.role,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Explicit authenticated administrator grant", expiresAt: input.trialDays ? new Date(Date.now() + (input.trialDays ?? 0) * 86400000) : null });
       return { success: true };
     }),
   // ── Admin: update Studio trial end date ──────────────────────────────────
   adminSetStudioTrial: adminProcedure
     .input(z.object({ userId: z.number(), trialDays: z.number().optional() }))
-    .mutation(async ({ input }) => {
-      const db = await getDb();
-      const { users } = await import("../drizzle/schema");
-      const trialEndsAt = input.trialDays ? new Date(Date.now() + input.trialDays * 86400000) : null;
-      await db.update(users).set({ studioTrialEndsAt: trialEndsAt }).where(eq(users.id, input.userId));
+    .mutation(async ({ input, ctx }) => {
+      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!org) throw new TRPCError({ code: "FORBIDDEN" });
+      const access = await getCourse360PaymentAppAccess(org.orgId, input.userId, "studio");
+      if (!access.hasManualGrant || access.tier === "none") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Choose an explicit school-bound manual role before setting its expiry" });
+      await setCourse360PaymentManualRole({ orgId: org.orgId, userId: input.userId, product: "studio", tier: access.tier,
+        actorId: ctx.user.id, source: "platform-admin", reason: "Administrator manual grant expiry", expiresAt: input.trialDays ? new Date(Date.now() + input.trialDays * 86400000) : null });
       return { success: true };
     }),
   // ── Course360 Creator™ checkout (Web / Desktop / Bundle) ─────────────────────────
   createCreatorSingleCheckout: protectedProcedure
-    .input(z.object({
-      interval: z.enum(["monthly", "annual"]),
-      accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
-      origin: z.string().url(),
-    }))
+    .input(
+      z.object({
+        interval: z.enum(["monthly", "annual"]),
+        accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
+        origin: z.string().url(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!orgCtx)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "An active school membership is required for this purchase",
+        });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
       const priceKey = `creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Creator price not found. Please try again shortly." });
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "creator", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "creator"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
@@ -925,6 +1378,8 @@ export const stripeRouter = router({
         allow_promotion_codes: true,
         metadata: {
           user_id: String(ctx.user.id),
+          org_id: String(orgCtx.orgId),
+          interval: input.interval,
           customer_email: ctx.user.email ?? "",
           customer_name: ctx.user.name ?? "",
           product_type: "creator",
@@ -932,28 +1387,46 @@ export const stripeRouter = router({
         },
         subscription_data: {
           trial_period_days: 14,
-          metadata: { user_id: String(ctx.user.id), product_type: "creator", access_tier: input.accessTier },
+          metadata: {
+            user_id: String(ctx.user.id),
+            org_id: String(orgCtx.orgId),
+          interval: input.interval,
+            product_type: "creator",
+            access_tier: input.accessTier,
+          },
         },
         success_url: `${returnOrigin}/creator?upgraded=1`,
         cancel_url: `${returnOrigin}/creator-pro`,
-      });
+      } }, stripe);
       return { checkoutUrl: session.url };
     }),
 
   // ── Course360 Studio™ checkout (Web / Desktop / Bundle) ───────────────────────────
   createStudioSingleCheckout: protectedProcedure
-    .input(z.object({
-      interval: z.enum(["monthly", "annual"]),
-      accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
-      origin: z.string().url(),
-    }))
+    .input(
+      z.object({
+        interval: z.enum(["monthly", "annual"]),
+        accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
+        origin: z.string().url(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!orgCtx)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "An active school membership is required for this purchase",
+        });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
       const priceKey = `studio_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Studio price not found. Please try again shortly." });
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "studio", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "studio"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
@@ -962,6 +1435,8 @@ export const stripeRouter = router({
         allow_promotion_codes: true,
         metadata: {
           user_id: String(ctx.user.id),
+          org_id: String(orgCtx.orgId),
+          interval: input.interval,
           customer_email: ctx.user.email ?? "",
           customer_name: ctx.user.name ?? "",
           product_type: "studio",
@@ -969,28 +1444,46 @@ export const stripeRouter = router({
         },
         subscription_data: {
           trial_period_days: 14,
-          metadata: { user_id: String(ctx.user.id), product_type: "studio", access_tier: input.accessTier },
+          metadata: {
+            user_id: String(ctx.user.id),
+            org_id: String(orgCtx.orgId),
+          interval: input.interval,
+            product_type: "studio",
+            access_tier: input.accessTier,
+          },
         },
         success_url: `${returnOrigin}/studio?upgraded=1`,
         cancel_url: `${returnOrigin}/studio-pro`,
-      });
+      } }, stripe);
       return { checkoutUrl: session.url };
     }),
 
   // ── Course360 Quiz Creator™ checkout (Web / Desktop / Bundle) ─────────────────────
   createQuizCreatorCheckout: protectedProcedure
-    .input(z.object({
-      interval: z.enum(["monthly", "annual"]),
-      accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
-      origin: z.string().url(),
-    }))
+    .input(
+      z.object({
+        interval: z.enum(["monthly", "annual"]),
+        accessTier: z.enum(["web", "desktop", "bundle"]).default("desktop"),
+        origin: z.string().url(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      const orgCtx = await getOrgContext(ctx.user.id, ctx.user.role);
+      if (!orgCtx)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "An active school membership is required for this purchase",
+        });
       const stripe = getStripe();
-      const returnOrigin = await resolveProductCheckoutReturnOrigin(input.origin, ctx.user.id);
+      const returnOrigin = await resolveProductCheckoutReturnOrigin(
+        input.origin,
+        ctx.user.id,
+        ctx.user.role
+      );
       const priceKey = `quiz_creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
       if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Quiz Creator price not found. Please try again shortly." });
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "quiz_creator", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "quiz_creator"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
@@ -999,6 +1492,8 @@ export const stripeRouter = router({
         allow_promotion_codes: true,
         metadata: {
           user_id: String(ctx.user.id),
+          org_id: String(orgCtx.orgId),
+          interval: input.interval,
           customer_email: ctx.user.email ?? "",
           customer_name: ctx.user.name ?? "",
           product_type: "quiz_creator",
@@ -1006,30 +1501,44 @@ export const stripeRouter = router({
         },
         subscription_data: {
           trial_period_days: 14,
-          metadata: { user_id: String(ctx.user.id), product_type: "quiz_creator", access_tier: input.accessTier },
+          metadata: {
+            user_id: String(ctx.user.id),
+            org_id: String(orgCtx.orgId),
+          interval: input.interval,
+            product_type: "quiz_creator",
+            access_tier: input.accessTier,
+          },
         },
         success_url: `${returnOrigin}/quiz-creator?upgraded=1`,
         cancel_url: `${returnOrigin}/quiz-creator-pro`,
-      });
+      } }, stripe);
       return { checkoutUrl: session.url };
      }),
 
   // ── Enterprise contact-sales inquiry ─────────────────────────────────────────────
   contactEnterprise: protectedProcedure
-    .input(z.object({
-      orgId: z.number(),
-      orgName: z.string(),
-      contactName: z.string(),
-      contactEmail: z.string().email(),
-      teamSize: z.string().optional(),
-      message: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        orgId: z.number(),
+        orgName: z.string(),
+        contactName: z.string(),
+        contactEmail: z.string().email(),
+        teamSize: z.string().optional(),
+        message: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
+      const orgCtx = await requireBillingOrg(ctx.user.id, ctx.user.role);
+      if (input.orgId !== orgCtx.orgId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Inquiry must belong to the active school",
+        });
       const { notifyOwner } = await import("./_core/notification");
       const content = [
         "**Enterprise Plan Inquiry**",
         "",
-        `**Organization:** ${input.orgName} (ID: ${input.orgId})`,
+        `**Organization:** ${orgCtx.orgName} (ID: ${orgCtx.orgId})`,
         `**Contact:** ${input.contactName} <${input.contactEmail}>`,
         `**Team Size:** ${input.teamSize ?? "Not specified"}`,
         `**Message:** ${input.message ?? "No message provided"}`,
@@ -1037,7 +1546,7 @@ export const stripeRouter = router({
         `Submitted by user ID: ${ctx.user.id}`,
       ].join("\n");
       await notifyOwner({
-        title: `Enterprise Inquiry: ${input.orgName}`,
+        title: `Enterprise Inquiry: ${orgCtx.orgName}`,
         content,
       });
       return { success: true };
@@ -1048,26 +1557,8 @@ export const stripeRouter = router({
     const db = await getDb();
     const { users, orgMembers, orgSubscriptions } = await import("../drizzle/schema");
 
-    // User-level roles (Studio, Creator, QuizMaker)
-    const [userRow] = await db
-      .select({
-        studioAccess: users.studioAccess,
-        studioTrialEndsAt: users.studioTrialEndsAt,
-        creatorAccess: users.creatorAccess,
-        creatorTrialEndsAt: users.creatorTrialEndsAt,
-        quizCreatorAccess: users.quizCreatorAccess,
-        quizCreatorTrialEndsAt: users.quizCreatorTrialEndsAt,
-      })
-      .from(users)
-      .where(eq(users.id, ctx.user.id))
-      .limit(1);
-
-    // LMS org subscription
-    const [orgRow] = await db
-      .select({ orgId: orgMembers.orgId })
-      .from(orgMembers)
-      .where(eq(orgMembers.userId, ctx.user.id))
-      .limit(1);
+    // LMS organization is server-selected, never the first membership.
+    const orgRow = await getOrgContext(ctx.user.id, ctx.user.role);
 
     let lmsPlan: string = "free";
     let lmsIsActive = false;
@@ -1078,34 +1569,17 @@ export const stripeRouter = router({
         .where(eq(orgSubscriptions.orgId, orgRow.orgId))
         .limit(1);
       lmsPlan = orgSub?.plan ?? "free";
-      lmsIsActive = !!orgSub && orgSub.status !== "cancelled";
+      lmsIsActive = !!orgSub && ["active", "trialing"].includes(orgSub.status);
     }
-    const hasLms = lmsIsActive || lmsPlan !== "free";
+    const hasLms = lmsIsActive;
 
-    // Studio
-    const studioAccess = (userRow?.studioAccess ?? "none") as string;
-    const studioTrialEndsAt = userRow?.studioTrialEndsAt ?? null;
-    const studioInTrial = studioAccess !== "none" && studioTrialEndsAt && new Date(studioTrialEndsAt) > new Date();
-    const hasStudio = studioAccess !== "none";
-
-    // Creator
-    const creatorAccess = (userRow?.creatorAccess ?? "none") as string;
-    const creatorTrialEndsAt = userRow?.creatorTrialEndsAt ?? null;
-    const creatorInTrial = creatorAccess !== "none" && creatorTrialEndsAt && new Date(creatorTrialEndsAt) > new Date();
-    const hasCreator = creatorAccess !== "none";
-
-    // QuizMaker
-    const quizRole = (userRow?.quizCreatorAccess ?? "none") as string;
-    const quizTrialEndsAt = userRow?.quizCreatorTrialEndsAt ?? null;
-    const quizInTrial = quizRole !== "none" && quizTrialEndsAt && new Date(quizTrialEndsAt) > new Date();
-    const hasQuizMaker = quizRole !== "none";
-
-    return {
-      lms: { plan: lmsPlan, isActive: hasLms },
-      studio: { tier: studioAccess, isActive: hasStudio, isInTrial: !!studioInTrial },
-      creator: { tier: creatorAccess, isActive: hasCreator, isInTrial: !!creatorInTrial },
-      quizCreator: { tier: quizRole, isActive: hasQuizMaker, isInTrial: !!quizInTrial },
-    };
+    const none = { tier: "none" as const, isActive: false, isInTrial: false };
+    const [studio, creator, quizCreator] = orgRow ? await Promise.all([
+      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "studio"),
+      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "creator"),
+      getCourse360PaymentAppAccess(orgRow.orgId, ctx.user.id, "quiz_creator"),
+    ]) : [none, none, none];
+    return { lms: { plan: lmsPlan, isActive: hasLms }, studio, creator, quizCreator };
   }),
 
   // ── Desktop app download URLs (subscription-gated) ─────────────────────────
@@ -1113,23 +1587,11 @@ export const stripeRouter = router({
     .input(z.object({ app: z.enum(["creator", "studio", "quizCreator"]) }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
-      const { users } = await import("../drizzle/schema");
-      const [userRow] = await db
-        .select({
-          creatorAccess: users.creatorAccess,
-          studioAccess: users.studioAccess,
-          quizCreatorAccess: users.quizCreatorAccess,
-        })
-        .from(users)
-        .where(eq(users.id, ctx.user.id))
-        .limit(1);
-
-      const roleMap: Record<string, string> = {
-        creator: userRow?.creatorAccess ?? "none",
-        studio: userRow?.studioAccess ?? "none",
-        quizCreator: userRow?.quizCreatorAccess ?? "none",
-      };
-      const hasAccess = roleMap[input.app] !== "none";
+      const org = await getOrgContext(ctx.user.id, ctx.user.role);
+      const product = input.app === "quizCreator" ? "quiz_creator" : input.app;
+      const isPlatformAdmin = ["site_owner", "site_admin"].includes(ctx.user.role);
+      const access = org && !isPlatformAdmin ? await getCourse360PaymentAppAccess(org.orgId, ctx.user.id, product) : null;
+      const hasAccess = (!!access && ["desktop", "bundle"].includes(access.tier)) || isPlatformAdmin;
 
       if (!hasAccess) {
         throw new TRPCError({
@@ -1145,7 +1607,15 @@ export const stripeRouter = router({
       const [latestRow] = await db
         .select()
         .from(appVersions)
-        .where(and2(eq(appVersions.product, dbProduct as "creator" | "studio" | "quizcreator"), eq(appVersions.isLatest, true)))
+        .where(
+          and2(
+            eq(
+              appVersions.product,
+              dbProduct as "creator" | "studio" | "quizcreator"
+            ),
+            eq(appVersions.isLatest, true)
+          )
+        )
         .limit(1);
       return {
         hasAccess: true,
@@ -1159,7 +1629,7 @@ export const stripeRouter = router({
 
   // ── Platform Admin: Stripe integration status ─────────────────
   getStripeStatus: adminProcedure.query(async () => {
-    const isConfigured = !!ENV.stripeSecretKey;
+    const isConfigured = !!getPlatformStripeSecretKey();
     const hasWebhookSecret = !!ENV.stripeWebhookSecret;
     const publishableKeyPrefix = ENV.stripePublishableKey
       ? ENV.stripePublishableKey.slice(0, 14) + "..."

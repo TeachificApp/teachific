@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { COURSE360_PRICES } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
+import {
+  canChangeCourse360Subscription,
+  safeCourse360PostCheckoutPath,
+} from "@/lib/course360BillingRouting";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,8 +60,8 @@ const PLAN_META: Record<PlanTier, {
     icon: Zap,
     color: "text-blue-500",
     gradient: "from-blue-50 to-blue-50/30",
-    monthlyPrice: 39,
-    annualPrice: 399,
+    monthlyPrice: COURSE360_PRICES.starter.monthly,
+    annualPrice: COURSE360_PRICES.starter.annual,
     description: "Perfect for small teams getting started",
     features: [
       "14-day trial, then automatically converts to paid",
@@ -72,8 +78,8 @@ const PLAN_META: Record<PlanTier, {
     icon: Rocket,
     color: "text-[var(--org-primary)]",
     gradient: "from-[color:color-mix(in_srgb,var(--org-primary)_12%,transparent)] to-[color:color-mix(in_srgb,var(--org-primary)_4%,transparent)]",
-    monthlyPrice: 99,
-    annualPrice: 999,
+    monthlyPrice: COURSE360_PRICES.builder.monthly,
+    annualPrice: COURSE360_PRICES.builder.annual,
     description: "Scale your learning platform",
     highlight: true,
     features: [
@@ -91,8 +97,8 @@ const PLAN_META: Record<PlanTier, {
     icon: Crown,
     color: "text-amber-500",
     gradient: "from-amber-50 to-amber-50/30",
-    monthlyPrice: 199,
-    annualPrice: 1999,
+    monthlyPrice: COURSE360_PRICES.pro.monthly,
+    annualPrice: COURSE360_PRICES.pro.annual,
     description: "For serious learning businesses",
     features: [
       "3 admins, 10,000 members",
@@ -150,7 +156,11 @@ export default function BillingPage() {
   });
 
   const { user } = useAuth();
-  const { data: subscription, isLoading } = trpc.billing.getSubscription.useQuery();
+  const {
+    data: subscription,
+    isLoading,
+    error: subscriptionError,
+  } = trpc.billing.getSubscription.useQuery();
 
   // Handle Stripe redirect query params
   useEffect(() => {
@@ -158,20 +168,21 @@ export default function BillingPage() {
     if (params.get("success") === "1") {
       const plan = params.get("plan");
       const trialStarted = params.get("trial") === "1";
-      toast.success(plan
-        ? trialStarted
-          ? `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan! Your 14-day trial has started and will convert automatically after the trial.`
-          : `Welcome to the ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan!`
-        : "Subscription activated!");
+      // A return URL is not proof of payment or webhook fulfillment.
+      toast.info(
+        plan && trialStarted
+          ? `Checkout returned for ${plan}. Your trial will appear once billing confirmation is received.`
+          : "Checkout returned. Billing confirmation may take a moment."
+      );
       let postTrialPath: string | null = null;
       try {
         postTrialPath = localStorage.getItem("course360_post_trial_path");
         localStorage.removeItem("course360_post_trial_path");
       } catch {}
       window.history.replaceState({}, "", window.location.pathname);
-      if (postTrialPath?.startsWith("/")) {
-        window.setTimeout(() => window.location.assign(postTrialPath!), 500);
-      }
+      const safePath = safeCourse360PostCheckoutPath(postTrialPath);
+      if (safePath)
+        window.setTimeout(() => window.location.assign(safePath), 500);
     } else if (params.get("cancelled") === "1") {
       toast.info("Checkout cancelled. You can upgrade anytime.");
       window.history.replaceState({}, "", window.location.pathname);
@@ -179,13 +190,13 @@ export default function BillingPage() {
   }, []);
 
   const createCheckout = trpc.billing.createCheckoutSession.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.url) {
-        window.open(data.url, "_blank");
+        window.location.assign(data.url);
         toast.info("Redirecting to Stripe checkout...");
       }
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message);
       setLoadingPlan(null);
     },
@@ -193,13 +204,13 @@ export default function BillingPage() {
   });
 
   const createPortal = trpc.billing.createPortalSession.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.url) {
-        window.open(data.url, "_blank");
+        window.open(data.url, "_blank", "noopener,noreferrer");
         toast.info("Opening billing portal...");
       }
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   const contactEnterprise = trpc.billing.contactEnterprise.useMutation({
@@ -208,42 +219,78 @@ export default function BillingPage() {
       setEnterpriseOpen(false);
       setEnterpriseForm({ teamSize: "", message: "" });
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   const utils = trpc.useUtils();
 
   const changePlan = trpc.billing.changePlan.useMutation({
-    onSuccess: (data) => {
-      toast.success(data.isUpgrade ? "Plan upgraded successfully!" : "Plan change scheduled — takes effect at next billing cycle.");
+    onSuccess: data => {
+      if (data.paymentActionRequired || !data.success)
+        toast.warning(
+          "Payment requires attention. Please open Manage Billing to resolve it."
+        );
+      else if (data.scheduled)
+        toast.success(
+          `Plan change scheduled for ${data.effectiveAt ? new Date(data.effectiveAt).toLocaleDateString() : "the next billing cycle"}. Your current plan remains available until then.`
+        );
+      else
+        toast.success(
+          data.isUpgrade
+            ? "Plan upgraded successfully!"
+            : "Your plan is already selected."
+        );
       utils.billing.getSubscription.invalidate();
       setLoadingPlan(null);
       setChangePlanOpen(false);
     },
-    onError: (err) => { toast.error(err.message); setLoadingPlan(null); },
+    onError: err => {
+      toast.error(err.message);
+      setLoadingPlan(null);
+    },
   });
 
   const cancelSub = trpc.billing.cancelSubscription.useMutation({
-    onSuccess: (data) => {
-      const date = data.currentPeriodEnd ? new Date(data.currentPeriodEnd).toLocaleDateString() : "the end of your billing period";
-      toast.success(`Subscription cancelled. You'll retain access until ${date}.`);
+    onSuccess: data => {
+      const date = data.currentPeriodEnd
+        ? new Date(data.currentPeriodEnd).toLocaleDateString()
+        : "the end of your billing period";
+      if (data.success)
+        toast.success(
+          `Cancellation scheduled. You'll retain access until ${date}.`
+        );
+      else
+        toast.warning(
+          "Stripe has not confirmed cancellation. Please review Manage Billing."
+        );
       utils.billing.getSubscription.invalidate();
       setCancelOpen(false);
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   const reactivateSub = trpc.billing.reactivateSubscription.useMutation({
-    onSuccess: () => {
-      toast.success("Subscription reactivated! Your plan will continue as normal.");
+    onSuccess: data => {
+      if (data.success && !data.paymentActionRequired)
+        toast.success(
+          "Subscription reactivated! Your plan will continue as normal."
+        );
+      else
+        toast.warning(
+          "Please review the subscription's payment and cancellation status in Manage Billing."
+        );
       utils.billing.getSubscription.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   const handleUpgrade = (plan: "starter" | "builder" | "pro") => {
     // If already subscribed, use changePlan (in-place upgrade/downgrade)
-    if (subscription?.stripeSubscriptionId) {
+    if (!subscription?.canManageBilling) {
+      toast.error("Only admins of the active school can manage billing.");
+      return;
+    }
+    if (canChangeCourse360Subscription(subscription)) {
       setPendingPlan(plan);
       setChangePlanOpen(true);
       return;
@@ -261,6 +308,9 @@ export default function BillingPage() {
     createPortal.mutate({ origin: window.location.origin });
   };
 
+  const canManageBilling = subscription?.canManageBilling ?? false;
+  const hasChangeableSubscription =
+    canChangeCourse360Subscription(subscription);
   const currentPlan = (subscription?.plan ?? "free") as PlanTier;
   const statusInfo = STATUS_CONFIG[subscription?.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.active;
   const StatusIcon = statusInfo.icon;
@@ -284,13 +334,25 @@ export default function BillingPage() {
             </p>
           </div>
         </div>
-        {subscription?.stripeCustomerId && (
+        {canManageBilling && subscription?.stripeCustomerId && (
           <Button variant="outline" className="gap-2 shrink-0" onClick={handlePortal} disabled={createPortal.isPending}>
             <ExternalLink className="h-4 w-4" />
             {createPortal.isPending ? "Opening..." : "Manage Billing"}
           </Button>
         )}
       </div>
+
+      {subscriptionError && (
+        <p role="alert" className="text-sm text-destructive">
+          Billing information is unavailable: {subscriptionError.message}.
+          Please retry before making changes.
+        </p>
+      )}
+      {!isLoading && subscription && !canManageBilling && (
+        <p className="text-sm text-muted-foreground">
+          Only administrators of the active school can manage its billing.
+        </p>
+      )}
 
       {/* Current Plan Status */}
       {!isLoading && subscription && (
@@ -315,11 +377,22 @@ export default function BillingPage() {
                       {statusInfo.label}
                     </div>
                   </div>
-                  {subscription.currentPeriodEnd && (
+                  {hasChangeableSubscription &&
+                    subscription.currentPeriodEnd && (
+                      <p className="text-sm text-muted-foreground">
+                        {subscription.cancelAtPeriodEnd
+                          ? `Cancels on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
+                          : `Renews on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
+                      </p>
+                    )}
+                  {subscription.pendingChange && (
                     <p className="text-sm text-muted-foreground">
-                      {subscription.cancelAtPeriodEnd
-                        ? `Cancels on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`
-                        : `Renews on ${new Date(subscription.currentPeriodEnd).toLocaleDateString()}`}
+                      Scheduled: {subscription.pendingChange.plan} (
+                      {subscription.pendingChange.interval}) from{" "}
+                      {new Date(
+                        subscription.pendingChange.effectiveAt
+                      ).toLocaleDateString()}
+                      . Your current plan remains unchanged until then.
                     </p>
                   )}
                   {currentPlan === "free" && (
@@ -328,7 +401,35 @@ export default function BillingPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {subscription.stripeSubscriptionId && !subscription.cancelAtPeriodEnd && (
+                {canManageBilling &&
+                  hasChangeableSubscription &&
+                  !subscription.cancelAtPeriodEnd && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      onClick={() => setCancelOpen(true)}
+                      disabled={cancelSub.isPending}
+                    >
+                      Cancel Plan
+                    </Button>
+                  )}
+                {canManageBilling &&
+                  hasChangeableSubscription &&
+                  subscription.cancelAtPeriodEnd && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-green-600 border-green-200 hover:bg-green-50"
+                      onClick={() => reactivateSub.mutate()}
+                      disabled={reactivateSub.isPending}
+                    >
+                      {reactivateSub.isPending
+                        ? "Reactivating..."
+                        : "Reactivate Plan"}
+                    </Button>
+                  )}
+                {canManageBilling && subscription.stripeCustomerId && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -370,16 +471,21 @@ export default function BillingPage() {
         <Switch id="billing-toggle" checked={annual} onCheckedChange={setAnnual} />
         <Label htmlFor="billing-toggle" className={annual ? "font-semibold" : "text-muted-foreground"}>
           Annual
-          <Badge variant="secondary" className="ml-2 text-xs text-green-700 bg-green-100">Save ~15%</Badge>
+          <Badge variant="secondary" className="ml-2 text-xs text-green-700 bg-green-100">Billed upfront</Badge>
         </Label>
       </div>
 
       {/* Plan Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {plans.map((tier) => {
+        {plans.map(tier => {
           const meta = PLAN_META[tier];
           const Icon = meta.icon;
-          const isCurrent = currentPlan === tier;
+          const isCurrent =
+            currentPlan === tier &&
+            (!subscription?.stripeSubscriptionId || hasChangeableSubscription);
+          const sameInterval =
+            subscription?.billingInterval == null ||
+            subscription.billingInterval === (annual ? "annual" : "monthly");
           const price = annual ? meta.annualPrice : meta.monthlyPrice;
           const isEnterprise = tier === "enterprise";
           const isDowngrade = plans.indexOf(tier) < plans.indexOf(currentPlan);
@@ -418,7 +524,7 @@ export default function BillingPage() {
                     <span className="text-xl font-bold">Free</span>
                   ) : (
                     <div>
-                      <span className="text-2xl font-bold">${price}</span>
+                      <span className="text-2xl font-bold">{formatCourse360Dollars(price)}</span>
                       <span className="text-xs text-muted-foreground ml-1">/{annual ? "yr" : "mo"}</span>
                     </div>
                   )}
@@ -434,7 +540,7 @@ export default function BillingPage() {
                   ))}
                 </ul>
                 <div className="pt-2">
-                  {isCurrent ? (
+                  {isCurrent && sameInterval ? (
                     <Button variant="outline" size="sm" className="w-full" disabled>
                       Current Plan
                     </Button>
@@ -454,7 +560,12 @@ export default function BillingPage() {
                       size="sm"
                       className="w-full text-muted-foreground"
                       onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
-                      disabled={loadingPlan === tier || changePlan.isPending}
+                      disabled={
+                        !canManageBilling ||
+                        loadingPlan === tier ||
+                        createCheckout.isPending ||
+                        changePlan.isPending
+                      }
                     >
                       {loadingPlan === tier ? "Loading..." : "Downgrade"}
                     </Button>
@@ -463,11 +574,26 @@ export default function BillingPage() {
                       size="sm"
                       className="w-full gap-1"
                       variant={meta.highlight ? "default" : "outline"}
-                      onClick={() => handleUpgrade(tier as "starter" | "builder" | "pro")}
-                      disabled={loadingPlan === tier || createCheckout.isPending || changePlan.isPending}
+                      onClick={() =>
+                        handleUpgrade(tier as "starter" | "builder" | "pro")
+                      }
+                      disabled={
+                        !canManageBilling ||
+                        loadingPlan === tier ||
+                        createCheckout.isPending ||
+                        changePlan.isPending
+                      }
                     >
-                      {loadingPlan === tier ? "Loading..." : subscription?.stripeSubscriptionId ? "Switch to this plan" : "Start 14-Day Trial"}
-                      {loadingPlan !== tier && <ArrowUpRight className="h-3.5 w-3.5" />}
+                      {loadingPlan === tier
+                        ? "Loading..."
+                        : hasChangeableSubscription
+                          ? "Switch to this plan"
+                          : subscription?.introductoryTrialAvailable
+                            ? "Start 14-Day Trial"
+                            : "Subscribe"}
+                      {loadingPlan !== tier && (
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                   )}
                 </div>
@@ -478,20 +604,27 @@ export default function BillingPage() {
       </div>
 
       {/* Test Mode Notice */}
-      <Card className="border-amber-200 bg-amber-50/50">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-            <div className="text-sm">
-              <p className="font-medium text-amber-800">Test Mode Active</p>
-              <p className="text-amber-700 mt-0.5">
-                Use card <code className="bg-amber-100 px-1 rounded font-mono text-xs">4242 4242 4242 4242</code> with any future expiry and CVC to test payments.
-                Live payments require your Stripe live keys to be configured in Settings → Payment.
-              </p>
+      {subscription?.paymentMode === "test" && (
+        <Card className="border-amber-200 bg-amber-50/50">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-800">Test Mode Active</p>
+                <p className="text-amber-700 mt-0.5">
+                  Use card{" "}
+                  <code className="bg-amber-100 px-1 rounded font-mono text-xs">
+                    4242 4242 4242 4242
+                  </code>{" "}
+                  with any future expiry and CVC to test payments. Live payments
+                  require your Stripe live keys to be configured in Settings →
+                  Payment.
+                </p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Enterprise inquiry dialog */}
       <Dialog open={enterpriseOpen} onOpenChange={setEnterpriseOpen}>
@@ -510,7 +643,9 @@ export default function BillingPage() {
               <Label htmlFor="teamSize">Team size</Label>
               <Select
                 value={enterpriseForm.teamSize}
-                onValueChange={(v) => setEnterpriseForm((f) => ({ ...f, teamSize: v }))}
+                onValueChange={v =>
+                  setEnterpriseForm(f => ({ ...f, teamSize: v }))
+                }
               >
                 <SelectTrigger id="teamSize">
                   <SelectValue placeholder="Select team size" />
@@ -530,7 +665,9 @@ export default function BillingPage() {
                 placeholder="Custom integrations, onboarding requirements, SLA needs…"
                 rows={4}
                 value={enterpriseForm.message}
-                onChange={(e) => setEnterpriseForm((f) => ({ ...f, message: e.target.value }))}
+                onChange={e =>
+                  setEnterpriseForm(f => ({ ...f, message: e.target.value }))
+                }
               />
             </div>
           </div>
@@ -544,7 +681,11 @@ export default function BillingPage() {
                 contactEmail: user?.email ?? "",
                 ...enterpriseForm,
               })}
-              disabled={contactEnterprise.isPending || !enterpriseForm.teamSize}
+              disabled={
+                !canManageBilling ||
+                contactEnterprise.isPending ||
+                !enterpriseForm.teamSize
+              }
             >
               {contactEnterprise.isPending ? "Sending…" : "Send Inquiry"}
               <Send className="ml-2 h-3.5 w-3.5" />
@@ -595,21 +736,34 @@ export default function BillingPage() {
           <DialogHeader>
             <DialogTitle>Confirm Plan Change</DialogTitle>
             <DialogDescription>
-              {pendingPlan && (() => {
-                const PLAN_ORDER: Record<string, number> = { starter: 1, builder: 2, pro: 3 };
-                const currentPlanName = (subscription?.plan ?? "free") as string;
-                const isUp = (PLAN_ORDER[pendingPlan] ?? 0) > (PLAN_ORDER[currentPlanName] ?? 0);
-                const targetMeta = PLAN_META[pendingPlan];
-                const price = annual ? targetMeta.annualPrice : targetMeta.monthlyPrice;
-                return (
-                  <span>
-                    {isUp
-                      ? `You're upgrading to the ${targetMeta.name} plan ($${price}/${annual ? "yr" : "mo"}). Your card will be charged a prorated amount today.`
-                      : `You're downgrading to the ${targetMeta.name} plan ($${price}/${annual ? "yr" : "mo"}). The change takes effect at the end of your current billing period.`
-                    }
-                  </span>
-                );
-              })()}
+              {pendingPlan &&
+                (() => {
+                  const PLAN_ORDER: Record<string, number> = {
+                    starter: 1,
+                    builder: 2,
+                    pro: 3,
+                  };
+                  const currentPlanName = (subscription?.plan ??
+                    "free") as string;
+                  const isUp =
+                    (PLAN_ORDER[pendingPlan] ?? 0) >
+                    (PLAN_ORDER[currentPlanName] ?? 0);
+                  const intervalChanged =
+                    subscription?.billingInterval != null &&
+                    subscription.billingInterval !==
+                      (annual ? "annual" : "monthly");
+                  const targetMeta = PLAN_META[pendingPlan];
+                  const price = annual
+                    ? targetMeta.annualPrice
+                    : targetMeta.monthlyPrice;
+                  return (
+                    <span>
+                      {isUp && !intervalChanged
+                        ? `You're upgrading to the ${targetMeta.name} plan (${formatCourse360Dollars(price!)}/${annual ? "yr, billed upfront" : "mo"}). Your card will be charged a prorated amount today.`
+                        : `You're changing to the ${targetMeta.name} plan (${formatCourse360Dollars(price!)}/${annual ? "yr, billed upfront" : "mo"}). The change takes effect at the end of your current billing period.`}
+                    </span>
+                  );
+                })()}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

@@ -462,7 +462,10 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
                   {Array.from({ length: r.rating ?? 0 }).map((_, j) => <span key={j} className="text-yellow-400">★</span>)}
                 </div>
                 <p className="text-gray-700 mb-3 italic">"{r.text}"</p>
-                <p className="text-sm font-semibold text-gray-900">— {r.name}</p>
+                <div className="flex items-center gap-3">
+                  {r.avatarUrl && <img src={r.avatarUrl} alt={r.name ?? "Reviewer"} className="w-10 h-10 rounded-full object-cover" loading="lazy" decoding="async" />}
+                  <p className="text-sm font-semibold text-gray-900">— {r.name}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -1073,7 +1076,7 @@ export function BlockPreview({ block, coursePrice, courseTitle, courseId, onEnro
     case "inline_checkout": {
       return (
         <div style={{ backgroundColor: d.bgColor ?? "#f9fafb" }}>
-          <InlineCheckoutBlock data={block.data} sourceType={d.sourceType ?? "other"} />
+          <InlineCheckoutBlock data={{ ...block.data, checkoutBlockId: block.id }} sourceType={d.sourceType ?? "other"} />
         </div>
       );
     }

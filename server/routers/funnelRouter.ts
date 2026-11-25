@@ -14,6 +14,19 @@ import { computeFunnelCheckoutTotalCents } from "../lib/checkoutPricing";
 import { getStripeClient } from "../lib/stripeClient";
 import { getOrgBaseUrl } from "../lib/orgUrl";
 
+import { requireCourse360BuilderSchool } from "../lib/course360BuilderSchoolScope";
+import { readCourse360BuilderNativeFunnels } from "../lib/course360BuilderNativeFunnelPicker";
+
+// Keep incompatible endpoints registered and their existing implementations intact,
+// but stop before any content, payment or destructive operation. No guessed columns/IDs.
+const legacyUnavailableProcedure = protectedProcedure.use(async ({ ctx }) => {
+  await requireCourse360BuilderSchool(ctx);
+  throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This legacy funnel operation requires a native funnel adapter. Use funnel360; existing content is preserved." });
+});
+const legacyUnavailablePublicProcedure = publicProcedure.use(async () => {
+  throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This legacy funnel page API requires a verified native page adapter." });
+});
+
 function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -223,29 +236,12 @@ export const funnelRouter = router({
 
   /** List all funnels */
   list: protectedProcedure.query(async ({ ctx }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-    const db = await getDb();
-    const rows = await db
-      .select()
-      .from(funnels)
-      .orderBy(asc(funnels.sortOrder), desc(funnels.updatedAt));
-    if (rows.length === 0) return [];
-    // Batch-fetch all pages in a single query instead of N+1 loop
-    const allPages = await db
-      .select()
-      .from(funnelPages)
-      .where(inArray(funnelPages.funnelId, rows.map(f => f.id)))
-      .orderBy(asc(funnelPages.sortOrder));
-    const pagesByFunnelId = new Map<number, typeof allPages>();
-    for (const page of allPages) {
-      if (!pagesByFunnelId.has(page.funnelId)) pagesByFunnelId.set(page.funnelId, []);
-      pagesByFunnelId.get(page.funnelId)!.push(page);
-    }
-    return rows.map(funnel => ({ ...funnel, pages: pagesByFunnelId.get(funnel.id) ?? [] }));
+    const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+    return readCourse360BuilderNativeFunnels(db, orgId);
   }),
 
   /** Reorder funnels by updating sortOrder */
-  reorderFunnels: protectedProcedure
+  reorderFunnels: legacyUnavailableProcedure
     .input(z.object({ funnelIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -263,20 +259,14 @@ export const funnelRouter = router({
   get: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      const [funnel] = await db.select().from(funnels).where(eq(funnels.id, input.id));
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const [funnel] = await readCourse360BuilderNativeFunnels(db, orgId, input.id);
       if (!funnel) throw new TRPCError({ code: "NOT_FOUND" });
-      const pages = await db
-        .select()
-        .from(funnelPages)
-        .where(eq(funnelPages.funnelId, funnel.id))
-        .orderBy(asc(funnelPages.sortOrder));
-      return { ...funnel, pages };
+      return funnel;
     }),
 
   /** Create a new funnel */
-  create: protectedProcedure
+  create: legacyUnavailableProcedure
     .input(
       z.object({
         name: z.string().min(1).max(255),
@@ -312,7 +302,7 @@ export const funnelRouter = router({
     }),
 
   /** Update funnel settings */
-  update: protectedProcedure
+  update: legacyUnavailableProcedure
     .input(
       z.object({
         id: z.number(),
@@ -334,7 +324,7 @@ export const funnelRouter = router({
     }),
 
   /** Delete a funnel and all its pages */
-  delete: protectedProcedure
+  delete: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -345,7 +335,7 @@ export const funnelRouter = router({
     }),
 
   /** Duplicate a funnel */
-  duplicate: protectedProcedure
+  duplicate: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -408,7 +398,7 @@ export const funnelRouter = router({
       return { id: newFunnelId, slug };
     }),
   /** Save a funnel as a reusable template */
-  saveAsTemplate: protectedProcedure
+  saveAsTemplate: legacyUnavailableProcedure
     .input(z.object({ id: z.number(), templateName: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -428,13 +418,13 @@ export const funnelRouter = router({
       return { success: true };
     }),
   /** List user-saved templates */
-  listTemplates: protectedProcedure.query(async ({ ctx }) => {
+  listTemplates: legacyUnavailableProcedure.query(async ({ ctx }) => {
     if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
     const db = await getDb();
     return db.select().from(funnelTemplates).orderBy(desc(funnelTemplates.createdAt));
   }),
   /** Delete a saved template */
-  deleteTemplate: protectedProcedure
+  deleteTemplate: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -446,7 +436,7 @@ export const funnelRouter = router({
   // ─── Page Management ─────────────────────────────────────────────────────
 
   /** Add a page to a funnel */
-  addPage: protectedProcedure
+  addPage: legacyUnavailableProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -490,7 +480,7 @@ export const funnelRouter = router({
     }),
 
   /** Update a funnel page */
-  updatePage: protectedProcedure
+  updatePage: legacyUnavailableProcedure
     .input(
       z.object({
         id: z.number(),
@@ -522,7 +512,7 @@ export const funnelRouter = router({
       return { success: true };
     }),
   /** Duplicate a funnel page */
-  duplicatePage: protectedProcedure
+  duplicatePage: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -554,7 +544,7 @@ export const funnelRouter = router({
     }),
 
   /** Copy a funnel page to a different funnel */
-  copyPageToFunnel: protectedProcedure
+  copyPageToFunnel: legacyUnavailableProcedure
     .input(z.object({ pageId: z.number(), targetFunnelId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -588,7 +578,7 @@ export const funnelRouter = router({
     }),
 
   /** Copy a funnel page as a standalone landing page (isStandaloneLanding = true) */
-  copyPageAsStandalone: protectedProcedure
+  copyPageAsStandalone: legacyUnavailableProcedure
     .input(z.object({ pageId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -620,7 +610,7 @@ export const funnelRouter = router({
     }),
 
   /** Delete a funnel page */
-  deletePage: protectedProcedure
+  deletePage: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -635,7 +625,7 @@ export const funnelRouter = router({
     }),
 
   /** Reorder pages within a funnel */
-  reorderPages: protectedProcedure
+  reorderPages: legacyUnavailableProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -660,7 +650,7 @@ export const funnelRouter = router({
     }),
 
   /** Connect two pages (set nextPageId) */
-  connectPages: protectedProcedure
+  connectPages: legacyUnavailableProcedure
     .input(
       z.object({
         fromPageId: z.number(),
@@ -678,7 +668,7 @@ export const funnelRouter = router({
     }),
 
   /** Create Stripe checkout session for a funnel product */
-  createCheckout: protectedProcedure
+  createCheckout: legacyUnavailableProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -749,25 +739,19 @@ export const funnelRouter = router({
   getPageById: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      const [page] = await db.select().from(funnelPages).where(eq(funnelPages.id, input.id));
-      if (!page) throw new TRPCError({ code: "NOT_FOUND", message: "Funnel page not found" });
-      // Also get the funnel info
-      const [funnel] = await db.select().from(funnels).where(eq(funnels.id, page.funnelId));
-      // Get all pages in this funnel for sidebar navigation
-      const allPages = await db
-        .select()
-        .from(funnelPages)
-        .where(eq(funnelPages.funnelId, page.funnelId))
-        .orderBy(asc(funnelPages.sortOrder));
-      return { page, funnel, allPages };
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const rows = await readCourse360BuilderNativeFunnels(db, orgId);
+      const matches = rows.flatMap((funnel: any) => funnel.pages.filter((page: any) => page.id === input.id)
+        .map((page: any) => ({ page, funnel, allPages: funnel.pages })));
+      if (!matches.length) throw new TRPCError({ code: "NOT_FOUND", message: "Native funnel page not found" });
+      if (matches.length !== 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Page is linked to multiple steps; use the explicit native step API" });
+      return matches[0];
     }),
 
   // ─── Leads / Contacts Management ────────────────────────────────────────────
 
   /** List all leads with pagination and filtering */
-  listLeads: protectedProcedure
+  listLeads: legacyUnavailableProcedure
     .input(z.object({
       page: z.number().default(1),
       limit: z.number().default(50),
@@ -809,7 +793,7 @@ export const funnelRouter = router({
     }),
 
   /** Get a single lead by ID with full details */
-  getLeadById: protectedProcedure
+  getLeadById: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -826,7 +810,7 @@ export const funnelRouter = router({
     }),
 
   /** Update a lead (tags, name, phone) */
-  updateLead: protectedProcedure
+  updateLead: legacyUnavailableProcedure
     .input(z.object({
       id: z.number(),
       name: z.string().optional(),
@@ -845,7 +829,7 @@ export const funnelRouter = router({
     }),
 
   /** Delete leads by IDs */
-  deleteLeads: protectedProcedure
+  deleteLeads: legacyUnavailableProcedure
     .input(z.object({ ids: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -859,7 +843,7 @@ export const funnelRouter = router({
     // ─── Flow Diagram ─────────────────────────────────────────────────────────────────
 
   /** Return all pages + branch rules for a funnel, ready for the flow diagram */
-  getFlowDiagram: protectedProcedure
+  getFlowDiagram: legacyUnavailableProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -903,7 +887,7 @@ export const funnelRouter = router({
   // ─── Branch Rules CRUD ────────────────────────────────────────────────
 
   /** List all branch rules for a funnel page (with conditions) */
-  listBranchRules: protectedProcedure
+  listBranchRules: legacyUnavailableProcedure
     .input(z.object({ pageId: z.number() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -929,7 +913,7 @@ export const funnelRouter = router({
     }),
 
   /** Create or update a branch rule (upsert by id) */
-  upsertBranchRule: protectedProcedure
+  upsertBranchRule: legacyUnavailableProcedure
     .input(z.object({
       id: z.number().optional(),
       funnelPageId: z.number(),
@@ -988,7 +972,7 @@ export const funnelRouter = router({
     }),
 
   /** Delete a branch rule and its conditions */
-  deleteBranchRule: protectedProcedure
+  deleteBranchRule: legacyUnavailableProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -999,7 +983,7 @@ export const funnelRouter = router({
     }),
 
   /** Reorder branch rules by updating priorities */
-  reorderBranchRules: protectedProcedure
+  reorderBranchRules: legacyUnavailableProcedure
     .input(z.object({ ruleIds: z.array(z.number()) }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -1011,7 +995,7 @@ export const funnelRouter = router({
     }),
 
   /** Update funnel settings (slug, SEO, status, custom redirect) */
-  updateFunnelSettings: protectedProcedure
+  updateFunnelSettings: legacyUnavailableProcedure
     .input(z.object({
       funnelId: z.number().int().positive(),
       slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and hyphens only"),
@@ -1038,7 +1022,7 @@ export const funnelRouter = router({
 // ─── Public Router (for rendering funnel pages) ──────────────────────────────────────────────────
 export const funnelPublicRouter = router({
   /** Get a funnel by slug (public) */
-  getBySlug: publicProcedure
+  getBySlug: legacyUnavailablePublicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -1060,7 +1044,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Get a standalone landing page by its slug (public — served at /p/{slug}) */
-  getStandalonePage: publicProcedure
+  getStandalonePage: legacyUnavailablePublicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -1083,7 +1067,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Get the first page of a funnel by slug — used to redirect /:slug → /:slug/:firstPageSlug */
-  getFirstPage: publicProcedure
+  getFirstPage: legacyUnavailablePublicProcedure
     .input(z.object({ funnelSlug: z.string() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -1103,7 +1087,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Get a specific funnel page (public) */
-  getPage: publicProcedure
+  getPage: legacyUnavailablePublicProcedure
     .input(z.object({ funnelSlug: z.string(), pageSlug: z.string() }))
     .query(async ({ input }) => {
       const db = await getDb();
@@ -1153,7 +1137,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Create a checkout session from the checkout form block (public — no login required) */
-  createFunnelFormCheckout: publicProcedure
+  createFunnelFormCheckout: legacyUnavailablePublicProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -1308,7 +1292,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Create a PaymentIntent for inline Stripe Elements checkout (no redirect) */
-  createFunnelPaymentIntent: publicProcedure
+  createFunnelPaymentIntent: legacyUnavailablePublicProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -1627,7 +1611,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Submit a lead capture form (public) */
-  submitLead: publicProcedure
+  submitLead: legacyUnavailablePublicProcedure
     .input(
       z.object({
         funnelId: z.number(),
@@ -1676,7 +1660,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** List email campaigns for lead capture campaign linking (public — returns id + subject only) */
-  listCampaignsPublic: publicProcedure
+  listCampaignsPublic: legacyUnavailablePublicProcedure
     .query(async () => {
       const db = await getDb();
       const campaigns = await db
@@ -1688,7 +1672,7 @@ export const funnelPublicRouter = router({
     }),
 
   /** Evaluate branch rules for a funnel page given visitor context (public) */
-  evaluateBranch: publicProcedure
+  evaluateBranch: legacyUnavailablePublicProcedure
     .input(z.object({
       pageId: z.number(),
       context: z.object({
@@ -1757,7 +1741,7 @@ export const funnelPublicRouter = router({
    * No authentication required — works for anonymous visitors.
    * Fulfillment is handled by the existing Stripe webhook (handleFunnelPaymentIntentSucceeded).
    */
-  createDirectCheckout: publicProcedure
+  createDirectCheckout: legacyUnavailablePublicProcedure
     .input(
       z.object({
         productType: z.enum(["course", "quiz", "cohort", "download", "product", "bundle"]),
@@ -1873,7 +1857,7 @@ export const funnelPublicRouter = router({
 export const funnelAdminRouter = router({
 
   /** List pages that can be imported into a funnel (standalone landing pages + pages from other funnels) */
-  listImportablePages: protectedProcedure
+  listImportablePages: legacyUnavailableProcedure
     .input(z.object({ excludeFunnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -1996,7 +1980,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Import (copy) an existing page into a funnel */
-  importPageToFunnel: protectedProcedure
+  importPageToFunnel: legacyUnavailableProcedure
     .input(z.object({
       sourcePageId: z.number(),
       targetFunnelId: z.number(),
@@ -2084,7 +2068,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Get per-page analytics with drop-off rates and sales issue detection */
-  getFunnelAnalytics: protectedProcedure
+  getFunnelAnalytics: legacyUnavailableProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -2172,7 +2156,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Export funnel leads as CSV data */
-  exportFunnelLeadsCSV: protectedProcedure
+  exportFunnelLeadsCSV: legacyUnavailableProcedure
     .input(z.object({ funnelId: z.number() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -2212,7 +2196,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Global contacts list — all leads across all funnels with conversion status */
-  globalContacts: protectedProcedure
+  globalContacts: legacyUnavailableProcedure
     .input(z.object({
       page: z.number().int().min(1).default(1),
       pageSize: z.number().int().min(1).max(200).default(50),
@@ -2321,7 +2305,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Conversion funnel summary — Lead → Registered → Purchaser metrics */
-  conversionFunnel: protectedProcedure
+  conversionFunnel: legacyUnavailableProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -2420,7 +2404,7 @@ export const funnelAdminRouter = router({
     }),
 
   /** Export all contacts as CSV with conversion status */
-  exportAllContactsCSV: protectedProcedure
+  exportAllContactsCSV: legacyUnavailableProcedure
     .input(z.object({ funnelId: z.number().optional() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -2479,7 +2463,7 @@ export const funnelAdminRouter = router({
    * Returns the count for the requested entity type. No auth required so it
    * works on public landing pages and standalone funnel pages.
    */
-  getEnrollmentCount: publicProcedure
+  getEnrollmentCount: legacyUnavailablePublicProcedure
     .input(z.object({
       countType: z.enum([
         "site_users",
@@ -2565,25 +2549,11 @@ export const funnelAdminRouter = router({
   /** Get all funnels with their pages (including blocks) for the block picker "Copy from Other Pages" tab */
   getFunnelsWithPages: protectedProcedure
     .query(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const allFunnelsList = await db
-        .select({ id: funnels.id, name: funnels.name, status: funnels.status })
-        .from(funnels)
-        .orderBy(asc(funnels.name));
-      const result = [];
-      for (const funnel of allFunnelsList) {
-        const pages = await db
-          .select({ id: funnelPages.id, title: funnelPages.title, slug: funnelPages.slug, pageType: funnelPages.pageType, blocks: funnelPages.blocks })
-          .from(funnelPages)
-          .where(eq(funnelPages.funnelId, funnel.id))
-          .orderBy(asc(funnelPages.sortOrder));
-        const pagesWithBlocks = pages.filter(p => p.blocks && p.blocks.length > 2);
-        if (pagesWithBlocks.length > 0) {
-          result.push({ ...funnel, pages: pagesWithBlocks });
-        }
-      }
-      return result;
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const rows = await readCourse360BuilderNativeFunnels(db, orgId);
+      return rows.map((funnel: any) => ({ ...funnel, pages: funnel.pages.filter((page: any) => {
+        try { const blocks = JSON.parse(page.blocks || "[]"); return Array.isArray(blocks) && blocks.length > 0; }
+        catch { return false; }
+      }) })).filter((funnel: any) => funnel.pages.length > 0);
     }),
 });

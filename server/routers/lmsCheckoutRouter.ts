@@ -15,38 +15,49 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { and, eq, desc, or, isNull, inArray } from "drizzle-orm";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
+import { getDb, getOrgIdForUserWithFallback, requireOrgAdmin } from "../db";
 import { ENV } from "../_core/env";
 import {
   lmsCourses,
   lmsPricingOptions,
   lmsEnrollments,
-  lmsOrders,
   lmsCheckoutPages,
   lmsCheckoutPageTemplates,
   platformSettings,
   organizations,
   digitalProducts,
   digitalProductPrices,
-  digitalOrders,
   webinars,
   memberships,
   membershipPlans,
   physicalProducts,
   physicalProductPricingOptions,
-  physicalProductOrders,
   orderBumps,
   workshops,
   workshopRegistrations,
   bundles,
+  bundlePricingOptions,
+  membershipMembers,
+  membershipSubscriptions,
+  bundleEnrollments,
+  webinarRegistrations,
   coupons,
   orgPaymentSettings,
 } from "../../drizzle/schema";
 import { assertAdmin } from "./lmsHelpers";
-import { fulfillOrderBumpPurchase } from "../lib/orderBumpCheckout";
 import { couponIsRedeemableForCheckout } from "../lib/couponTargeting";
 import { getOrgBaseUrl } from "../lib/orgUrl";
+import {
+  course360HostedCheckoutPurchases, createHostedPurchase, hostedPurchaseMetadata, assertCourse360HostedPersistenceReady,
+  resolveCourse360HostedGateway, hostedEnrollmentHasCurrentFullAccess,
+} from "../lib/course360HostedCheckout";
+import {
+  reconcileCourse360HostedSignedSession, fulfillCourse360HostedFreePurchase,
+  assertHostedIncludedContentScope, resolveHostedOwnedContent, assertHostedPricingOption,
+} from "../lib/course360HostedCheckoutReconciliation";
 
+import { resolveProtectedCourse360PurchaseGateway } from "../lib/course360SchoolStripeGateway";
+import { hasCourse360SourceEntitlement } from "../lib/course360HostedCheckoutEntitlements";
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
 export const CONTENT_TYPES = ["course", "download", "physical_product", "webinar", "membership", "membership_plan", "workshop", "bundle"] as const;
@@ -168,7 +179,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         subtitle: null, description: row.description,
         coverImageUrl: row.thumbnailUrl,
         primaryColor: "#179ca3", accentColor: "#0d9488",
-        pricingType: primaryPrice?.type === "one_time" ? "one_time" : "one_time",
+        pricingType: primaryPrice?.type ?? "free",
         price: primaryPrice?.amount ?? "0", currency: primaryPrice?.currency ?? "usd",
         isFree: !primaryPrice || Number(primaryPrice.amount) === 0,
         subscriptionInterval: null, trialDays: null,
@@ -186,7 +197,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         .where(and(eq(physicalProductPricingOptions.productId, row.id), eq(physicalProductPricingOptions.isActive, true)));
       const primaryOpt = options[0];
       return {
-        id: row.id, orgId: row.orgId ?? 1, slug: row.slug, title: row.title,
+        id: row.id, orgId: row.orgId, slug: row.slug, title: row.title,
         subtitle: null, description: row.description,
         coverImageUrl: row.coverImageUrl ?? row.thumbnailUrl,
         primaryColor: "#179ca3", accentColor: "#0d9488",
@@ -236,6 +247,8 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         stripeProductId: row.stripeProductId ?? null,
         pricingOptions: [],
         isAvailable: row.isActive === true,
+        courseIds: row.courseIds,
+        courseAccess: row.courseAccess,
         enrollmentClosed: row.enrollmentClosed === true,
       };
     }
@@ -250,7 +263,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         pricingType: "subscription",
         price: String(row.price), currency: "usd",
         isFree: Number(row.price) === 0,
-        subscriptionInterval: row.billingInterval === "annual" ? "annual" : "monthly",
+        subscriptionInterval: row.billingInterval,
         trialDays: null,
         stripePriceId: row.stripePriceId ?? null,
         stripeProductId: row.stripeProductId ?? null,
@@ -288,9 +301,11 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
       if (isNaN(bundleId)) return null;
       const [row] = await db.select().from(bundles).where(eq(bundles.id, bundleId)).limit(1);
       if (!row) return null;
+      const pricingOptions = await db.select().from(bundlePricingOptions).where(eq(bundlePricingOptions.bundleId, row.id)).orderBy(bundlePricingOptions.sortOrder);
       return {
-        id: row.id, orgId: row.orgId ?? 1, slug: String(row.id), title: row.name,
+        id: row.id, orgId: row.orgId, slug: String(row.id), title: row.name,
         subtitle: null, description: row.description ?? null,
+        courseIds: row.courseIds,
         coverImageUrl: row.thumbnailUrl ?? null,
         primaryColor: "#179ca3", accentColor: "#0d9488",
         pricingType: "one_time",
@@ -299,7 +314,7 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
         subscriptionInterval: null, trialDays: null,
         stripePriceId: null,
         stripeProductId: null,
-        pricingOptions: [],
+        pricingOptions,
         isAvailable: row.isActive === true,
         enrollmentClosed: row.enrollmentClosed === true,
       };
@@ -309,17 +324,18 @@ async function resolveContentBySlug(db: any, contentType: ContentType, slug: str
   }
 }
 
-async function getCheckoutPageRow(db: any, contentType: ContentType, contentId: number) {
+async function getCheckoutPageRow(db: any, contentType: ContentType, contentId: number, orgId?: number) {
   const [row] = await db.select().from(lmsCheckoutPages)
     .where(and(
       eq(lmsCheckoutPages.contentType, contentType),
       eq(lmsCheckoutPages.contentId, contentId),
+      ...(orgId ? [eq(lmsCheckoutPages.orgId, orgId)] : []),
     )).limit(1);
   if (row) return row;
   // Fallback: legacy courseId lookup for courses
   if (contentType === "course") {
     const [legacy] = await db.select().from(lmsCheckoutPages)
-      .where(eq(lmsCheckoutPages.courseId, contentId)).limit(1);
+      .where(and(eq(lmsCheckoutPages.courseId, contentId), ...(orgId ? [eq(lmsCheckoutPages.orgId, orgId)] : []))).limit(1);
     return legacy ?? null;
   }
   return null;
@@ -330,7 +346,7 @@ async function getCheckoutPageRow(db: any, contentType: ContentType, contentId: 
  * Returns bumps where pricingOptionId IS NULL (global) OR matches the given pricingOptionId.
  * The frontend filters further based on the selected tier.
  */
-async function fetchOrderBumps(db: any, contentType: ContentType, contentId: number) {
+async function fetchOrderBumps(db: any, contentType: ContentType, contentId: number, orgId?: number) {
   // Map content type to orderBumps triggerProductType enum values
   const triggerType = contentType === "course" ? "course"
     : contentType === "download" ? "download"
@@ -342,6 +358,7 @@ async function fetchOrderBumps(db: any, contentType: ContentType, contentId: num
       eq(orderBumps.triggerProductType, triggerType as any),
       eq(orderBumps.triggerProductId, contentId),
       eq(orderBumps.isActive, true),
+      ...(orgId ? [eq(orderBumps.orgId, orgId)] : []),
     ))
     .orderBy(orderBumps.sortOrder);
 
@@ -410,24 +427,16 @@ export const lmsCheckoutPublicRouter = router({
       const resolvedTermsLink2Url = contentTermsRow?.purchaseTermsLink2Url || orgPaySettings?.purchaseTermsLink2Url || (settings as any)?.privacyUrl || null;
 
       // Checkout page config
-      const checkoutPageRow = await getCheckoutPageRow(db, input.contentType, content.id);
+      const checkoutPageRow = await getCheckoutPageRow(db, input.contentType, content.id, content.orgId);
       const checkoutConfig = parseConfig(checkoutPageRow ?? null);
 
       // Order bumps (placement: during_checkout)
-      const bumps = await fetchOrderBumps(db, input.contentType, content.id);
+      const bumps = await fetchOrderBumps(db, input.contentType, content.id, content.orgId);
 
       // Check if user already has access (only active/completed enrollments count — not suspended/cancelled)
       let hasAccess = false;
       if (ctx.user && input.contentType === "course") {
-        const [existing] = await db.select({ id: lmsEnrollments.id, status: lmsEnrollments.status })
-          .from(lmsEnrollments)
-          .where(and(
-            eq(lmsEnrollments.userId, ctx.user.id),
-            eq(lmsEnrollments.courseId, content.id),
-            inArray(lmsEnrollments.status, ["active", "completed"]),
-          ))
-          .limit(1);
-        hasAccess = !!existing;
+        hasAccess = await checkExistingAccess(db, input.contentType, content.id, ctx.user.id, content.orgId, ctx.user.email);
       }
 
       // Enrich pricing options with team pricing fields (already in DB columns)
@@ -493,13 +502,13 @@ export const lmsCheckoutLearnerRouter = router({
     .input(z.object({
       contentType: z.enum(CONTENT_TYPES),
       slug: z.string(),
-      pricingOptionId: z.number().optional(),
+      pricingOptionId: z.number().int().positive().optional(),
       origin: z.string(),
       promoCode: z.string().optional(),
       // Team / group purchase
-      seatCount: z.number().min(1).max(500).optional(),
+      seatCount: z.number().int().min(1).max(500).optional(),
       // Order bump add-ons: array of bump IDs the user opted into
-      selectedBumpIds: z.array(z.number()).optional(),
+      selectedBumpIds: z.array(z.number().int().positive()).max(20).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -507,16 +516,16 @@ export const lmsCheckoutLearnerRouter = router({
 
       const content = await resolveContentBySlug(db, input.contentType, input.slug);
       if (!content) throw new TRPCError({ code: "NOT_FOUND", message: "Content not found" });
+      if (!content.isAvailable) throw new TRPCError({ code: "NOT_FOUND", message: "Content not available" });
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== content.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "This item is not in the active school." });
+      await assertHostedIncludedContentScope(db, input.contentType, content);
       if (content.enrollmentClosed) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment is closed for this item." });
       }
 
       const [organization] = await db
-        .select({
-          slug: organizations.slug,
-          customDomain: organizations.customDomain,
-          domainVerificationStatus: organizations.domainVerificationStatus,
-        })
+        .select()
         .from(organizations)
         .where(eq(organizations.id, content.orgId))
         .limit(1);
@@ -541,50 +550,54 @@ export const lmsCheckoutLearnerRouter = router({
       let perSeatPrice: number | null = null;
       let teamStripePriceId: string | null = null;
 
-      if (input.pricingOptionId && content.pricingOptions.length > 0) {
-        const opt = content.pricingOptions.find((o: any) => o.id === input.pricingOptionId) as any;
-        if (opt) {
-          effectivePrice = Number(opt.price ?? opt.amount ?? 0);
-          pricingType = (opt.pricingType ?? opt.type) as string;
-          effectiveStripePriceId = opt.stripePriceId ?? null;
-          effectiveSubscriptionInterval = opt.subscriptionInterval ?? opt.billingInterval ?? null;
-          isTeamPricing = opt.isTeamPricing ?? false;
-          minSeats = opt.minSeats ?? 2;
-          maxSeats = opt.maxSeats ?? 100;
-          perSeatPrice = opt.perSeatPrice ? Number(opt.perSeatPrice) : null;
-          teamStripePriceId = opt.teamStripePriceId ?? null;
-        }
+      const selectedOption = input.pricingOptionId !== undefined
+        ? content.pricingOptions.find((o: any) => o.id === input.pricingOptionId && o.isActive !== false) as any
+        : null;
+      if (input.pricingOptionId !== undefined && !selectedOption) throw new TRPCError({ code: "BAD_REQUEST", message: "The selected price is not available for this item." });
+      const selectedPricingOptionId = selectedOption?.id ?? null;
+      await assertHostedPricingOption(db, { contentType: input.contentType, contentId: content.id, orgId: content.orgId, pricingOptionId: selectedPricingOptionId });
+      if (selectedOption) {
+        effectivePrice = Number(selectedOption.price ?? selectedOption.amount ?? 0);
+        pricingType = selectedOption.pricingType ?? selectedOption.type;
+        effectiveStripePriceId = selectedOption.stripePriceId ?? null;
+        effectiveSubscriptionInterval = selectedOption.subscriptionInterval ?? selectedOption.billingInterval ?? null;
+        effectiveTrialDays = selectedOption.trialDays ?? content.trialDays;
+        isTeamPricing = selectedOption.isTeamPricing ?? false;
+        minSeats = selectedOption.minSeats ?? 2;
+        maxSeats = selectedOption.maxSeats ?? 100;
+        perSeatPrice = selectedOption.perSeatPrice != null ? Number(selectedOption.perSeatPrice) : null;
+        teamStripePriceId = selectedOption.teamStripePriceId ?? null;
       }
-
+      if (pricingType === "payment_plan") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This finite installment plan needs a billing schedule before it can be purchased." });
+      if (pricingType === "trial_then_subscription") pricingType = "subscription";
+      if (!["free", "one_time", "subscription"].includes(pricingType)) throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported pricing type: " + pricingType });
+      if (pricingType === "subscription" && !["course", "membership", "membership_plan", "bundle", "download", "webinar"].includes(input.contentType)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This recurring content family needs a finite entitlement adapter." });
+      if (pricingType === "subscription" && !["monthly", "quarterly", "annual"].includes(effectiveSubscriptionInterval ?? "")) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid subscription interval" });
+      if (isTeamPricing && (input.seatCount ?? minSeats) < minSeats || isTeamPricing && (input.seatCount ?? minSeats) > maxSeats) throw new TRPCError({ code: "BAD_REQUEST", message: "Seat count is outside this price's limits." });
       // Determine seat count for team pricing
       const seatCount = isTeamPricing ? Math.max(minSeats, Math.min(maxSeats, input.seatCount ?? minSeats)) : 1;
       // Per-seat price overrides base price for team tiers
-      const unitPrice = isTeamPricing && perSeatPrice ? perSeatPrice : effectivePrice;
+      const unitPrice = isTeamPricing && perSeatPrice != null ? perSeatPrice : effectivePrice;
+      if (!Number.isFinite(unitPrice) || unitPrice < 0 || (pricingType === "free" && unitPrice !== 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid checkout price" });
+      await assertCourse360HostedPersistenceReady(db, pricingType === "subscription");
+      if (await checkExistingAccess(db, input.contentType, content.id, ctx.user.id, content.orgId, ctx.user.email)) throw new TRPCError({ code: "CONFLICT", message: "You already have current access to this item." });
 
-      // Free path
-      if (pricingType === "free" || (unitPrice === 0 && !isTeamPricing)) {
-        await grantAccess(db, input.contentType, content, ctx.user.id, null, seatCount);
+      // A genuine free grant still records a school-bound durable claim. Paid bumps never disappear into this path.
+      if (unitPrice === 0 && !input.selectedBumpIds?.length && !(effectiveTrialDays && effectiveTrialDays > 0)) {
+        const purchase = await createHostedPurchase(db, {
+          orgId: content.orgId, userId: ctx.user.id, contentType: input.contentType, contentId: content.id,
+          contentSlug: content.slug, gateway: "free", accountId: `school:${content.orgId}`,
+          pricingOptionId: selectedPricingOptionId, pricingType, unitPrice: "0.00", seats: seatCount,
+          currency: content.currency.toLowerCase(), zeroPaymentEligible: 1, trialDays: 0,
+        }, true);
+        await fulfillCourse360HostedFreePurchase(db, purchase, content);
         return { type: "free" as const, slug: content.slug, contentType: input.contentType };
       }
-
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2024-06-20" as any });
-
+      const gateway = await resolveCourse360HostedGateway(organization, ENV.stripeSecretKey, db);
+      const { stripe, requestOptions } = gateway;
       const successUrl = `${organizationBaseUrl}/checkout/complete?session_id={CHECKOUT_SESSION_ID}&content_type=${input.contentType}&slug=${encodeURIComponent(content.slug)}`;
-      const cancelUrl  = `${organizationBaseUrl}/checkout/${input.contentType}/${encodeURIComponent(content.slug)}`;
-
-      const commonMeta: Record<string, string> = {
-        user_id:      ctx.user.id.toString(),
-        content_type: input.contentType,
-        content_id:   content.id.toString(),
-        content_slug: content.slug,
-        pricing_type: pricingType,
-        seat_count:   seatCount.toString(),
-        trigger_order_type: "lms_hosted_checkout",
-        ...(input.pricingOptionId ? { pricing_option_id: input.pricingOptionId.toString() } : {}),
-        ...(input.selectedBumpIds?.length ? { selected_bump_ids: input.selectedBumpIds.join(",") } : {}),
-      };
-
+      const cancelUrl = `${organizationBaseUrl}/checkout/${input.contentType}/${encodeURIComponent(content.slug)}`;
+      let commonMeta: Record<string, string> = {};
       // Coupon codes are organization-owned. Global Stripe promotion codes are
       // intentionally not accepted here because they bypass content targeting.
       let discounts: Array<{ coupon: string }> | undefined;
@@ -613,7 +626,7 @@ export const lmsCheckoutLearnerRouter = router({
               content_type: input.contentType,
               content_id: String(content.id),
             },
-          });
+          }, requestOptions);
           discounts = [{ coupon: stripeCoupon.id }];
           commonMeta.internal_coupon_id = String(coupon.id);
           commonMeta.internal_coupon_code = normalizedCode;
@@ -627,7 +640,7 @@ export const lmsCheckoutLearnerRouter = router({
       // ── Build line items ──────────────────────────────────────────────────
       const lineItems: any[] = [];
 
-      if (pricingType === "one_time" || pricingType === "payment_plan") {
+      if (pricingType === "one_time" || pricingType === "free") {
         lineItems.push({
           price_data: {
             currency: content.currency,
@@ -650,61 +663,49 @@ export const lmsCheckoutLearnerRouter = router({
           const interval = effectiveSubscriptionInterval ?? "monthly";
           const stripeProduct = await stripe.products.create({
             name: content.title,
-            metadata: { content_type: input.contentType, content_id: content.id.toString() },
-          });
+            metadata: { org_id: String(content.orgId), content_type: input.contentType, content_id: content.id.toString() },
+          }, requestOptions);
           const stripePrice = await stripe.prices.create({
             product: stripeProduct.id,
             unit_amount: Math.round(unitPrice * 100),
             currency: content.currency,
             recurring: { interval: intervalMap[interval] ?? "month", interval_count: intervalCountMap[interval] ?? 1 },
-          });
+          }, requestOptions);
           stripePriceId = stripePrice.id;
-          await persistStripePriceId(db, input.contentType, content.id, input.pricingOptionId ?? null, stripePriceId, isTeamPricing);
+          await persistStripePriceId(db, input.contentType, content.id, selectedPricingOptionId, stripePriceId, isTeamPricing, content.orgId);
         }
+        const verifiedPrice = await stripe.prices.retrieve(stripePriceId!, {}, requestOptions);
+        const expectedInterval = effectiveSubscriptionInterval === "annual" ? "year" : "month";
+        const expectedIntervalCount = effectiveSubscriptionInterval === "quarterly" ? 3 : 1;
+        if (!verifiedPrice.active || verifiedPrice.currency !== content.currency.toLowerCase() || verifiedPrice.unit_amount !== Math.round(unitPrice * 100) || verifiedPrice.recurring?.interval !== expectedInterval || (verifiedPrice.recurring?.interval_count ?? 1) !== expectedIntervalCount) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The stored Stripe price does not match this school's current tier." });
         lineItems.push({ price: stripePriceId!, quantity: isTeamPricing ? seatCount : 1 });
       } else {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported pricing type: " + pricingType });
       }
 
-      // ── Order bump add-ons ────────────────────────────────────────────────
+      // Only school-owned, tier-eligible, actually charged bump IDs enter immutable metadata.
+      const chargedBumpIds: number[] = [];
       if (input.selectedBumpIds?.length) {
-        const allBumps = await fetchOrderBumps(db, input.contentType, content.id);
-        for (const bumpId of input.selectedBumpIds) {
-          const bump = allBumps.find((b: any) => b.id === bumpId);
-          if (!bump) continue;
-
-          // Resolve bump product title + price
-          let bumpTitle = bump.headline ?? bump.name;
-          let bumpPrice = bump.discountedPrice ? Number(bump.discountedPrice) : 0;
-
-          // Fetch bump product info for a better name
-          try {
-            if (bump.bumpProductType === "course") {
-              const [bumpCourse] = await db.select({ title: lmsCourses.title, price: lmsCourses.price })
-                .from(lmsCourses).where(eq(lmsCourses.id, bump.bumpProductId)).limit(1);
-              if (bumpCourse) {
-                bumpTitle = bumpTitle || bumpCourse.title;
-                if (!bumpPrice) bumpPrice = Number(bumpCourse.price ?? 0);
-              }
-            } else if (bump.bumpProductType === "download") {
-              const [bumpDl] = await db.select({ title: digitalProducts.title })
-                .from(digitalProducts).where(eq(digitalProducts.id, bump.bumpProductId)).limit(1);
-              if (bumpDl) bumpTitle = bumpTitle || bumpDl.title;
-            }
-          } catch {}
-
-          if (bumpPrice > 0) {
-            lineItems.push({
-              price_data: {
-                currency: content.currency,
-                product_data: { name: bumpTitle },
-                unit_amount: Math.round(bumpPrice * 100),
-              },
-              quantity: 1,
-            });
-          }
+        const allBumps = await fetchOrderBumps(db, input.contentType, content.id, content.orgId);
+        for (const bumpId of [...new Set(input.selectedBumpIds)]) {
+          const bump = allBumps.find((b: any) => b.id === bumpId && (b.pricingOptionId == null || b.pricingOptionId === selectedPricingOptionId));
+          if (!bump || !["course", "download"].includes(bump.bumpProductType)) throw new TRPCError({ code: "BAD_REQUEST", message: "This order bump is not available for the selected item." });
+          const product = await resolveHostedOwnedContent(db, bump.bumpProductType, bump.bumpProductId, content.orgId);
+          const bumpPrice = bump.discountedPrice != null ? Number(bump.discountedPrice) : Number(product.price ?? 0) * (1 - (bump.discountPercent ?? 0) / 100);
+          if (!Number.isFinite(bumpPrice) || bumpPrice <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid order bump price" });
+          lineItems.push({ price_data: { currency: content.currency, product_data: { name: bump.headline ?? product.title ?? bump.name }, unit_amount: Math.round(bumpPrice * 100) }, quantity: 1 });
+          chargedBumpIds.push(bumpId);
         }
       }
+      const purchase = await createHostedPurchase(db, {
+        orgId: content.orgId, userId: ctx.user.id, contentType: input.contentType, contentId: content.id,
+        contentSlug: content.slug, gateway: gateway.gateway, accountId: gateway.accountId,
+        pricingOptionId: selectedPricingOptionId, pricingType, unitPrice: unitPrice.toFixed(2), seats: seatCount,
+        currency: content.currency.toLowerCase(), trialDays: effectiveTrialDays ?? 0,
+        zeroPaymentEligible: unitPrice === 0 || !!discounts ? 1 : 0,
+        selectedBumpIds: chargedBumpIds.length ? chargedBumpIds.join(",") : null,
+      });
+      commonMeta = { ...commonMeta, ...hostedPurchaseMetadata(purchase) };
 
       // ── Create Stripe session ─────────────────────────────────────────────
       let session: any;
@@ -713,12 +714,7 @@ export const lmsCheckoutLearnerRouter = router({
         // subscription_data.metadata is propagated to the Subscription object so webhooks
         // (invoice.paid, invoice.payment_failed, customer.subscription.deleted) can identify
         // which user/course the subscription belongs to and grant/revoke access accordingly.
-        const subscriptionMeta = {
-          user_id:      ctx.user.id.toString(),
-          org_id:       content.orgId.toString(),
-          content_type: input.contentType,
-          content_id:   content.id.toString(),
-        };
+        const subscriptionMeta = { ...commonMeta };
         const trialOpts = effectiveTrialDays && effectiveTrialDays > 0
           ? { subscription_data: { trial_period_days: effectiveTrialDays, metadata: subscriptionMeta } }
           : { subscription_data: { metadata: subscriptionMeta } };
@@ -732,7 +728,7 @@ export const lmsCheckoutLearnerRouter = router({
           cancel_url: cancelUrl,
           client_reference_id: ctx.user.id.toString(),
           metadata: commonMeta,
-        });
+        }, { ...requestOptions, idempotencyKey: `course360_hosted:${purchase.id}` });
       } else {
         session = await stripe.checkout.sessions.create({
           mode: "payment",
@@ -743,9 +739,10 @@ export const lmsCheckoutLearnerRouter = router({
           cancel_url: cancelUrl,
           client_reference_id: ctx.user.id.toString(),
           metadata: commonMeta,
-        });
+        }, { ...requestOptions, idempotencyKey: `course360_hosted:${purchase.id}` });
       }
 
+      if (session?.id) await db.update(course360HostedCheckoutPurchases).set({ stripeSessionId: session.id, stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null }).where(and(eq(course360HostedCheckoutPurchases.id, purchase.id), eq(course360HostedCheckoutPurchases.orgId, content.orgId)));
       if (!session) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create checkout session" });
 
       return { type: "redirect" as const, checkoutUrl: session.url!, sessionId: session.id };
@@ -762,179 +759,38 @@ export const lmsCheckoutLearnerRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(ENV.stripeSecretKey, { apiVersion: "2024-06-20" as any });
-
-      const session = await stripe.checkout.sessions.retrieve(input.sessionId, {
-        expand: ["subscription", "payment_intent"],
-      });
-
-      const isPaid = session.payment_status === "paid" || session.status === "complete";
-      if (!isPaid) {
-        return { success: false, status: session.payment_status ?? "unpaid" };
-      }
-
-      const contentType = (session.metadata?.content_type ?? input.contentType) as ContentType;
-      const contentId   = parseInt(session.metadata?.content_id ?? "0");
-      const seatCount   = parseInt(session.metadata?.seat_count ?? "1") || 1;
-
-      if (!contentId) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid session metadata" });
-
-      const content = await resolveContentBySlug(db, contentType, input.slug);
+      const content = await resolveContentBySlug(db, input.contentType, input.slug);
       if (!content) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Check if already has access (idempotent)
-      const alreadyGranted = await checkExistingAccess(db, contentType, content.id, ctx.user.id);
-      if (alreadyGranted) {
-        return { success: true, alreadyGranted: true, slug: content.slug, contentType };
-      }
-
-      // Grant access (with seat count for team purchases)
-      await grantAccess(db, contentType, content, ctx.user.id, session, seatCount);
-
-      // Fulfill order bump purchases (grant access to bump products)
-      const meta = (session.metadata ?? {}) as Record<string, string>;
-      await fulfillOrderBumpPurchase(db, meta, {
-        userId: ctx.user.id,
-        sessionId: session.id,
-        triggerOrderType: contentType as any,
-      }).catch((err: any) => console.error("[Checkout] Order bump fulfillment error:", err.message));
-
-      // Also handle multiple bumps stored as selected_bump_ids in metadata
-      if (meta.selected_bump_ids) {
-        const bumpIds = meta.selected_bump_ids.split(",").map(Number).filter(Boolean);
-        for (const bumpId of bumpIds) {
-          const bumpMeta = { ...meta, order_bump_id: String(bumpId) };
-          await fulfillOrderBumpPurchase(db, bumpMeta, {
-            userId: ctx.user.id,
-            sessionId: session.id,
-            triggerOrderType: contentType as any,
-          }).catch((err: any) => console.error(`[Checkout] Bump ${bumpId} fulfillment error:`, err.message));
-        }
-      }
-
-      return { success: true, alreadyGranted: false, slug: content.slug, contentType };
+      const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      if (!activeOrgId || activeOrgId !== content.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "This item is not in the active school." });
+      const [organization] = await db.select().from(organizations).where(eq(organizations.id, content.orgId)).limit(1);
+      const savedPurchases = await db.select().from(course360HostedCheckoutPurchases).where(and(
+        eq(course360HostedCheckoutPurchases.stripeSessionId, input.sessionId), eq(course360HostedCheckoutPurchases.orgId, activeOrgId),
+        eq(course360HostedCheckoutPurchases.userId, ctx.user.id), eq(course360HostedCheckoutPurchases.contentType, input.contentType), eq(course360HostedCheckoutPurchases.contentId, content.id),
+      ));
+      if (savedPurchases.length !== 1) throw new TRPCError({ code: "FORBIDDEN", message: "Hosted session does not match the authenticated school purchase." });
+      const gateway = await resolveProtectedCourse360PurchaseGateway(db, savedPurchases[0]) ?? await resolveCourse360HostedGateway(organization, ENV.stripeSecretKey, db);
+      const session = await gateway.stripe.checkout.sessions.retrieve(input.sessionId, { expand: ["subscription", "payment_intent"] }, gateway.requestOptions);
+      const result = await reconcileCourse360HostedSignedSession({
+        db, signedSession: session, verifiedAccountId: gateway.accountId, gateway,
+        expected: { userId: ctx.user.id, orgId: activeOrgId, contentType: input.contentType, contentId: content.id, slug: content.slug },
+      });
+      if (!result.handled) throw new TRPCError({ code: "BAD_REQUEST", message: "This session is not a Course360 hosted checkout." });
+      return { success: result.success, alreadyGranted: result.alreadyGranted ?? false, status: result.status, slug: content.slug, contentType: input.contentType };
     }),
 });
 
 // ─── Access grant helpers ─────────────────────────────────────────────────────
 
-async function checkExistingAccess(db: any, contentType: ContentType, contentId: number, userId: number): Promise<boolean> {
-  if (contentType === "course") {
-    const [e] = await db.select({ id: lmsEnrollments.id })
-      .from(lmsEnrollments)
-      .where(and(eq(lmsEnrollments.userId, userId), eq(lmsEnrollments.courseId, contentId)))
-      .limit(1);
-    return !!e;
+async function checkExistingAccess(db: any, contentType: ContentType, contentId: number, userId: number, orgId: number, email?: string | null): Promise<boolean> {
+  if (["course", "membership", "membership_plan", "bundle", "download", "webinar"].includes(contentType)) {
+    return hasCourse360SourceEntitlement(db, { orgId, userId, family: contentType as any, resourceId: contentId });
   }
   if (contentType === "workshop") {
-    const [e] = await db.select({ id: workshopRegistrations.id })
-      .from(workshopRegistrations)
-      .where(and(eq(workshopRegistrations.userId, userId), eq(workshopRegistrations.workshopId, contentId)))
-      .limit(1);
-    return !!e;
+    const [row] = await db.select().from(workshopRegistrations).where(and(eq(workshopRegistrations.userId, userId), eq(workshopRegistrations.workshopId, contentId))).limit(1);
+    return !!row && row.status === "registered";
   }
   return false;
-}
-
-async function grantAccess(db: any, contentType: ContentType, content: any, userId: number, session: any, seatCount = 1) {
-  const stripeSubscriptionId = session && typeof session.subscription === "object"
-    ? (session.subscription as any)?.id
-    : session?.subscription ?? null;
-  const stripePaymentIntentId = session && typeof session.payment_intent === "object"
-    ? (session.payment_intent as any)?.id
-    : session?.payment_intent ?? null;
-
-  switch (contentType) {
-    case "course": {
-      const [orderResult] = await db.insert(lmsOrders).values({
-        orgId: content.orgId,
-        userId,
-        courseId: content.id,
-        amount: String(content.price),
-        currency: content.currency,
-        status: "completed",
-        stripeSessionId: session?.id ?? null,
-        stripeSubscriptionId: stripeSubscriptionId ?? null,
-        stripePaymentIntentId: stripePaymentIntentId ?? null,
-        seats: seatCount,
-        completedAt: new Date(),
-      }).$returningId();
-      // Enroll the purchasing user
-      await db.insert(lmsEnrollments).values({
-        orgId: content.orgId,
-        userId,
-        courseId: content.id,
-        status: "active",
-        enrollmentType: "full",
-        orderId: orderResult.id,
-        stripeSubscriptionId: stripeSubscriptionId ?? null,
-        source: stripeSubscriptionId ? "stripe_subscription" : "stripe",
-      });
-      break;
-    }
-    case "download": {
-      await db.insert(digitalOrders).values({
-        productId: content.id,
-        priceId: 0,
-        orgId: content.orgId,
-        buyerEmail: "",
-        amount: String(content.price),
-        currency: content.currency ?? "usd",
-        status: "paid",
-        paymentRef: stripePaymentIntentId ?? session?.id ?? null,
-        downloadToken: Math.random().toString(36).slice(2) + Date.now().toString(36),
-        paidAt: new Date(),
-      });
-      break;
-    }
-    case "physical_product": {
-      await db.insert(physicalProductOrders).values({
-        userId,
-        productId: content.id,
-        amountPaid: String(content.price),
-        currency: "usd",
-        stripeCheckoutSessionId: session?.id ?? null,
-        stripePaymentIntentId: stripePaymentIntentId ?? null,
-        fulfillmentStatus: "pending",
-        orderedAt: new Date(),
-      });
-      break;
-    }
-    case "webinar":
-    case "membership":
-    case "membership_plan": {
-      await db.insert(lmsOrders).values({
-        orgId: content.orgId,
-        userId,
-        courseId: null,
-        amount: String(content.price),
-        currency: content.currency ?? "usd",
-        status: "completed",
-        stripeSessionId: session?.id ?? null,
-        stripeSubscriptionId: stripeSubscriptionId ?? null,
-        stripePaymentIntentId: stripePaymentIntentId ?? null,
-        seats: seatCount,
-        completedAt: new Date(),
-      });
-      break;
-    }
-    case "workshop": {
-      // Register the user for the workshop
-      await db.insert(workshopRegistrations).values({
-        workshopId: content.id,
-        userId,
-        email: "", // will be filled from user record if needed
-        status: "registered",
-        amountPaid: String(content.price),
-        currency: content.currency ?? "usd",
-        stripeSessionId: session?.id ?? null,
-        stripePaymentIntentId: stripePaymentIntentId ?? null,
-        registeredAt: new Date(),
-      });
-      break;
-    }
-  }
 }
 
 async function persistStripePriceId(
@@ -943,38 +799,50 @@ async function persistStripePriceId(
   contentId: number,
   pricingOptionId: number | null,
   stripePriceId: string,
-  isTeamPricing = false,
+  isTeamPricing: boolean,
+  orgId: number,
 ) {
   switch (contentType) {
     case "course":
       if (pricingOptionId) {
         const field = isTeamPricing ? { teamStripePriceId: stripePriceId } : { stripePriceId };
-        await db.update(lmsPricingOptions).set(field).where(eq(lmsPricingOptions.id, pricingOptionId));
+        await db.update(lmsPricingOptions).set(field).where(and(eq(lmsPricingOptions.id, pricingOptionId), eq(lmsPricingOptions.courseId, contentId)));
       } else {
-        await db.update(lmsCourses).set({ stripePriceId }).where(eq(lmsCourses.id, contentId));
+        await db.update(lmsCourses).set({ stripePriceId }).where(and(eq(lmsCourses.id, contentId), eq(lmsCourses.orgId, orgId)));
       }
+      break;
+    case "bundle":
+      if (pricingOptionId) await db.update(bundlePricingOptions).set({ stripePriceId }).where(and(eq(bundlePricingOptions.id, pricingOptionId), eq(bundlePricingOptions.bundleId, contentId)));
       break;
     case "download":
       if (pricingOptionId) {
-        await db.update(digitalProductPrices).set({ stripePriceId }).where(eq(digitalProductPrices.id, pricingOptionId));
+        await db.update(digitalProductPrices).set({ stripePriceId }).where(and(eq(digitalProductPrices.id, pricingOptionId), eq(digitalProductPrices.productId, contentId)));
       }
       break;
     case "webinar":
-      await db.update(webinars).set({ stripePriceId }).where(eq(webinars.id, contentId));
+      await db.update(webinars).set({ stripePriceId }).where(and(eq(webinars.id, contentId), eq(webinars.orgId, orgId)));
       break;
     case "membership":
-      await db.update(memberships).set({ stripePriceId }).where(eq(memberships.id, contentId));
+      await db.update(memberships).set({ stripePriceId }).where(and(eq(memberships.id, contentId), eq(memberships.orgId, orgId)));
       break;
     case "membership_plan":
-      await db.update(membershipPlans).set({ stripePriceId }).where(eq(membershipPlans.id, contentId));
+      await db.update(membershipPlans).set({ stripePriceId }).where(and(eq(membershipPlans.id, contentId), eq(membershipPlans.orgId, orgId)));
       break;
     case "workshop":
-      await db.update(workshops).set({ stripePriceId }).where(eq(workshops.id, contentId));
+      await db.update(workshops).set({ stripePriceId }).where(and(eq(workshops.id, contentId), eq(workshops.orgId, orgId)));
       break;
   }
 }
 
 // ─── Admin Router ─────────────────────────────────────────────────────────────
+
+async function requireHostedAdminSchool(ctx: any, requestedOrgId?: number): Promise<number> {
+  await assertAdmin(ctx);
+  const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+  if (!orgId || (requestedOrgId !== undefined && requestedOrgId !== orgId)) throw new TRPCError({ code: "FORBIDDEN", message: "Checkout settings belong to another active school." });
+  await requireOrgAdmin(ctx.user.id, ctx.user.role, orgId);
+  return orgId;
+}
 
 const contentTypeInput = z.object({
   contentType: z.enum(CONTENT_TYPES),
@@ -986,10 +854,12 @@ export const lmsCheckoutAdminRouter = router({
   getCheckoutPageConfig: protectedProcedure
     .input(contentTypeInput)
     .query(async ({ input, ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const row = await getCheckoutPageRow(db, input.contentType, input.contentId);
+      const orgId = await requireHostedAdminSchool(ctx);
+      await resolveHostedOwnedContent(db, input.contentType, input.contentId, orgId);
+      const row = await getCheckoutPageRow(db, input.contentType, input.contentId, orgId);
       return parseConfig(row ?? null);
     }),
 
@@ -1010,12 +880,14 @@ export const lmsCheckoutAdminRouter = router({
       bgColor: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const orgId = await requireHostedAdminSchool(ctx, input.orgId);
+      await resolveHostedOwnedContent(db, input.contentType, input.contentId, orgId);
       const values: any = {
-        orgId: input.orgId,
+        orgId,
         contentType: input.contentType,
         contentId: input.contentId,
         courseId: input.contentType === "course" ? input.contentId : null,
@@ -1030,9 +902,9 @@ export const lmsCheckoutAdminRouter = router({
         bgColor:      input.bgColor      ?? null,
       };
 
-      const existing = await getCheckoutPageRow(db, input.contentType, input.contentId);
+      const existing = await getCheckoutPageRow(db, input.contentType, input.contentId, orgId);
       if (existing) {
-        await db.update(lmsCheckoutPages).set(values).where(eq(lmsCheckoutPages.id, existing.id));
+        await db.update(lmsCheckoutPages).set(values).where(and(eq(lmsCheckoutPages.id, existing.id), eq(lmsCheckoutPages.orgId, orgId)));
       } else {
         await db.insert(lmsCheckoutPages).values(values);
       }
@@ -1043,11 +915,12 @@ export const lmsCheckoutAdminRouter = router({
   listCheckoutTemplates: protectedProcedure
     .input(z.object({ orgId: z.number() }))
     .query(async ({ input, ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireHostedAdminSchool(ctx, input.orgId);
       const rows = await db.select().from(lmsCheckoutPageTemplates)
-        .where(eq(lmsCheckoutPageTemplates.orgId, input.orgId))
+        .where(eq(lmsCheckoutPageTemplates.orgId, orgId))
         .orderBy(desc(lmsCheckoutPageTemplates.createdAt));
       return rows.map(r => ({ id: r.id, name: r.name, config: parseConfig(r), createdAt: r.createdAt }));
     }),
@@ -1065,11 +938,12 @@ export const lmsCheckoutAdminRouter = router({
       sectionsOrder: z.array(z.string()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireHostedAdminSchool(ctx, input.orgId);
       const [result] = await db.insert(lmsCheckoutPageTemplates).values({
-        orgId: input.orgId,
+        orgId,
         name: input.name,
         headerConfig:      input.header      ? JSON.stringify(input.header)      : null,
         courseInfoConfig:  input.contentInfo  ? JSON.stringify(input.contentInfo) : null,
@@ -1085,10 +959,11 @@ export const lmsCheckoutAdminRouter = router({
   deleteCheckoutTemplate: protectedProcedure
     .input(z.object({ templateId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.delete(lmsCheckoutPageTemplates).where(eq(lmsCheckoutPageTemplates.id, input.templateId));
+      const orgId = await requireHostedAdminSchool(ctx);
+      await db.delete(lmsCheckoutPageTemplates).where(and(eq(lmsCheckoutPageTemplates.id, input.templateId), eq(lmsCheckoutPageTemplates.orgId, orgId)));
       return { success: true };
     }),
 
@@ -1101,16 +976,19 @@ export const lmsCheckoutAdminRouter = router({
       templateId: z.number(),
     }))
     .mutation(async ({ input, ctx }) => {
-      assertAdmin(ctx);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const templateOrgId = await requireHostedAdminSchool(ctx, input.orgId);
       const [template] = await db.select().from(lmsCheckoutPageTemplates)
-        .where(eq(lmsCheckoutPageTemplates.id, input.templateId)).limit(1);
+        .where(and(eq(lmsCheckoutPageTemplates.id, input.templateId), eq(lmsCheckoutPageTemplates.orgId, templateOrgId))).limit(1);
       if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
 
+      const orgId = await requireHostedAdminSchool(ctx, input.orgId);
+      await resolveHostedOwnedContent(db, input.contentType, input.contentId, orgId);
       const values: any = {
-        orgId: input.orgId,
+        orgId,
         contentType: input.contentType,
         contentId: input.contentId,
         courseId: input.contentType === "course" ? input.contentId : null,
@@ -1122,9 +1000,9 @@ export const lmsCheckoutAdminRouter = router({
         sectionsOrder:     template.sectionsOrder,
       };
 
-      const existing = await getCheckoutPageRow(db, input.contentType, input.contentId);
+      const existing = await getCheckoutPageRow(db, input.contentType, input.contentId, orgId);
       if (existing) {
-        await db.update(lmsCheckoutPages).set(values).where(eq(lmsCheckoutPages.id, existing.id));
+        await db.update(lmsCheckoutPages).set(values).where(and(eq(lmsCheckoutPages.id, existing.id), eq(lmsCheckoutPages.orgId, orgId)));
       } else {
         await db.insert(lmsCheckoutPages).values(values);
       }

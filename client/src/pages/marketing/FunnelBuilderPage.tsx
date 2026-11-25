@@ -65,6 +65,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Funnel360PageEditorDialog } from "@/components/Funnel360PageEditorDialog";
+import { Funnel360LearnSettings } from "@/components/Funnel360LearnSettings";
 
 // ─── Step type metadata ───────────────────────────────────────────────────────
 
@@ -94,6 +96,10 @@ function SortableStepCard({
   onEdit,
   onDelete,
   onOpenPage,
+  baseUrl,
+  funnelSlug,
+  onLearnSettings,
+  onEditCopy,
 }: {
   step: any;
   index: number;
@@ -101,6 +107,10 @@ function SortableStepCard({
   onEdit: (step: any) => void;
   onDelete: (id: number) => void;
   onOpenPage: (step: any) => void;
+  baseUrl: string;
+  funnelSlug: string;
+  onLearnSettings: (pageId: number) => void;
+  onEditCopy: (stepId: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -155,6 +165,8 @@ function SortableStepCard({
                 <Pencil className="h-3.5 w-3.5 mr-2" />
                 {step.pageId ? "Edit Page" : "Create Page"}
               </DropdownMenuItem>
+              {step.pageId && <DropdownMenuItem onClick={() => onEditCopy(step.id)}>Edit page copy &amp; SEO</DropdownMenuItem>}
+              {step.pageId && <DropdownMenuItem onClick={() => onLearnSettings(step.pageId)}>Learn display name &amp; visibility</DropdownMenuItem>}
               <DropdownMenuItem onClick={() => onEdit(step)}>
                 <Settings className="h-3.5 w-3.5 mr-2" />
                 Step Settings
@@ -190,7 +202,7 @@ function SortableStepCard({
           )}
           {step.slug && (
             <a
-              href={`/p/${step.slug}`}
+              href={`${baseUrl}/funnel/${encodeURIComponent(funnelSlug)}/${encodeURIComponent(step.slug)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-muted-foreground hover:text-foreground"
@@ -219,9 +231,12 @@ export default function FunnelBuilderPage() {
   const funnelId = parseInt(id ?? "0");
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const [copyStepId, setCopyStepId] = useState<number | null>(null);
+  const setActive = trpc.funnel360.setActive.useMutation({ onSuccess: () => { void utils.funnel360.getWithSteps.invalidate({ id: funnelId }); }, onError: error => toast.error(error.message) });
+  const [learnPageId, setLearnPageId] = useState<number | null>(null);
 
   // Data
-  const { data: funnel, isLoading } = trpc.lms.funnels.getWithSteps.useQuery(
+  const { data: funnel, isLoading } = trpc.funnel360.getWithSteps.useQuery(
     { id: funnelId },
     { enabled: !!funnelId }
   );
@@ -233,31 +248,35 @@ export default function FunnelBuilderPage() {
     : (funnel?.steps ?? []);
 
   // Mutations
-  const createStep = trpc.lms.funnels.createStep.useMutation({
+  const createStep = trpc.funnel360.createStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
+      utils.funnel360.getWithSteps.invalidate({ id: funnelId });
       setAddOpen(false);
       toast.success("Step added");
     },
     onError: (e) => toast.error(e.message),
   });
-  const updateStep = trpc.lms.funnels.updateStep.useMutation({
+  const updateStep = trpc.funnel360.updateStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
+      utils.funnel360.getWithSteps.invalidate({ id: funnelId });
       setEditStep(null);
       toast.success("Step updated");
     },
     onError: (e) => toast.error(e.message),
   });
-  const deleteStep = trpc.lms.funnels.deleteStep.useMutation({
+  const deleteStep = trpc.funnel360.deleteStep.useMutation({
     onSuccess: () => {
-      utils.lms.funnels.getWithSteps.invalidate({ id: funnelId });
+      utils.funnel360.getWithSteps.invalidate({ id: funnelId });
       toast.success("Step deleted");
     },
     onError: (e) => toast.error(e.message),
   });
-  const reorderSteps = trpc.lms.funnels.reorderSteps.useMutation({
-    onSuccess: () => utils.lms.funnels.getWithSteps.invalidate({ id: funnelId }),
+  const reorderSteps = trpc.funnel360.reorderSteps.useMutation({
+    onSuccess: () => utils.funnel360.getWithSteps.invalidate({ id: funnelId }),
+  });
+  const ensurePage = trpc.funnel360.ensureStepPage.useMutation({
+    onSuccess: result => { void utils.funnel360.getWithSteps.invalidate({ id: result.funnelId }); },
+    onError: error => toast.error(error.message),
   });
 
   // Add step dialog
@@ -290,14 +309,16 @@ export default function FunnelBuilderPage() {
   );
 
   // Navigate to page builder for a step
-  const openPage = (step: any) => {
+  const openPage = async (step: any) => {
+    if (ensurePage.isPending) return;
     if (step.pageId) {
-      setLocation(`/lms/pages/${step.pageId}`);
+      setLocation(`/marketing/funnels/${funnelId}/steps/${step.id}/design`);
     } else {
-      // Create a new page for this step and navigate
-      toast.info("Creating a new page for this step…");
-      // We'll use the page builder route with funnelStepId param
-      setLocation(`/lms/pages/new?funnelStepId=${step.id}&name=${encodeURIComponent(step.name)}`);
+      // Creates only an unpublished page if the verified step has no linked page.
+      try {
+        await ensurePage.mutateAsync({ stepId: step.id });
+        setLocation(`/marketing/funnels/${funnelId}/steps/${step.id}/design`);
+      } catch { /* Existing page/link is preserved; mutation reports the error. */ }
     }
   };
 
@@ -363,6 +384,7 @@ export default function FunnelBuilderPage() {
             <span><strong className="text-foreground">{funnel.totalConversions}</strong> conversions</span>
             <span><strong className="text-emerald-600">{convRate}%</strong> conv. rate</span>
           </div>
+          <Button variant="outline" size="sm" disabled={setActive.isPending} onClick={() => { if (confirm(funnel.isActive ? "Pause this funnel?" : "Activate this funnel? Only explicitly published pages will be visible. Review copy and configure checkout before activating.")) setActive.mutate({ id: funnelId, isActive: !funnel.isActive }); }}>{funnel.isActive ? "Pause funnel" : "Activate funnel"}</Button>
           <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => setAddOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             Add Step
@@ -404,6 +426,10 @@ export default function FunnelBuilderPage() {
                         if (confirm("Delete this step?")) deleteStep.mutate({ id });
                       }}
                       onOpenPage={openPage}
+                      baseUrl={funnel.baseUrl}
+                      funnelSlug={funnel.slug}
+                      onLearnSettings={setLearnPageId}
+                      onEditCopy={setCopyStepId}
                     />
                   ))}
                   {/* Add step button at bottom */}
@@ -422,6 +448,9 @@ export default function FunnelBuilderPage() {
           )}
         </div>
       </div>
+
+      {copyStepId && <Funnel360PageEditorDialog key={copyStepId} stepId={copyStepId} onClose={() => setCopyStepId(null)} />}
+      {learnPageId && <Funnel360LearnSettings key={learnPageId} pageId={learnPageId} onClose={() => setLearnPageId(null)} />}
 
       {/* ─── Add Step Dialog ─────────────────────────────────────────────────── */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>

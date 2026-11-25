@@ -1,5 +1,5 @@
 /**
- * RichTextEditor — TipTap-based WYSIWYG editor for Teachific™
+ * RichTextEditor — TipTap-based WYSIWYG editor for Course360
  *
  * Features:
  *  - Full text formatting: bold, italic, underline, strikethrough, code
@@ -34,7 +34,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
-import { getSubdomain } from "@/hooks/useSubdomain";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import Youtube from "@tiptap/extension-youtube";
 import { Table } from "@tiptap/extension-table";
 import TableRow from "@tiptap/extension-table-row";
@@ -602,6 +602,8 @@ export function RichTextEditor({
   disabled = false,
   courseId,
 }: RichTextEditorProps) {
+  const { orgId, orgs } = useOrgScope();
+  const activeOrgSlug = (orgs as any[]).find(org => org.id === orgId)?.slug;
   const editorRef = useRef<ReturnType<typeof useEditor>>(null);
   // Drag-to-resize state
   const [editorHeight, setEditorHeight] = useState(minHeight);
@@ -662,9 +664,10 @@ export function RichTextEditor({
   );
   // Fetch product catalog for direct checkout
   const { data: productCatalog } = trpc.funnel.listAllProducts.useQuery(
-    { orgSlug: getSubdomain() ?? undefined },
-    { enabled: ctaDialogOpen && ctaAction === "direct_checkout", staleTime: 60_000 }
+    { orgSlug: activeOrgSlug },
+    { enabled: !!activeOrgSlug && ctaDialogOpen && ctaAction === "direct_checkout", staleTime: 60_000 }
   );
+  useEffect(() => { setCtaCheckoutProductId(null); setCtaPricingOptionId(null); }, [orgId]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoFileInputRef = useRef<HTMLInputElement>(null);
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
@@ -811,10 +814,10 @@ export function RichTextEditor({
       if (normalised === value || (normalised === "" && !value)) return;
     }
     if (normalised !== value) {
-      editor.commands.setContent(value || "");
+      editor.commands.setContent(value || "", { emitUpdate: false });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, editor]);
 
   // Sync editable flag
   useEffect(() => {

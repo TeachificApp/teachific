@@ -22,7 +22,7 @@ import { and, desc, eq, isNull, sql, asc, isNotNull, max, inArray, or } from "dr
 import { randomBytes } from "crypto";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { storagePut } from "../storage";
-import { getDb, getOrCreateAccessToken, getOrgIdForUser, getOrgIdForUserWithFallback } from "../db";
+import { getDb, getOrCreateAccessToken } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { generateImage } from "../_core/imageGeneration";
 import { generateCertificatePdf } from "../lib/certificateGenerator";
@@ -30,8 +30,14 @@ import { sendCertificateEmail } from "../lib/certificateEmail";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { buildOrderBumpCheckoutLine } from "../lib/orderBumpCheckout";
 import { extractJson, parseLandingBlocks } from "../lib/extractJson";
-import { buildAiSourceMessage } from "../lib/aiSourceFile";
 import { canUseAiCourseGenerator } from "../lib/aiCourseGeneratorEntitlement";
+import { course360AiSourceInput } from "../lib/course360AiCoursePreview";
+import { buildCourseSourceContext } from "../lib/course360AiCourseSource";
+import { buildCourse360SourceMessage } from "../lib/course360AiCourseSourceMessage";
+import { invokeCourse360SourceLLM } from "../lib/course360AiSourceProvider";
+import { resolveCourse360ChatConfiguration } from "../lib/course360AiProviderConfig";
+import { canUseCourse360AdvancedAi } from "../lib/course360AiSourceMetadata";
+import { assertCourse360GeneratedStructure, getCourse360AiStructureInstructions } from "../lib/course360AiCourseStructure";
 import { selectCuratedUnsplashCourseVisual } from "../lib/aiCourseVisuals";
 import { canUseHiddenPrivateCourseVisibility } from "../lib/courseVisibilityEntitlement";
 import {
@@ -95,7 +101,24 @@ import { sendEmail, buildFreePreviewConfirmationEmail } from "../_core/email";
 import { syncLessonQuizBlocksToQuestionBank } from "../lib/lessonQuizQuestionBankSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-import { assertAdmin, assertCourseOwnership, assertSectionOwnership, assertLessonOwnership, generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import { generateSlug, uniqueSlug, recalcProgress, issueCertificateIfEnabled } from "./lmsHelpers";
+import {
+  requireCourse360BuilderSchool,
+  course360BuilderRequestSchool,
+  assertCourse360BuilderCourse as assertCourseOwnership,
+  assertCourse360BuilderSection as assertSectionOwnership,
+  assertCourse360BuilderLesson as assertLessonOwnership,
+} from "../lib/course360BuilderSchoolScope";
+import { course360BuilderTemplateOwnership, assertCourse360BuilderTemplate } from "../lib/course360BuilderTemplateOwnership";
+async function assertAdmin(ctx: { user: { id: number; role: string } }) {
+  await requireCourse360BuilderSchool(ctx);
+}
+
+// Freeze a verified server-owned school identity for all source/target checks in one request.
+const builderSchoolProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const school = await requireCourse360BuilderSchool(ctx);
+  return next({ ctx: { ...ctx, [course360BuilderRequestSchool]: school } });
+});
 
 async function assertStandaloneQuizForCourse(db: any, courseId: number, standaloneQuizId?: number | null) {
   if (!standaloneQuizId) return;
@@ -178,10 +201,11 @@ export function cloneLessonTemplateBlocks(blocksJson: string | null | undefined)
 
 export const lmsCourseBuilderRouter = router({
   // ── Lesson fetch for editor ──
-  getLessonAdmin: protectedProcedure
+  getLessonAdmin: builderSchoolProcedure
     .input(z.object({ lessonId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
@@ -190,7 +214,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** A lightweight, protected curriculum tree for LMS block editors. */
-  getCurriculumById: protectedProcedure
+  getCurriculumById: builderSchoolProcedure
     .input(z.object({ courseId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -220,6 +244,7 @@ export const lmsCourseBuilderRouter = router({
       ]);
       return {
         id: course.id,
+        orgId: (await requireCourse360BuilderSchool(ctx)).orgId,
         title: course.title,
         sections: sections.map(section => ({
           ...section,
@@ -230,7 +255,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** Generate editable flashcards from active-organization lesson content or a topic. */
-  generateFlashcardsFromLesson: protectedProcedure
+  generateFlashcardsFromLesson: builderSchoolProcedure
     .input(z.object({
       lessonId: z.number().int().positive().optional(),
       courseId: z.number().int().positive().optional(),
@@ -247,7 +272,7 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
       if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "No active organization found" });
       await assertAiCourseGeneratorAccess(ctx, orgId);
 
@@ -264,6 +289,7 @@ export const lmsCourseBuilderRouter = router({
         for (const lesson of courseLessons) selectedLessonIds.add(lesson.id);
       }
 
+      for (const lessonId of selectedLessonIds) await assertLessonOwnership(ctx, lessonId);
       const lessonSources: Array<{ title: string; content: string | null; contentBlocks: string | null }> = [];
       for (const lessonId of selectedLessonIds) {
         await assertLessonOwnership(ctx, lessonId);
@@ -368,7 +394,7 @@ export const lmsCourseBuilderRouter = router({
       return { cards };
     }),
   // ── Courses ──
-  listCourses: protectedProcedure
+  listCourses: builderSchoolProcedure
     .input(z.object({
       status: z.enum(["draft", "public", "hidden", "private", "archived", "all"]).default("all"),
       type: z.enum(["course", "quiz", "download", "cohort", "all"]).default("all"),
@@ -379,8 +405,8 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Always scope to the user's own org — platform admins fall back to the primary org
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      // Scope to the explicit active school, including platform administrators
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
       // Safety: if no org found, return empty to prevent data leak
       if (orgId === null) return { courses: [], total: 0 };
       const conditions: any[] = [];
@@ -394,7 +420,7 @@ export const lmsCourseBuilderRouter = router({
       return { courses, total: Number(count) };
     }),
 
-  createCourse: protectedProcedure
+  createCourse: builderSchoolProcedure
     .input(z.object({
       title: z.string().min(1).max(255),
       subtitle: z.string().max(500).optional(),
@@ -415,8 +441,8 @@ export const lmsCourseBuilderRouter = router({
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Resolve the org this course belongs to (with primary org fallback for platform admins)
-      const courseOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      // Resolve the explicitly selected active school
+      const courseOrgId = (await requireCourse360BuilderSchool(ctx)).orgId;
       if (!courseOrgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No organisation found for user" });
       const base = generateSlug(input.title);
       const slug = await uniqueSlug(db, base);
@@ -440,7 +466,7 @@ export const lmsCourseBuilderRouter = router({
       return { id: result.id, slug };
     }),
 
-  updateCourse: protectedProcedure
+  updateCourse: builderSchoolProcedure
     .input(z.object({
       id: z.number(),
       title: z.string().min(1).max(255).optional(),
@@ -568,10 +594,11 @@ export const lmsCourseBuilderRouter = router({
       }
       return { success: true };
     }),
-  deleteCourse: protectedProcedure
+  deleteCourse: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [course] = await db.select().from(lmsCourses).where(eq(lmsCourses.id, input.id)).limit(1);
@@ -589,10 +616,11 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  reorderCourses: protectedProcedure
+  reorderCourses: builderSchoolProcedure
     .input(z.object({ courses: z.array(z.object({ id: z.number(), libraryOrder: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const course of input.courses) await assertCourseOwnership(ctx, course.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.courses.map(c =>
@@ -601,7 +629,7 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  uploadCourseCoverImage: protectedProcedure
+  uploadCourseCoverImage: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       dataUri: z.string().min(1).max(10_000_000), // ~7.5 MB image
@@ -609,6 +637,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -661,7 +690,7 @@ export const lmsCourseBuilderRouter = router({
       await db.update(lmsCourses).set({ coverImageUrl: url, thumbnailUrl: url }).where(eq(lmsCourses.id, input.courseId));
       return { url, assetId };
     }),
-  uploadLandingPageHeroImage: protectedProcedure
+  uploadLandingPageHeroImage: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       dataUri: z.string().min(1).max(10_000_000),
@@ -669,6 +698,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -724,7 +754,7 @@ export const lmsCourseBuilderRouter = router({
       return { url, assetId };
     }),
 
-  getCourse: protectedProcedure
+  getCourse: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -793,7 +823,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ── Sections ──
-  createSection: protectedProcedure
+  createSection: builderSchoolProcedure
     .input(z.object({ courseId: z.number(), title: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -810,7 +840,7 @@ export const lmsCourseBuilderRouter = router({
       return { id: result.id };
     }),
 
-  updateSection: protectedProcedure
+  updateSection: builderSchoolProcedure
     .input(z.object({ id: z.number(), title: z.string().min(1).optional(), position: z.number().int().optional(), isPreview: z.boolean().optional(), dripDays: z.number().int().min(0).nullable().optional() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -833,22 +863,23 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  deleteSection: protectedProcedure
+  deleteSection: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      await assertSectionOwnership(ctx, input.id);
+      const { courseId } = await assertSectionOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      await db.delete(lmsLessons).where(eq(lmsLessons.sectionId, input.id));
+      await db.delete(lmsLessons).where(and(eq(lmsLessons.sectionId, input.id), or(eq(lmsLessons.courseId, courseId), isNull(lmsLessons.courseId))));
       await db.delete(lmsSections).where(eq(lmsSections.id, input.id));
       return { success: true };
     }),
 
-  reorderSections: protectedProcedure
+  reorderSections: builderSchoolProcedure
     .input(z.object({ sections: z.array(z.object({ id: z.number(), position: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const section of input.sections) await assertSectionOwnership(ctx, section.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.sections.map(s => db.update(lmsSections).set({ position: s.position }).where(eq(lmsSections.id, s.id))));
@@ -858,7 +889,7 @@ export const lmsCourseBuilderRouter = router({
   // ── Section Templates ──
 
   /** Save a section (with all its lessons) as a reusable template */
-  saveSectionTemplate: protectedProcedure
+  saveSectionTemplate: builderSchoolProcedure
     .input(z.object({
       sectionId: z.number(),
       name: z.string().min(1).max(255),
@@ -866,6 +897,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const { orgId, courseId: sourceCourseId } = await assertSectionOwnership(ctx, input.sectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [section] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sectionId)).limit(1);
@@ -884,41 +916,56 @@ export const lmsCourseBuilderRouter = router({
         learningObjectives: lmsLessons.learningObjectives,
         position: lmsLessons.position,
       }).from(lmsLessons)
-        .where(eq(lmsLessons.sectionId, input.sectionId))
+        .where(and(eq(lmsLessons.sectionId, input.sectionId), or(eq(lmsLessons.courseId, sourceCourseId), isNull(lmsLessons.courseId))))
         .orderBy(asc(lmsLessons.position));
-      const [result] = await db.insert(lmsSectionTemplates).values({
-        name: input.name,
-        description: input.description ?? null,
-        sectionTitle: section.title,
-        lessonsJson: JSON.stringify(lessons),
-        lessonCount: lessons.length,
-        createdByUserId: ctx.user.id,
-      }).$returningId();
-      return { id: result.id };
+      await db.select({ templateId: course360BuilderTemplateOwnership.templateId }).from(course360BuilderTemplateOwnership).where(eq(course360BuilderTemplateOwnership.orgId, orgId)).limit(1);
+      return db.transaction(async tx => {
+        const [result] = await tx.insert(lmsSectionTemplates).values({
+          name: input.name,
+          description: input.description ?? null,
+          sectionTitle: section.title,
+          lessonsJson: JSON.stringify(lessons),
+          lessonCount: lessons.length,
+          createdByUserId: ctx.user.id,
+        }).$returningId();
+        await tx.insert(course360BuilderTemplateOwnership).values({
+          templateKind: "section", templateId: result.id, orgId, savedByUserId: ctx.user.id,
+          sourceCourseId: section.courseId, sourceSectionId: section.id, evidence: "authorized_source_section_save_v1",
+        });
+        return { id: result.id, orgId };
+      });
     }),
 
   /** List all saved section templates */
-  listSectionTemplates: protectedProcedure
+  listSectionTemplates: builderSchoolProcedure
     .query(async ({ ctx }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { orgId } = await requireCourse360BuilderSchool(ctx);
       const templates = await db.select({
+        orgId: course360BuilderTemplateOwnership.orgId,
         id: lmsSectionTemplates.id,
         name: lmsSectionTemplates.name,
         description: lmsSectionTemplates.description,
         sectionTitle: lmsSectionTemplates.sectionTitle,
         lessonCount: lmsSectionTemplates.lessonCount,
         createdAt: lmsSectionTemplates.createdAt,
-      }).from(lmsSectionTemplates).orderBy(desc(lmsSectionTemplates.createdAt));
+      }).from(lmsSectionTemplates).innerJoin(course360BuilderTemplateOwnership, and(
+        eq(course360BuilderTemplateOwnership.templateKind, "section"),
+        eq(course360BuilderTemplateOwnership.templateId, lmsSectionTemplates.id),
+        eq(course360BuilderTemplateOwnership.orgId, orgId),
+      )).where(eq(course360BuilderTemplateOwnership.orgId, orgId)).orderBy(desc(lmsSectionTemplates.createdAt));
       return templates;
     }),
 
   /** Delete a section template */
-  deleteSectionTemplate: protectedProcedure
+  deleteSectionTemplate: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const { db: ownershipDb, orgId } = await requireCourse360BuilderSchool(ctx);
+      await assertCourse360BuilderTemplate(ownershipDb, orgId, "section", input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsSectionTemplates).where(eq(lmsSectionTemplates.id, input.id));
@@ -926,7 +973,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** Import a section template into a course (creates section + lessons) */
-  importSectionTemplate: protectedProcedure
+  importSectionTemplate: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       templateId: z.number(),
@@ -934,6 +981,8 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const { db: ownershipDb, orgId } = await assertCourseOwnership(ctx, input.courseId);
+      await assertCourse360BuilderTemplate(ownershipDb, orgId, "section", input.templateId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [template] = await db.select().from(lmsSectionTemplates).where(eq(lmsSectionTemplates.id, input.templateId)).limit(1);
@@ -971,7 +1020,7 @@ export const lmsCourseBuilderRouter = router({
 
   // ── Lesson Templates ──
   /** Save a single lesson (with all its content blocks) as a reusable template */
-  saveLessonTemplate: protectedProcedure
+  saveLessonTemplate: builderSchoolProcedure
     .input(z.object({
       lessonId: z.number(),
       title: z.string().min(1).max(255),
@@ -979,12 +1028,12 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      await assertLessonOwnership(ctx, input.lessonId);
+      const { courseId: ownedCourseId } = await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
       if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
-      const [course] = lesson.courseId ? await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, lesson.courseId)).limit(1) : [];
+      const [course] = await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, ownedCourseId)).limit(1);
       if (!course?.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Owning organization not found" });
       const [result] = await db.insert(lessonTemplates).values({
         orgId: course.orgId,
@@ -995,38 +1044,38 @@ export const lmsCourseBuilderRouter = router({
         tags: input.tags ?? null,
         createdByAdminId: ctx.user.id,
       }).$returningId();
-      return { id: result.id, success: true };
+      return { id: result.id, orgId: course.orgId, success: true };
     }),
-  listLessonTemplates: protectedProcedure
+  listLessonTemplates: builderSchoolProcedure
     .query(async ({ ctx }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) return [];
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
       if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
       return db.select().from(lessonTemplates).where(eq(lessonTemplates.orgId, orgId)).orderBy(desc(lessonTemplates.createdAt));
     }),
-  deleteLessonTemplate: protectedProcedure
+  deleteLessonTemplate: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
       if (!orgId) throw new TRPCError({ code: "BAD_REQUEST", message: "No active organization context." });
       await db.delete(lessonTemplates).where(and(eq(lessonTemplates.id, input.id), eq(lessonTemplates.orgId, orgId)));
       return { success: true };
     }),
   /** Add independent copies of template blocks to an existing lesson. */
-  applyLessonTemplate: protectedProcedure
+  applyLessonTemplate: builderSchoolProcedure
     .input(z.object({ lessonId: z.number(), templateId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      await assertLessonOwnership(ctx, input.lessonId);
+      const { courseId: ownedCourseId } = await assertLessonOwnership(ctx, input.lessonId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [lesson] = await db.select({ courseId: lmsLessons.courseId, contentBlocks: lmsLessons.contentBlocks }).from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
-      const [course] = lesson?.courseId ? await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, lesson.courseId)).limit(1) : [];
+      const [course] = lesson ? await db.select({ orgId: lmsCourses.orgId }).from(lmsCourses).where(eq(lmsCourses.id, ownedCourseId)).limit(1) : [];
       if (!course?.orgId) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
       const [template] = await db.select().from(lessonTemplates).where(and(eq(lessonTemplates.id, input.templateId), eq(lessonTemplates.orgId, course.orgId))).limit(1);
       if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
@@ -1035,7 +1084,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** Copy a section from another course into this course */
-  copySectionFromCourse: protectedProcedure
+  copySectionFromCourse: builderSchoolProcedure
     .input(z.object({
       targetCourseId: z.number(),
       sourceSectionId: z.number(),
@@ -1043,12 +1092,14 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.targetCourseId);
+      const { courseId: sourceCourseId } = await assertSectionOwnership(ctx, input.sourceSectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [sourceSection] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sourceSectionId)).limit(1);
       if (!sourceSection) throw new TRPCError({ code: "NOT_FOUND", message: "Source section not found" });
       const sourceLessons = await db.select().from(lmsLessons)
-        .where(eq(lmsLessons.sectionId, input.sourceSectionId))
+        .where(and(eq(lmsLessons.sectionId, input.sourceSectionId), or(eq(lmsLessons.courseId, sourceCourseId), isNull(lmsLessons.courseId))))
         .orderBy(asc(lmsLessons.position));
       // Get next section position in target course
       const posResult = await db.select({ maxPos: max(lmsSections.position) }).from(lmsSections).where(eq(lmsSections.courseId, input.targetCourseId));
@@ -1079,28 +1130,29 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** List all courses with their sections (for copy-from-course picker) */
-  listCoursesWithSections: protectedProcedure
+  listCoursesWithSections: builderSchoolProcedure
     .query(async ({ ctx }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug })
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
+      const courses = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId, title: lmsCourses.title, slug: lmsCourses.slug })
         .from(lmsCourses)
-        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .where(eq(lmsCourses.orgId, orgId))
         .orderBy(asc(lmsCourses.title));
+      if (courses.length === 0) return [];
       const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
-        .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
+        .from(lmsSections).where(inArray(lmsSections.courseId, courses.map(course => course.id))).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
       const sectionsByCourse = new Map<number, typeof sections>();
       for (const s of sections) {
         if (!sectionsByCourse.has(s.courseId)) sectionsByCourse.set(s.courseId, []);
         sectionsByCourse.get(s.courseId)!.push(s);
       }
-      return courses.map(c => ({ ...c, sections: sectionsByCourse.get(c.id) ?? [] }));
+      return courses.map(c => ({ ...c, sections: (sectionsByCourse.get(c.id) ?? []).map(section => ({ ...section, orgId })) }));
     }),
 
   // ── Lessons ──
-  createLesson: protectedProcedure
+  createLesson: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       sectionId: z.number().optional(), // optional — top-level lessons have no section
@@ -1120,6 +1172,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      if (input.sectionId) await assertSectionOwnership(ctx, input.sectionId, input.courseId);
       await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -1178,7 +1231,7 @@ export const lmsCourseBuilderRouter = router({
       return { id: result.id };
     }),
 
-  updateLesson: protectedProcedure
+  updateLesson: builderSchoolProcedure
     .input(z.object({
       id: z.number(),
       title: z.string().min(1).optional(),
@@ -1270,7 +1323,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** Backfill page-builder lesson quiz and flashcard blocks into this course's org-scoped Question Bank folders. */
-  backfillLessonQuizBlocksToQuestionBank: protectedProcedure
+  backfillLessonQuizBlocksToQuestionBank: builderSchoolProcedure
     .input(z.object({ courseId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1290,7 +1343,7 @@ export const lmsCourseBuilderRouter = router({
       return { success: true, created, updated, lessonsScanned: lessons.length };
     }),
 
-  deleteLesson: protectedProcedure
+  deleteLesson: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1302,10 +1355,11 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  reorderLessons: protectedProcedure
+  reorderLessons: builderSchoolProcedure
     .input(z.object({ lessons: z.array(z.object({ id: z.number(), position: z.number() })) }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      for (const lesson of input.lessons) await assertLessonOwnership(ctx, lesson.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await Promise.all(input.lessons.map(l => db.update(lmsLessons).set({ position: l.position }).where(eq(lmsLessons.id, l.id))));
@@ -1313,7 +1367,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   /** Bulk-set lessonStatus for all lessons in a course (used by publish-course dialog) */
-  bulkSetLessonStatus: protectedProcedure
+  bulkSetLessonStatus: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       lessonStatus: z.enum(["published", "draft"]),
@@ -1322,6 +1376,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const condition = input.onlyDrafts
@@ -1332,7 +1387,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ── Move / Copy ──
-  moveLesson: protectedProcedure
+  moveLesson: builderSchoolProcedure
     .input(z.object({
       lessonId: z.number(),
       targetSectionId: z.number().nullable(), // null = top-level
@@ -1340,6 +1395,9 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      await assertLessonOwnership(ctx, input.lessonId, input.courseId);
+      if (input.targetSectionId) await assertSectionOwnership(ctx, input.targetSectionId, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       // Get next position in target section
@@ -1358,7 +1416,7 @@ export const lmsCourseBuilderRouter = router({
       return { success: true };
     }),
 
-  copyLesson: protectedProcedure
+  copyLesson: builderSchoolProcedure
     .input(z.object({
       lessonId: z.number(),
       targetCourseId: z.number(),
@@ -1366,6 +1424,9 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.targetCourseId);
+      await assertLessonOwnership(ctx, input.lessonId);
+      if (input.targetSectionId) await assertSectionOwnership(ctx, input.targetSectionId, input.targetCourseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [src] = await db.select().from(lmsLessons).where(eq(lmsLessons.id, input.lessonId)).limit(1);
@@ -1399,13 +1460,15 @@ export const lmsCourseBuilderRouter = router({
       return { id: result.id };
     }),
 
-  copyModule: protectedProcedure
+  copyModule: builderSchoolProcedure
     .input(z.object({
       sectionId: z.number(),
       targetCourseId: z.number(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.targetCourseId);
+      const { courseId: sourceCourseId } = await assertSectionOwnership(ctx, input.sectionId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [srcSection] = await db.select().from(lmsSections).where(eq(lmsSections.id, input.sectionId)).limit(1);
@@ -1420,7 +1483,7 @@ export const lmsCourseBuilderRouter = router({
         dripDays: srcSection.dripDays,
       }).$returningId();
       // Copy all lessons in the section
-      const lessons = await db.select().from(lmsLessons).where(eq(lmsLessons.sectionId, input.sectionId)).orderBy(asc(lmsLessons.position));
+      const lessons = await db.select().from(lmsLessons).where(and(eq(lmsLessons.sectionId, input.sectionId), or(eq(lmsLessons.courseId, sourceCourseId), isNull(lmsLessons.courseId)))).orderBy(asc(lmsLessons.position));
       for (const lesson of lessons) {
         const { id: _id, courseId: _c, sectionId: _s, ...rest } = lesson;
         const [newLesson] = await db.insert(lmsLessons).values({
@@ -1443,7 +1506,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ── Lesson Effects ──
-  updateLessonEffect: protectedProcedure
+  updateLessonEffect: builderSchoolProcedure
     .input(z.object({
       id: z.number(),
       effectEnabled: z.boolean(),
@@ -1460,6 +1523,7 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertLessonOwnership(ctx, input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(lmsLessons).set({
@@ -1479,7 +1543,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== getAfterPurchase =====
-  getAfterPurchase: protectedProcedure
+  getAfterPurchase: builderSchoolProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1516,7 +1580,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== updateAfterPurchase =====
-  updateAfterPurchase: protectedProcedure
+  updateAfterPurchase: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       customThankYouEnabled: z.boolean().optional(),
@@ -1551,7 +1615,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== Course waitlist settings =====
-  getCourseWaitlistSettings: protectedProcedure
+  getCourseWaitlistSettings: builderSchoolProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1575,7 +1639,7 @@ export const lmsCourseBuilderRouter = router({
       return course;
     }),
 
-  updateCourseWaitlistSettings: protectedProcedure
+  updateCourseWaitlistSettings: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       waitlistEnabled: z.boolean(),
@@ -1597,7 +1661,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== getCheckoutPageConfig =====
-  getCheckoutPageConfig: protectedProcedure
+  getCheckoutPageConfig: builderSchoolProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1614,7 +1678,7 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== saveCheckoutPageConfig =====
-  saveCheckoutPageConfig: protectedProcedure
+  saveCheckoutPageConfig: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       config: z.string(),
@@ -1647,25 +1711,32 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== listCheckoutTemplates =====
-  listCheckoutTemplates: protectedProcedure
+  listCheckoutTemplates: builderSchoolProcedure
     .query(async ({ ctx }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { orgId } = await requireCourse360BuilderSchool(ctx);
       const templates = await db.select({
+          orgId: course360BuilderTemplateOwnership.orgId,
           id: lmsCheckoutTemplates.id,
           name: lmsCheckoutTemplates.name,
           description: lmsCheckoutTemplates.description,
           config: lmsCheckoutTemplates.config,
           createdAt: lmsCheckoutTemplates.createdAt,
         })
-        .from(lmsCheckoutTemplates)
+        .from(lmsCheckoutTemplates).innerJoin(course360BuilderTemplateOwnership, and(
+          eq(course360BuilderTemplateOwnership.templateKind, "checkout"),
+          eq(course360BuilderTemplateOwnership.templateId, lmsCheckoutTemplates.id),
+          eq(course360BuilderTemplateOwnership.orgId, orgId),
+        ))
+        .where(eq(course360BuilderTemplateOwnership.orgId, orgId))
         .orderBy(desc(lmsCheckoutTemplates.createdAt));
       return templates;
     }),
 
   // ===== saveCheckoutTemplate =====
-  saveCheckoutTemplate: protectedProcedure
+  saveCheckoutTemplate: builderSchoolProcedure
     .input(z.object({
       name: z.string().min(1).max(255),
       description: z.string().max(1000).optional(),
@@ -1678,20 +1749,31 @@ export const lmsCourseBuilderRouter = router({
       try { JSON.parse(input.config); } catch {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON config" });
       }
-      const [result] = await db.insert(lmsCheckoutTemplates).values({
-        name: input.name,
-        description: input.description ?? null,
-        config: input.config,
-        createdByUserId: ctx.user.id,
+      const { orgId } = await requireCourse360BuilderSchool(ctx);
+      await db.select({ templateId: course360BuilderTemplateOwnership.templateId }).from(course360BuilderTemplateOwnership).where(eq(course360BuilderTemplateOwnership.orgId, orgId)).limit(1);
+      return db.transaction(async tx => {
+        const [result] = await tx.insert(lmsCheckoutTemplates).values({
+          name: input.name,
+          description: input.description ?? null,
+          config: input.config,
+          createdByUserId: ctx.user.id,
+        });
+        const id = (result as any).insertId as number;
+        await tx.insert(course360BuilderTemplateOwnership).values({
+          templateKind: "checkout", templateId: id, orgId, savedByUserId: ctx.user.id,
+          evidence: "authorized_active_school_checkout_save_v1",
+        });
+        return { id, orgId, success: true };
       });
-      return { id: (result as any).insertId as number, success: true };
     }),
 
   // ===== deleteCheckoutTemplate =====
-  deleteCheckoutTemplate: protectedProcedure
+  deleteCheckoutTemplate: builderSchoolProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      const { db: ownershipDb, orgId } = await requireCourse360BuilderSchool(ctx);
+      await assertCourse360BuilderTemplate(ownershipDb, orgId, "checkout", input.id);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.delete(lmsCheckoutTemplates).where(eq(lmsCheckoutTemplates.id, input.id));
@@ -1699,20 +1781,21 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ===== listCoursesWithLessons =====
-  listCoursesWithLessons: protectedProcedure
+  listCoursesWithLessons: builderSchoolProcedure
     .query(async ({ ctx }) => {
       await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-      const courses = await db.select({ id: lmsCourses.id, title: lmsCourses.title, slug: lmsCourses.slug, type: lmsCourses.type })
+      const orgId = (await requireCourse360BuilderSchool(ctx)).orgId;
+      const courses = await db.select({ id: lmsCourses.id, orgId: lmsCourses.orgId, title: lmsCourses.title, slug: lmsCourses.slug, type: lmsCourses.type })
         .from(lmsCourses)
-        .where(orgId !== null ? eq(lmsCourses.orgId, orgId) : undefined)
+        .where(eq(lmsCourses.orgId, orgId))
         .orderBy(asc(lmsCourses.title));
+      if (courses.length === 0) return [];
       const sections = await db.select({ id: lmsSections.id, courseId: lmsSections.courseId, title: lmsSections.title, position: lmsSections.position })
-        .from(lmsSections).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
+        .from(lmsSections).where(inArray(lmsSections.courseId, courses.map(course => course.id))).orderBy(asc(lmsSections.courseId), asc(lmsSections.position));
       const lessons = await db.select({ id: lmsLessons.id, courseId: lmsLessons.courseId, sectionId: lmsLessons.sectionId, title: lmsLessons.title, type: lmsLessons.type, position: lmsLessons.position })
-        .from(lmsLessons).orderBy(asc(lmsLessons.courseId), asc(lmsLessons.position));
+        .from(lmsLessons).where(inArray(lmsLessons.courseId, courses.map(course => course.id))).orderBy(asc(lmsLessons.courseId), asc(lmsLessons.position));
       // Build tree
       const result = courses.map(c => ({
         ...c,
@@ -1720,18 +1803,20 @@ export const lmsCourseBuilderRouter = router({
           .filter(s => s.courseId === c.id)
           .map(s => ({
             ...s,
-            lessons: lessons.filter(l => l.sectionId === s.id),
+            orgId,
+            lessons: lessons.filter(l => l.sectionId === s.id && l.courseId === c.id).map(lesson => ({ ...lesson, orgId })),
           })),
-        topLevelLessons: lessons.filter(l => l.courseId === c.id && !l.sectionId),
+        topLevelLessons: lessons.filter(l => l.courseId === c.id && !l.sectionId).map(lesson => ({ ...lesson, orgId })),
       }));
       return result;
     }),
 
   // ─── Curriculum Embed Visibility ───────────────────────────────────────────────────
-  getCurriculumEmbedVisibility: protectedProcedure
+  getCurriculumEmbedVisibility: builderSchoolProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const rows = await db
@@ -1745,7 +1830,7 @@ export const lmsCourseBuilderRouter = router({
       return { hiddenMap, rows };
     }),
 
-  setCurriculumEmbedVisibility: protectedProcedure
+  setCurriculumEmbedVisibility: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       items: z.array(z.object({
@@ -1756,6 +1841,11 @@ export const lmsCourseBuilderRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
+      await assertCourseOwnership(ctx, input.courseId);
+      for (const item of input.items) {
+        if (item.itemType === "section") await assertSectionOwnership(ctx, item.itemId, input.courseId);
+        else await assertLessonOwnership(ctx, item.itemId, input.courseId);
+      }
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       for (const item of input.items) {
@@ -1773,16 +1863,18 @@ export const lmsCourseBuilderRouter = router({
     }),
 
   // ─── AI: Generate Course Outline ─────────────────────────────────────────────
-  generateCourseOutline: protectedProcedure
+  generateCourseOutline: builderSchoolProcedure
     .input(z.object({
       courseId: z.number(),
       prompt: z.string().min(5).max(2000),
       courseDescription: z.string().max(4000).optional(),
       numSections: z.number().int().min(1).max(6).default(4),
       numLessonsPerSection: z.number().int().min(1).max(5).default(3),
+      structureMode: z.enum(["manual", "ai"]).default("manual"),
+      previewOnly: z.boolean().default(false),
       includeUnsplashImages: z.boolean().default(true),
       includeAiImages: z.boolean().default(true),
-      sourceFiles: z.array(z.object({ url: z.string().url(), mimeType: z.enum(["application/pdf", "image/jpeg", "image/png", "image/webp"]), name: z.string().min(1).max(255) })).min(1).max(3).optional(),
+      sourceFiles: z.array(course360AiSourceInput).min(1).max(3).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
@@ -1799,7 +1891,15 @@ export const lmsCourseBuilderRouter = router({
       if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
       await assertAiCourseGeneratorAccess(ctx, course.orgId);
       const sourceFiles = input.sourceFiles ?? [];
-      if (sourceFiles.some(source => !source.url.includes(`/ai-generation-sources/${course.orgId}/${ctx.user.id}/`))) throw new TRPCError({ code: "FORBIDDEN", message: "Source files must belong to your active organization." });
+      const owner = { orgId: course.orgId, userId: ctx.user.id };
+      if (sourceFiles.length || input.structureMode === "ai") {
+        const [subscription] = await db.select({ plan: orgSubscriptions.plan, status: orgSubscriptions.status }).from(orgSubscriptions).where(eq(orgSubscriptions.orgId, course.orgId)).limit(1);
+        if (!canUseCourse360AdvancedAi(subscription?.plan, subscription?.status)) throw new TRPCError({ code: "FORBIDDEN", message: "Source-aware and AI-planned course generation requires an active Pro or Enterprise organization plan." });
+      }
+      let sourceContext: string;
+      try { sourceContext = await buildCourseSourceContext(sourceFiles, owner); }
+      catch (error) { throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Re-upload the source file." }); }
+      const structure = { structureMode: input.structureMode, moduleCount: input.numSections, lessonsPerModule: input.numLessonsPerSection };
 
       const systemPrompt = `You are an expert instructional designer for Course360. Produce accurate, original, inclusive learner-facing course material in United States English. Follow the organization's course context and author-supplied details. Do not invent endorsements, outcomes, credentials, legal claims, citations, patient details, statistics, or product features. Return only valid JSON matching the requested schema exactly.`;
 
@@ -1811,13 +1911,14 @@ Course description: "${courseDescription}"
 Author's notes and required details: "${input.prompt}"
 
 Requirements:
-- Exactly ${input.numSections} sections (modules)
-- Exactly ${input.numLessonsPerSection} lessons per section
+- ${getCourse360AiStructureInstructions(structure)}
 - Each lesson must have a clear title and 3-5 substantial paragraphs of original instructional HTML content using <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, and <em> tags
 - Each lesson's body should be approximately 350-550 words, with a clear introduction, practical explanation, at least one application or example, and a concise conclusion
 - Provide exactly 3 concise key takeaways, one learner reflection question, and one safe practice activity for every lesson
 - Content must be ready to edit and publish as learner-facing lesson material
 - Use United States English spelling throughout
+
+${sourceContext}
 
 Return JSON with this exact shape:
 {
@@ -1852,10 +1953,11 @@ Return JSON with this exact shape:
         }>;
       };
       try {
-        const response = await invokeLLM({
+        const sourceMessage = await buildCourse360SourceMessage(userPrompt, sourceFiles, owner, { openAiNativePdf: resolveCourse360ChatConfiguration()?.backend === "openai" });
+        const response = await invokeCourse360SourceLLM({
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: buildAiSourceMessage(userPrompt, sourceFiles) as any },
+            { role: "user", content: sourceMessage },
           ],
           response_format: {
             type: "json_schema",
@@ -1899,6 +2001,7 @@ Return JSON with this exact shape:
             },
           },
         });
+        if (response.choices?.[0]?.finish_reason === "length") throw new Error("AI could not finish the full curriculum. Try a focused subject or smaller counts. No course content has been saved.");
         const raw = response.choices?.[0]?.message?.content ?? "{}";
         outline = typeof raw === "string" ? JSON.parse(raw) : raw;
       } catch (e: any) {
@@ -1908,12 +2011,10 @@ Return JSON with this exact shape:
       if (!outline?.sections?.length) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned an empty outline. Please try again with a more detailed prompt." });
       }
-      if (outline.sections.length !== input.numSections || outline.sections.some(section => section.lessons?.length !== input.numLessonsPerSection)) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "AI did not return the requested number of modules and lessons. Please try again.",
-        });
-      }
+      try { assertCourse360GeneratedStructure(outline, structure); }
+      catch (error) { throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error instanceof Error ? error.message : "AI returned an incomplete curriculum." }); }
+      // Optional review-only mode must never generate paid images or write curriculum.
+      if (input.previewOnly) return { success: true, preview: outline, courseTitle: outline.courseTitle, sections: [], visuals: { curatedUnsplashImages: 0, generatedAiImages: 0 } };
 
       // Image creation is deliberately non-blocking for the curriculum itself. A
       // failed image request falls back to the reviewed Unsplash visual below,
@@ -2037,7 +2138,7 @@ Return JSON with this exact shape:
     }),
 
   // ─── AI: Generate Lesson Content ─────────────────────────────────────────────
-  generateLessonContent: protectedProcedure
+  generateLessonContent: builderSchoolProcedure
     .input(z.object({
       prompt: z.string().min(5).max(2000),
       existingContent: z.string().optional(),
@@ -2105,20 +2206,15 @@ Return JSON with this exact shape:
    * generateImage — generate an image from a text prompt using the built-in image service.
    * Returns a public S3 URL for the generated image.
    */
-  generateImage: protectedProcedure
+  generateImage: builderSchoolProcedure
     .input(z.object({
       prompt: z.string().min(1).max(1000),
       orgId: z.number().int().positive(),
     }))
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
-      const isPlatformAdmin = ["site_owner", "site_admin"].includes(ctx.user.role);
-      if (!isPlatformAdmin) {
-        const activeOrgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
-        if (activeOrgId !== input.orgId) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Select the active organization before generating an image" });
-        }
-      }
+      const { orgId } = await requireCourse360BuilderSchool(ctx);
+      if (orgId !== input.orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Select the active organization before generating an image" });
       try {
         const { url } = await generateImage({ prompt: input.prompt });
         return { success: true, url: url ?? "" };

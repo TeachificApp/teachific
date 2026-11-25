@@ -1,7 +1,25 @@
-function stripeTimestamp(value: number | null | undefined): Date | null {
+export function stripeTimestamp(value: number | null | undefined): Date | null {
   if (value == null || !Number.isFinite(value) || value <= 0) return null;
   const date = new Date(value * 1000);
   return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function getOrgSubscriptionPeriodDates(subscription: {
+  current_period_start?: number | null;
+  current_period_end?: number | null;
+  items?: { data?: Array<{ id?: string; current_period_start?: number | null; current_period_end?: number | null }> };
+}, itemId?: string) {
+  // An explicit item selects its period; otherwise use the earliest finite
+  // item end so mixed intervals cannot extend access beyond the first boundary.
+  const item = itemId ? subscription.items?.data?.find(value => value.id === itemId) : subscription.items?.data?.[0];
+  const ends = (subscription.items?.data ?? []).map(value => stripeTimestamp(value.current_period_end))
+    .filter((date): date is Date => date !== null);
+  const itemEnd = itemId ? stripeTimestamp(item?.current_period_end)
+    : ends.length ? new Date(Math.min(...ends.map(date => date.getTime()))) : null;
+  return {
+    currentPeriodStart: stripeTimestamp(item?.current_period_start) ?? stripeTimestamp(subscription.current_period_start),
+    currentPeriodEnd: itemEnd ?? stripeTimestamp(subscription.current_period_end),
+  };
 }
 
 export function getOrgSubscriptionTrialDates(subscription: {
@@ -22,5 +40,6 @@ export function isOrgPlatformSubscription(subscription: {
 }, savedSubscriptionId: string | null | undefined): boolean {
   if (!savedSubscriptionId || savedSubscriptionId !== subscription.id) return false;
   const metadata = subscription.metadata;
-  return !metadata?.content_type && !metadata?.content_id && !metadata?.product_type && !metadata?.product_id;
+  return !metadata?.content_type && !metadata?.content_id && !metadata?.product_type && !metadata?.product_id
+    && metadata?.type !== "membership" && !metadata?.membership_plan_id;
 }

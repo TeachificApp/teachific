@@ -84,6 +84,7 @@ import MyCertificatesPage from "./pages/lms/MyCertificatesPage";
 import MyReceiptsPage from "./pages/MyReceiptsPage";
 import EmailMarketingPage from "./pages/lms/EmailMarketingPage";
 import PublicPagePage from "./pages/PublicPagePage";
+import PublicFunnelPage from "./pages/PublicFunnelPage";
 
 import GroupsPage from "./pages/members/GroupsPage";
 import GroupManagerPortalPage from "./pages/members/GroupManagerPortalPage";
@@ -118,6 +119,7 @@ import CohortSchedule from "./pages/CohortSchedule";
 import CohortReplay from "./pages/CohortReplay";
 import AssignmentDetail from "./pages/AssignmentDetail";
 import FunnelPageEditor from "./pages/marketing/FunnelPageEditor";
+import Funnel360VisualPage from "./pages/marketing/Funnel360VisualPage";
 import AffiliatesPage from "./pages/marketing/AffiliatesPage";
 import WidgetsPage from "./pages/marketing/WidgetsPage";
 import LandingPageBuilder from "./pages/lms/LandingPageBuilder";
@@ -232,6 +234,7 @@ function BareRouter() {
         <Route path="/courses/:slug/player/quiz/:quizId/attempt/:attemptId/lesson/:lessonId" component={CourseQuizResultsPage} />
         <Route path="/courses/:slug/player" component={CoursePlayer} />
         <Route path="/p/:slug" component={PublicPagePage} />
+        <Route path="/funnel/:funnelSlug/:pageSlug" component={PublicFunnelPage} />
         <Route path="/webinar/:slug/register" component={WebinarRegisterPage} />
         <Route path="/webinar/:slug/watch" component={WebinarWatchPage} />
         <Route path="/product/:slug" component={PublicPhysicalProductSalesPage} />
@@ -382,6 +385,7 @@ function AdminRouter() {
           <Route path="/marketing/email/:campaignId/edit">{(params) => <EmailCampaignEditor campaignId={Number(params.campaignId)} />}</Route>
           <Route path="/marketing/newsletter" component={NewsletterSubscribersPage} />
           <Route path="/marketing/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
+          <Route path="/marketing/funnels/:id/steps/:stepId/design" component={Funnel360VisualPage} />
           <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
           <Route path="/marketing/funnels" component={FunnelsPage} />
           <Route path="/admin/funnels/:funnelId/pages/:pageId/edit">{() => <FunnelPageEditor />}</Route>
@@ -605,6 +609,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/marketing/email">{() => <EmailCampaignDashboard />}</Route>
         <Route path="/marketing/email-automations" component={EmailWorkflowPage} />
         <Route path="/marketing/newsletter">{() => <NewsletterSubscribersPage />}</Route>
+        <Route path="/marketing/funnels/:id/steps/:stepId/design" component={Funnel360VisualPage} />
         <Route path="/marketing/funnels/:id">{() => <FunnelBuilderPage />}</Route>
         <Route path="/marketing/funnels">{() => <DashboardLayout><FunnelsPage /></DashboardLayout>}</Route>
         <Route path="/marketing/affiliates">{() => <DashboardLayout><AffiliatesPage /></DashboardLayout>}</Route>
@@ -747,6 +752,7 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
         <Route path="/forms/:slug" component={FormPlayerPage} />
         <Route path="/quiz/:shareToken" component={PublicQuizPlayerPage} />
         <Route path="/p/:slug" component={PublicPagePage} />
+        <Route path="/funnel/:funnelSlug/:pageSlug" component={PublicFunnelPage} />
         <Route path="/policies" component={OrgPoliciesPage} />
         <Route path="/terms" component={OrgPoliciesPage} />
         <Route path="/privacy" component={OrgPoliciesPage} />
@@ -836,6 +842,7 @@ function Router() {
     path.startsWith("/learn/") ||
     path.startsWith("/school") ||
     path.startsWith("/p/") ||
+    path.startsWith("/funnel/") ||
     path.startsWith("/webinar/") ||
     path.startsWith("/shop/") ||
     path.startsWith("/forms/") ||

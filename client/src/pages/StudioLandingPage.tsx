@@ -3,6 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
+import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,8 +51,8 @@ const PLANS = [
     id: "pro",
     name: "Course360 Studio™",
     badge: null,
-    monthlyPrice: 47,
-    annualPrice: 399,
+    monthlyPrice: COURSE360_PRICES.studio_desktop.monthly,
+    annualPrice: COURSE360_PRICES.studio_desktop.annual,
     description: "Tools to record, edit, and publish training videos in one plan.",
     features: PLAN_FEATURES,
     cta: "Start Free Trial",
@@ -423,7 +425,7 @@ export default function StudioLandingPage() {
               >
                 Annual
                 <span className="ml-1.5 text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">
-                  Save 29%
+                  Billed upfront
                 </span>
               </button>
             </div>
@@ -454,12 +456,12 @@ export default function StudioLandingPage() {
                   {plan.monthlyPrice !== null ? (
                     <>
                       <span className="text-4xl font-extrabold text-white">
-                        ${billing === "monthly" ? plan.monthlyPrice : Math.round((plan.annualPrice ?? 0) / 12)}
+                        {formatCourse360Dollars(billing === "monthly" ? plan.monthlyPrice : plan.annualPrice!)}
                       </span>
-                      <span className="text-white/50 text-sm ml-1">/mo</span>
+                      <span className="text-white/50 text-sm ml-1">/{billing === "monthly" ? "mo" : "yr"}</span>
                       {billing === "annual" && (
                         <p className="text-xs text-green-400 mt-1">
-                          ${plan.annualPrice}/yr billed annually — save ${(plan.monthlyPrice! * 12) - (plan.annualPrice ?? 0)}
+                          Billed upfront annually — save {formatCourse360Dollars(course360AnnualSavings("studio_desktop").amount)} vs. 12 monthly payments
                         </p>
                       )}
                     </>

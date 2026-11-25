@@ -2,47 +2,36 @@ import { z } from "zod";
 import { eq, desc, like, or, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getDb } from "../db";
 import { blockTemplates } from "../../drizzle/schema";
+import { requireCourse360BuilderSchool } from "../lib/course360BuilderSchoolScope";
 
 export const blockTemplatesRouter = router({
-  /** List all saved block templates, optionally filtered by search query */
+  /** Legacy NULL-org rows are preserved, but never exposed as school-owned templates. */
   list: protectedProcedure
     .input(z.object({ search: z.string().optional(), blockType: z.string().optional() }))
-    .query(async ({ input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const conditions = [];
-      if (input.blockType) {
-        conditions.push(eq(blockTemplates.blockType, input.blockType));
-      }
-      if (input.search && input.search.trim()) {
+    .query(async ({ ctx, input }) => {
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const conditions = [eq(blockTemplates.orgId, orgId)];
+      if (input.blockType) conditions.push(eq(blockTemplates.blockType, input.blockType));
+      if (input.search?.trim()) {
         const q = `%${input.search.trim()}%`;
-        conditions.push(or(like(blockTemplates.name, q), like(blockTemplates.tags, q), like(blockTemplates.blockType, q)));
+        conditions.push(or(like(blockTemplates.name, q), like(blockTemplates.tags, q), like(blockTemplates.blockType, q))!);
       }
-
-      const rows = conditions.length > 0
-        ? await db.select().from(blockTemplates).where(conditions.length === 1 ? conditions[0] : and(...conditions)).orderBy(desc(blockTemplates.createdAt))
-        : await db.select().from(blockTemplates).orderBy(desc(blockTemplates.createdAt));
-
-      return rows;
+      return db.select().from(blockTemplates).where(and(...conditions)).orderBy(desc(blockTemplates.createdAt));
     }),
 
-  /** Save a block as a template */
   save: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(200),
       description: z.string().optional(),
       blockType: z.string().min(1).max(80),
-      blockData: z.record(z.any()),
+      blockData: z.record(z.string(), z.any()),
       tags: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
       const [inserted] = await db.insert(blockTemplates).values({
+        orgId,
         name: input.name,
         description: input.description ?? null,
         blockType: input.blockType,
@@ -50,28 +39,20 @@ export const blockTemplatesRouter = router({
         tags: input.tags ?? null,
         createdByUserId: ctx.user.id,
       });
-
-      return { id: (inserted as any).insertId };
+      return { id: (inserted as any).insertId, orgId };
     }),
 
-  /** Delete a saved template */
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const predicate = and(eq(blockTemplates.id, input.id), eq(blockTemplates.orgId, orgId));
+      const [existing] = await db.select({ id: blockTemplates.id }).from(blockTemplates).where(predicate).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      await db.delete(blockTemplates).where(eq(blockTemplates.id, input.id));
-      return { success: true };
+      await db.delete(blockTemplates).where(predicate);
+      return { success: true, orgId };
     }),
 
-  /** Update a template's name/description/tags */
   update: protectedProcedure
     .input(z.object({
       id: z.number(),
@@ -80,21 +61,15 @@ export const blockTemplatesRouter = router({
       tags: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const [existing] = await db.select().from(blockTemplates).where(eq(blockTemplates.id, input.id)).limit(1);
+      const { db, orgId } = await requireCourse360BuilderSchool(ctx);
+      const predicate = and(eq(blockTemplates.id, input.id), eq(blockTemplates.orgId, orgId));
+      const [existing] = await db.select({ id: blockTemplates.id }).from(blockTemplates).where(predicate).limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
-      if (existing.createdByUserId !== ctx.user.id && ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
       const updates: Partial<typeof blockTemplates.$inferInsert> = {};
       if (input.name !== undefined) updates.name = input.name;
       if (input.description !== undefined) updates.description = input.description;
       if (input.tags !== undefined) updates.tags = input.tags;
-
-      await db.update(blockTemplates).set(updates).where(eq(blockTemplates.id, input.id));
-      return { success: true };
+      if (Object.keys(updates).length) await db.update(blockTemplates).set(updates).where(predicate);
+      return { success: true, orgId };
     }),
 });

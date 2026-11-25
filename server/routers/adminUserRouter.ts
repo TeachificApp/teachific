@@ -60,14 +60,14 @@ import {
 import { sendEmail, sendEmailViaOrg, buildPasswordResetEmail } from "../_core/email";
 import { sendEnrollmentEmail } from "../lib/enrollmentEmail";
 import { getOrgBaseUrl } from "../lib/orgUrl";
-
+import { stripePeriodEnd } from "../../shared/customerSubscriptionBilling";
+import { requireCustomerAdminScope, loadCustomerBillingSnapshots, scheduleCustomerCancellation, findCustomerSubscriptionOwner, getCustomerStripe, assertCustomerBillingOwner } from "../lib/customerSubscriptionBilling";
+import { getCustomerAccountSubscriptions } from "../lib/customerAccountSubscriptions";
 const BCRYPT_ROUNDS = 12;
-
 /** Verify the caller is a platform admin or org admin */
 async function assertAdmin(ctx: { user: { id: number; role: string } }) {
-  await requireOrgAdmin(ctx.user.id, ctx.user.role);
+  await requireCustomerAdminScope(ctx.user);
 }
-
 /** Ensure an organization administrator can only manage users in the active organization. */
 async function requireActiveOrgUserMembership(ctx: { user: { id: number; role: string } }, userId: number) {
   const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
@@ -91,10 +91,10 @@ function assertPlatformAdmin(role: string) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Platform admin access required" });
   }
 }
-
 export const adminUserRouter = router({
+  // Customer self-service read. No admin permission, client org ID or email lookup.
+  mySubscriptions: protectedProcedure.query(({ ctx }) => getCustomerAccountSubscriptions(ctx.user, ctx.req)),
   // ─── Core user detail ─────────────────────────────────────────────────────
-
   /**
    * Main data loader for the user detail page.
    * Returns user profile, enrollments, memberships, certificates, workshop enrollments, etc.
@@ -218,6 +218,10 @@ export const adminUserRouter = router({
           expiresAt: membershipMembers.expiresAt,
           cancelledAt: membershipMembers.cancelledAt,
           stripeSubscriptionId: membershipMembers.stripeSubscriptionId,
+          userId: membershipMembers.userId,
+          planTitle: memberships.name,
+          price: memberships.price,
+          billingInterval: memberships.billingInterval,
         })
         .from(membershipMembers)
         .leftJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
@@ -236,6 +240,7 @@ export const adminUserRouter = router({
           status: membershipSubscriptions.status,
           startDate: membershipSubscriptions.startDate,
           endDate: membershipSubscriptions.endDate,
+          createdAt: membershipSubscriptions.createdAt,
           planName: membershipPlans.name,
           planPrice: membershipPlans.price,
           billingInterval: membershipPlans.billingInterval,
@@ -244,7 +249,7 @@ export const adminUserRouter = router({
         .leftJoin(membershipPlans, eq(membershipSubscriptions.planId, membershipPlans.id))
         .where(
           orgId
-            ? and(eq(membershipSubscriptions.userId, input.userId), eq(membershipSubscriptions.orgId, orgId))
+            ? and(eq(membershipSubscriptions.userId, input.userId), eq(membershipSubscriptions.orgId, orgId), eq(membershipPlans.orgId, orgId))
             : eq(membershipSubscriptions.userId, input.userId)
         )
         .orderBy(desc(membershipSubscriptions.startDate));
@@ -310,6 +315,12 @@ export const adminUserRouter = router({
         }
       }
 
+      const billing = await loadCustomerBillingSnapshots(orgId, [...enrollmentRows, ...orderRows, ...nativeMembershipRows]
+        .filter(row => Boolean(row.stripeSubscriptionId))
+        .map(row => ({ orgId, userId: input.userId, subscriptionId: row.stripeSubscriptionId! })));
+      const withBilling = <T extends { stripeSubscriptionId: string | null }>(row: T) => ({
+        ...row, subscriptionBilling: row.stripeSubscriptionId ? billing.get(row.stripeSubscriptionId) ?? null : null,
+      });
       return {
         user: {
           id: user.id,
@@ -334,16 +345,21 @@ export const adminUserRouter = router({
         },
         orgMemberships: orgMemberRows,
         enrollments: enrollmentRows.map(e => ({
-          ...e,
+          ...withBilling(e),
+          enrollmentId: e.id,
           isQuiz: e.courseType === "quiz",
           isDownload: e.courseType === "download",
         })),
         certificates: certRows,
-        lmsCourseOrders: orderRows,
+        lmsCourseOrders: orderRows.map(withBilling),
         workshopEnrollments: workshopEnrollRows,
-        nativeMemberships: nativeMembershipRows,
+        nativeMemberships: nativeMembershipRows.map(m => ({ ...withBilling(m), currentPeriodEnd: m.expiresAt, createdAt: m.joinedAt })),
         memberships: membershipSubRows.map(m => ({
           ...m,
+          expiresAt: m.endDate,
+          grantedAt: m.startDate,
+          planTitle: m.planName,
+          price: m.planPrice,
           brand: null, // membership access records are org-specific
         })),
         communityMemberships: [],
@@ -675,17 +691,14 @@ export const adminUserRouter = router({
       if (!enrollment) throw new TRPCError({ code: "NOT_FOUND" });
       const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!orgId || enrollment.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Enrollment does not belong to the active organization." });
-      if (enrollment.stripeSubscriptionId) {
-        try {
-          const { getStripe } = await import("../stripePlans");
-          const stripe = getStripe();
-          await stripe.subscriptions.cancel(enrollment.stripeSubscriptionId);
-        } catch (e) {
-          console.error("[adminUser] Failed to cancel Stripe subscription:", e);
-        }
+      if (!enrollment.stripeSubscriptionId) throw new TRPCError({ code: "BAD_REQUEST", message: "Enrollment has no billing subscription." });
+      const owner = await findCustomerSubscriptionOwner(orgId, enrollment.stripeSubscriptionId);
+      const cancellation = await scheduleCustomerCancellation(owner);
+      if (cancellation.outcome !== "already_ended" && cancellation.periodEnd) {
+        await db.update(lmsEnrollments).set({ accessExpiresAt: cancellation.periodEnd })
+          .where(and(eq(lmsEnrollments.orgId, orgId), eq(lmsEnrollments.userId, owner.userId), eq(lmsEnrollments.stripeSubscriptionId, owner.subscriptionId)));
       }
-      await db.update(lmsEnrollments).set({ status: "cancelled" }).where(eq(lmsEnrollments.id, input.enrollmentId));
-      return { success: true };
+      return { success: true, ...cancellation };
     }),
 
   cancelLmsOrderSubscription: protectedProcedure
@@ -698,17 +711,15 @@ export const adminUserRouter = router({
       if (!order) throw new TRPCError({ code: "NOT_FOUND" });
       const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!orgId || order.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Order does not belong to the active organization." });
-      if (order.stripeSubscriptionId) {
-        try {
-          const { getStripe } = await import("../stripePlans");
-          const stripe = getStripe();
-          await stripe.subscriptions.cancel(order.stripeSubscriptionId);
-        } catch (e) {
-          console.error("[adminUser] Failed to cancel Stripe subscription:", e);
-        }
+      if (!order.stripeSubscriptionId) throw new TRPCError({ code: "BAD_REQUEST", message: "Order has no billing subscription." });
+      const owner = await findCustomerSubscriptionOwner(orgId, order.stripeSubscriptionId);
+      const cancellation = await scheduleCustomerCancellation(owner);
+      // Cancellation stops renewal; it does not refund a completed payment.
+      if (cancellation.outcome !== "already_ended" && cancellation.periodEnd) {
+        await db.update(lmsEnrollments).set({ accessExpiresAt: cancellation.periodEnd })
+          .where(and(eq(lmsEnrollments.orgId, orgId), eq(lmsEnrollments.userId, owner.userId), eq(lmsEnrollments.stripeSubscriptionId, owner.subscriptionId)));
       }
-      await db.update(lmsOrders).set({ status: "refunded" }).where(eq(lmsOrders.id, input.orderId));
-      return { success: true };
+      return { success: true, ...cancellation };
     }),
 
   cancelStripeSubscription: protectedProcedure
@@ -716,14 +727,23 @@ export const adminUserRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       assertPlatformAdmin(ctx.user.role);
-      try {
-        const { getStripe } = await import("../stripePlans");
-        const stripe = getStripe();
-        await stripe.subscriptions.cancel(input.subscriptionId);
-        return { success: true };
-      } catch (e: any) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e.message });
+      const orgId = await requireCustomerAdminScope(ctx.user);
+      const owner = await findCustomerSubscriptionOwner(orgId, input.subscriptionId);
+      const cancellation = await scheduleCustomerCancellation(owner);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (cancellation.outcome !== "already_ended" && cancellation.periodEnd) {
+        await db.update(lmsEnrollments).set({ accessExpiresAt: cancellation.periodEnd })
+          .where(and(eq(lmsEnrollments.orgId, orgId), eq(lmsEnrollments.userId, owner.userId), eq(lmsEnrollments.stripeSubscriptionId, owner.subscriptionId)));
+        const localMembers = await db.select({ id: membershipMembers.id }).from(membershipMembers)
+          .innerJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
+          .where(and(eq(memberships.orgId, orgId), eq(membershipMembers.userId, owner.userId), eq(membershipMembers.stripeSubscriptionId, owner.subscriptionId)));
+        for (const member of localMembers) {
+          await db.update(membershipMembers).set({ expiresAt: cancellation.periodEnd, cancelledAt: new Date() })
+            .where(and(eq(membershipMembers.id, member.id), eq(membershipMembers.userId, owner.userId)));
+        }
       }
+      return { success: true, ...cancellation };
     }),
 
   syncStripeSubscription: protectedProcedure
@@ -731,17 +751,22 @@ export const adminUserRouter = router({
     .mutation(async ({ ctx, input }) => {
       await assertAdmin(ctx);
       assertPlatformAdmin(ctx.user.role);
+      const orgId = await requireCustomerAdminScope(ctx.user);
+      const owner = await findCustomerSubscriptionOwner(orgId, input.subscriptionId);
       try {
-        const { getStripe } = await import("../stripePlans");
-        const stripe = getStripe();
-        const sub = await stripe.subscriptions.retrieve(input.subscriptionId);
+        const { stripe, ownGateway, requestOptions } = await getCustomerStripe(orgId);
+        const sub = await stripe.subscriptions.retrieve(input.subscriptionId, {}, requestOptions);
+        assertCustomerBillingOwner(sub, owner, ownGateway);
         return {
           success: true,
           status: sub.status,
-          currentPeriodEnd: new Date((sub as any).current_period_end * 1000),
+          stripeStatus: sub.status,
+          currentPeriodEnd: stripePeriodEnd(sub),
+          updated: [] as string[], // Read-only; do not claim access reconciliation.
         };
       } catch (e: any) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e.message });
+        if (e instanceof TRPCError) throw e;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to verify this school's subscription." });
       }
     }),
 
@@ -752,7 +777,8 @@ export const adminUserRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const [mm] = await db
-        .select({ id: membershipMembers.id, orgId: memberships.orgId })
+        .select({ id: membershipMembers.id, orgId: memberships.orgId, userId: membershipMembers.userId,
+          stripeSubscriptionId: membershipMembers.stripeSubscriptionId, expiresAt: membershipMembers.expiresAt })
         .from(membershipMembers)
         .leftJoin(memberships, eq(membershipMembers.membershipId, memberships.id))
         .where(eq(membershipMembers.id, input.membershipMemberId))
@@ -760,17 +786,15 @@ export const adminUserRouter = router({
       if (!mm) throw new TRPCError({ code: "NOT_FOUND" });
       const orgId = await getOrgIdForUserWithFallback(ctx.user.id, ctx.user.role);
       if (!orgId || mm.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Membership does not belong to the active organization." });
-      if (mm.stripeSubscriptionId) {
-        try {
-          const { getStripe } = await import("../stripePlans");
-          const stripe = getStripe();
-          await stripe.subscriptions.cancel(mm.stripeSubscriptionId);
-        } catch (e) {
-          console.error("[adminUser] Failed to cancel Stripe membership subscription:", e);
-        }
+      if (!mm.stripeSubscriptionId) throw new TRPCError({ code: "BAD_REQUEST", message: "Membership has no billing subscription. Use Revoke for manual access." });
+      const owner = await findCustomerSubscriptionOwner(orgId, mm.stripeSubscriptionId);
+      const cancellation = await scheduleCustomerCancellation(owner);
+      if (cancellation.outcome !== "already_ended" && cancellation.periodEnd) {
+        // Keep status/access active until the confirmed paid-through date.
+        await db.update(membershipMembers).set({ expiresAt: cancellation.periodEnd, cancelledAt: new Date() })
+          .where(and(eq(membershipMembers.id, mm.id), eq(membershipMembers.userId, owner.userId)));
       }
-      await db.update(membershipMembers).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(membershipMembers.id, input.membershipMemberId));
-      return { success: true };
+      return { success: true, ...cancellation };
     }),
 
   revokeNativeMembership: protectedProcedure
@@ -1145,9 +1169,11 @@ export const adminUserRouter = router({
       assertPlatformAdmin(ctx.user.role);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const orgId = await requireCustomerAdminScope(ctx.user);
       const rows = await db
         .select({ id: users.id, name: users.name, email: users.email, displayName: users.displayName, avatarUrl: users.avatarUrl, role: users.role, createdAt: users.createdAt })
         .from(users)
+        .innerJoin(orgMembers, and(eq(orgMembers.userId, users.id), eq(orgMembers.orgId, orgId)))
         .where(
           or(
             like(users.email, `%${input.query}%`),
@@ -1166,15 +1192,31 @@ export const adminUserRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       assertPlatformAdmin(ctx.user.role);
+      await assertAdmin(ctx);
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       if (input.primaryUserId === input.secondaryUserId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot merge a user with themselves" });
       }
+      const { orgId } = await requireActiveOrgUserMembership(ctx, input.primaryUserId);
+      await requireActiveOrgUserMembership(ctx, input.secondaryUserId);
+      const mergeMemberships = await db.select({ orgId: orgMembers.orgId }).from(orgMembers)
+        .where(or(eq(orgMembers.userId, input.primaryUserId), eq(orgMembers.userId, input.secondaryUserId)));
+      if (mergeMemberships.some(row => row.orgId !== orgId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Accounts shared with another school cannot be merged here." });
+      }
+      // Even orphaned enrollment data must not be transferred across school boundaries.
+      const foreignEnrollments = await db.select({ orgId: lmsEnrollments.orgId }).from(lmsEnrollments)
+        .where(or(eq(lmsEnrollments.userId, input.primaryUserId), eq(lmsEnrollments.userId, input.secondaryUserId)));
+      const foreignCertificates = await db.select({ orgId: lmsCertificates.orgId }).from(lmsCertificates)
+        .where(or(eq(lmsCertificates.userId, input.primaryUserId), eq(lmsCertificates.userId, input.secondaryUserId)));
+      if ([...foreignEnrollments, ...foreignCertificates].some(row => row.orgId !== orgId)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Cross-school account data cannot be merged." });
+      }
       // Transfer enrollments from secondary to primary
-      await db.update(lmsEnrollments).set({ userId: input.primaryUserId }).where(eq(lmsEnrollments.userId, input.secondaryUserId));
+      await db.update(lmsEnrollments).set({ userId: input.primaryUserId }).where(and(eq(lmsEnrollments.userId, input.secondaryUserId), eq(lmsEnrollments.orgId, orgId)));
       // Transfer certificates
-      await db.update(lmsCertificates).set({ userId: input.primaryUserId }).where(eq(lmsCertificates.userId, input.secondaryUserId));
+      await db.update(lmsCertificates).set({ userId: input.primaryUserId }).where(and(eq(lmsCertificates.userId, input.secondaryUserId), eq(lmsCertificates.orgId, orgId)));
       // Transfer org memberships (skip duplicates)
       const primaryOrgs = await db.select({ orgId: orgMembers.orgId }).from(orgMembers).where(eq(orgMembers.userId, input.primaryUserId));
       const primaryOrgIds = new Set(primaryOrgs.map(o => o.orgId));

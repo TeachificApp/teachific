@@ -11,6 +11,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { User, Lock, Save, Camera, Loader2, CheckCircle, Globe, Mail, Shield } from "lucide-react";
+import { AccountSubscriptionsCard } from "@/components/customer/AccountSubscriptionsCard";
 
 const TIMEZONES = [
   "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
@@ -77,6 +78,13 @@ export default function ProfilePage() {
   }, [user?.id]);
 
   const uploadMedia = trpc.auth.uploadPageMedia.useMutation();
+  const changePassword = trpc.customAuth.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password updated successfully");
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const updateMe = trpc.auth.updateMe.useMutation({
     onSuccess: () => {
       toast.success("Profile saved successfully");
@@ -121,8 +129,7 @@ export default function ProfilePage() {
     if (!currentPw) { toast.error("Enter your current password"); return; }
     if (newPw.length < 8) { toast.error("New password must be at least 8 characters"); return; }
     if (newPw !== confirmPw) { toast.error("Passwords do not match"); return; }
-    toast.info("Password changes are handled via the email authentication flow. A reset link will be sent to your email.");
-    setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    changePassword.mutate({ currentPassword: currentPw, newPassword: newPw });
   };
 
   const displayedName = displayName || name || user?.name || "User";
@@ -244,6 +251,8 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
+      <AccountSubscriptionsCard />
+
       {/* Security */}
       <Card>
         <CardHeader>
@@ -271,8 +280,8 @@ export default function ProfilePage() {
             <p className="text-xs text-red-500">Passwords do not match</p>
           )}
           <div className="flex justify-end">
-            <Button variant="outline" onClick={handleChangePassword} disabled={!currentPw || !newPw || !confirmPw}>
-              <Lock className="h-4 w-4 mr-2" />Update Password
+            <Button variant="outline" onClick={handleChangePassword} disabled={changePassword.isPending || !currentPw || !newPw || !confirmPw}>
+              {changePassword.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Lock className="h-4 w-4 mr-2" />}Update Password
             </Button>
           </div>
         </CardContent>
