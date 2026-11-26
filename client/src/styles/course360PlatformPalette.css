@@ -1,0 +1,69 @@
+/* Exact Course360 banner/header palette. Opt-in controls only; no global or
+ * Tailwind replacement, no authored content or semantic-status recoloring.
+ * Navy action text on turquoise is 6.14:1; on aqua it is 9.90:1.
+ */
+:is(.c360-text, .c360-ink, .c360-aqua-text, .c360-action, .c360-hover-action,
+    .c360-border, .c360-aqua-border, .c360-soft, .c360-soft-subtle,
+    .c360-hover-soft, .c360-focus-outline, .c360-focus-aqua-outline,
+    .c360-focus-ring, .c360-accent, :has(> .c360-setup-claims)) {
+  --c360-teal: #24abbc;
+  --c360-aqua: #4ad9e0;
+  --c360-navy: #0b1d35;
+  --c360-ink-color: #0b1d35;
+  --c360-action-color: #24abbc;
+  --c360-action-text: #0b1d35;
+  --c360-soft-color: #eaf9fb;
+}
+
+.c360-text { color: var(--c360-ink-color); }
+.c360-ink { color: var(--c360-navy); }
+.c360-aqua-text { color: var(--c360-aqua); }
+.c360-action { background-color: var(--c360-action-color); color: var(--c360-action-text); }
+.c360-hover-action:hover:not(:disabled) { background-color: var(--c360-aqua); color: var(--c360-action-text); }
+.c360-border { border-color: var(--c360-action-color); }
+.c360-border.border-t-transparent { border-top-color: transparent; }
+.c360-aqua-border { border-color: color-mix(in srgb, var(--c360-aqua) 45%, white); }
+.c360-soft { background-color: var(--c360-soft-color); }
+.c360-soft-subtle { background-color: color-mix(in srgb, var(--c360-soft-color) 50%, white); }
+.c360-hover-soft:hover:not(:disabled) { background-color: var(--c360-soft-color); }
+.c360-focus-outline:focus-visible { outline-color: var(--c360-ink-color); }
+.c360-focus-aqua-outline:focus-visible { outline-color: var(--c360-aqua); }
+.c360-focus-ring:focus { --tw-ring-color: var(--c360-ink-color); }
+.c360-accent { accent-color: var(--c360-ink-color); }
+
+/* Preserve gray only where the original caller requested gray disabled colors. */
+.c360-action:disabled:is(.disabled\:bg-slate-200) { background-color: #e2e8f0; }
+.c360-action:disabled:is(.disabled\:text-slate-600) { color: #475569; }
+
+/* Additive setup styling keyed to the existing claims mount. AccountSetupPage
+ * itself remains byte-identical, including its preserved recovery copy and links.
+ */
+:has(> .c360-setup-claims) > .border-teal-100.bg-teal-50 {
+  background-color: var(--c360-soft-color);
+  border-color: color-mix(in srgb, var(--c360-aqua) 45%, white);
+}
+:has(> .c360-setup-claims) > a[href="/login"] {
+  color: var(--c360-navy);
+}
+:has(> .c360-setup-claims) > a[href="/login"]:focus-visible {
+  --tw-ring-color: var(--c360-navy);
+}
+
+/* If explicitly used in an LMS school, read its own tokens without replacing
+ * them. Unmarked controls, authored colors and existing authoring dialogs stay
+ * untouched. Public checkout DialogContent carries its opt-in classes directly.
+ */
+.lms-org-theme :is(.c360-text, .c360-action, .c360-hover-action, .c360-border,
+    .c360-aqua-border, .c360-soft, .c360-soft-subtle, .c360-hover-soft,
+    .c360-focus-outline, .c360-focus-ring, .c360-accent) {
+  --c360-ink-color: var(--org-primary, #0b1d35);
+  --c360-action-color: var(--org-primary, #24abbc);
+  --c360-action-text: var(--org-button-text, #ffffff);
+  --c360-soft-color: color-mix(in srgb, var(--org-primary, #24abbc) 12%, transparent);
+  --c360-aqua: var(--org-accent, #4ad9e0);
+}
+.lms-org-theme .c360-action { background-color: var(--org-button, var(--c360-action-color)); }
+.lms-org-theme .c360-hover-action:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--org-button, var(--c360-action-color)) 82%, black);
+}
+.lms-org-theme .c360-aqua-border { border-color: color-mix(in srgb, var(--org-primary, #24abbc) 45%, transparent); }

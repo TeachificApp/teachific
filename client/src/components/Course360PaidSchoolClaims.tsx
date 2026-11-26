@@ -13,7 +13,7 @@ type ClaimsView = {
 type ClaimAction = { identity: Identity; claimId: string; status: "pending" | "error" | "success" | "stale" };
 
 const recoveryInstruction = "Sign in normally with the account used at checkout and verify your email, then retry.";
-const controlClass = "rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+const controlClass = "rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 c360-focus-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Owner consent only: the server verifies identity, email and the exact separate school. */
 export default function Course360PaidSchoolClaims() {
@@ -137,7 +137,7 @@ export default function Course360PaidSchoolClaims() {
   }
 
   return (
-    <section aria-label="Claim separate paid schools" className="space-y-3 rounded-xl border border-teal-100 bg-teal-50/50 p-4 text-left">
+    <section aria-label="Claim separate paid schools" className="c360-setup-claims space-y-3 rounded-xl border c360-aqua-border c360-soft-subtle p-4 text-left">
       <h2 className="text-sm font-semibold text-slate-900">Claim separate paid schools</h2>
       <p className="text-sm leading-relaxed text-slate-600">Only pending claims listed by the server for your signed-in account appear here. Claiming access does not merge schools, switch your active school, or confirm app subscription entitlements.</p>
       {authLoading ? <p role="status" className="text-sm text-slate-600">Checking your sign-in status…</p> : userId === null ? (
@@ -146,9 +146,9 @@ export default function Course360PaidSchoolClaims() {
         <>
           {!user?.emailVerified && <p className="text-sm text-slate-700">Verify your email before claiming access. {recoveryInstruction}</p>}
           {currentAction?.status === "success" && (
-            <div role="status" className="space-y-2 text-sm text-teal-900">
+            <div role="status" className="space-y-2 text-sm c360-text">
               <p>Access claimed. Use your dashboard school switcher to select it.</p>
-              <Link href="/lms" className="font-semibold underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700">Go to your dashboard</Link>
+              <Link href="/lms" className="font-semibold underline focus-visible:outline-none focus-visible:ring-2 c360-focus-ring">Go to your dashboard</Link>
             </div>
           )}
           {currentAction?.status === "error" && <p role="alert" className="text-sm text-red-800">Unable to claim access. {recoveryInstruction} Acknowledge the separate school again before retrying.</p>}
@@ -158,7 +158,7 @@ export default function Course360PaidSchoolClaims() {
           ) : currentView.status === "error" ? (
             <div className="space-y-2">
               <p role="alert" className="text-sm text-red-800">We couldn't load pending school claims. {recoveryInstruction}</p>
-              <button type="button" className={`${controlClass} border border-teal-700 text-teal-800`} onClick={() => void loadClaims(identity)}>Retry loading claims</button>
+              <button type="button" className={`${controlClass} border c360-border c360-text`} onClick={() => void loadClaims(identity)}>Retry loading claims</button>
             </div>
           ) : (
             <>
@@ -174,7 +174,7 @@ export default function Course360PaidSchoolClaims() {
                         <h3 className="text-sm font-semibold text-slate-900">Paid school #{item.orgId}</h3>
                         <p className="text-sm text-slate-600">Created <time dateTime={item.createdAt.toISOString()}>{item.createdAt.toLocaleDateString()}</time></p>
                         <label className="flex items-start gap-2 text-sm leading-relaxed text-slate-700">
-                          <input type="checkbox" className="mt-1 accent-teal-700" checked={acknowledged.has(item.claimId)} disabled={busy || claimed} onChange={event => {
+                          <input type="checkbox" className="mt-1 c360-accent" checked={acknowledged.has(item.claimId)} disabled={busy || claimed} onChange={event => {
                             if (!isCurrent(identity)) return;
                             const next = new Set(acknowledged);
                             if (event.target.checked) next.add(item.claimId); else next.delete(item.claimId);
@@ -182,7 +182,7 @@ export default function Course360PaidSchoolClaims() {
                           }} />
                           I acknowledge that paid school #{item.orgId} remains separate and claiming access will not switch my active school.
                         </label>
-                        <button type="button" className={`${controlClass} w-full bg-teal-700 text-white hover:bg-teal-800`} disabled={busy || claimed || !acknowledged.has(item.claimId)} onClick={() => void claimAccess(item, identity)}>
+                        <button type="button" className={`${controlClass} w-full c360-action text-white c360-hover-action`} disabled={busy || claimed || !acknowledged.has(item.claimId)} onClick={() => void claimAccess(item, identity)}>
                           {pending ? "Claiming access…" : "Claim access to this separate school"}
                         </button>
                       </li>
@@ -190,12 +190,12 @@ export default function Course360PaidSchoolClaims() {
                   })}
                 </ul>
               )}
-              <button type="button" className={`${controlClass} border border-teal-700 text-teal-800`} onClick={() => void loadClaims(identity)}>Refresh claim list</button>
+              <button type="button" className={`${controlClass} border c360-border c360-text`} onClick={() => void loadClaims(identity)}>Refresh claim list</button>
             </>
           )}
         </>
       )}
-      <Link href="/login?returnTo=/account-setup" className="inline-block text-sm font-semibold text-teal-800 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-700">Sign in and return to school claims</Link>
+      <Link href="/login?returnTo=/account-setup" className="inline-block text-sm font-semibold c360-text underline focus-visible:outline-none focus-visible:ring-2 c360-focus-ring">Sign in and return to school claims</Link>
     </section>
   );
 }

@@ -9,7 +9,7 @@ export function Course360SchoolTrack() {
     <section id="run-your-school" aria-labelledby="school-track-heading" className="scroll-mt-20 bg-slate-50 py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid gap-10 lg:grid-cols-2 items-center">
         <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-teal-700 mb-4">LMS · Learning Delivery Platform</p>
+          <p className="text-sm font-bold uppercase tracking-widest c360-text mb-4">LMS · Learning Delivery Platform</p>
           <h2 id="school-track-heading" className="text-4xl sm:text-5xl font-extrabold tracking-tight text-slate-900 mb-5">Run Your School</h2>
           <p className="text-lg leading-relaxed text-slate-600 mb-6">
             Your school is more than a collection of course files. Bring your catalog, learners,
@@ -19,11 +19,11 @@ export function Course360SchoolTrack() {
             Deliver the content you already own, manage who can learn, and follow their progress.
             Your school's identity stays separate from Course360's public platform branding.
           </p>
-          <a href="#pricing" className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-6 py-3 font-semibold text-white hover:bg-teal-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-700">
+          <a href="#pricing" className="inline-flex items-center gap-2 rounded-xl c360-action px-6 py-3 font-semibold text-white c360-hover-action focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 c360-focus-outline">
             Compare school plans <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
-        <div className="rounded-2xl border border-teal-100 bg-white p-7 sm:p-9 shadow-sm">
+        <div className="rounded-2xl border c360-aqua-border bg-white p-7 sm:p-9 shadow-sm">
           <h3 className="font-bold text-xl text-slate-900 mb-6">The operating side of online education</h3>
           <ul className="space-y-5">
             {[
@@ -33,7 +33,7 @@ export function Course360SchoolTrack() {
             ].map(([Icon, title, description]) => {
               const TrackIcon = Icon as typeof BookOpen;
               return <li key={String(title)} className="flex items-start gap-4">
-                <div className="rounded-lg bg-teal-50 p-2.5"><TrackIcon className="h-5 w-5 text-teal-700" aria-hidden="true" /></div>
+                <div className="rounded-lg c360-soft p-2.5"><TrackIcon className="h-5 w-5 c360-text" aria-hidden="true" /></div>
                 <div><h4 className="font-semibold text-slate-900">{String(title)}</h4><p className="text-sm text-slate-600 leading-relaxed mt-1">{String(description)}</p></div>
               </li>;
             })}
@@ -61,7 +61,7 @@ export function Course360ContentTrack() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-10">
           <div className="max-w-2xl">
-            <p className="text-sm font-bold uppercase tracking-widest text-cyan-200 mb-4">Content Creator Platform</p>
+            <p className="text-sm font-bold uppercase tracking-widest c360-aqua-text mb-4">Content Creator Platform</p>
             <h2 id="content-track-heading" className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-5">Create Content</h2>
             <p className="text-lg text-slate-200 leading-relaxed">Start with the learning experience. Author interactive courses with Creator,
               capture and edit lesson media with Studio, and build assessments with Quiz Creator.</p>
@@ -69,7 +69,7 @@ export function Course360ContentTrack() {
           <div className="shrink-0">
             <p id="content-billing-label" className="text-sm font-semibold text-slate-200 mb-2">Standalone web plan pricing · USD</p>
             <div role="group" aria-labelledby="content-billing-label" className="inline-flex gap-1 rounded-xl border border-slate-600 p-1">
-              {(["monthly", "annual"] as const).map(value => <button key={value} type="button" aria-pressed={interval === value} onClick={() => setInterval(value)} className={`rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200 ${interval === value ? "bg-white text-slate-900" : "text-slate-200 hover:bg-white/10"}`}>{value === "monthly" ? "Monthly" : "Annual"}</button>)}
+              {(["monthly", "annual"] as const).map(value => <button key={value} type="button" aria-pressed={interval === value} onClick={() => setInterval(value)} className={`rounded-lg px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 c360-focus-aqua-outline ${interval === value ? "bg-white text-slate-900" : "text-slate-200 hover:bg-white/10"}`}>{value === "monthly" ? "Monthly" : "Annual"}</button>)}
             </div>
           </div>
         </div>
@@ -77,13 +77,13 @@ export function Course360ContentTrack() {
           {CONTENT_TOOLS.map(tool => {
             const Icon = tool.icon;
             return <article key={tool.key} className="rounded-2xl border border-slate-600 bg-white/5 p-7 flex flex-col">
-              <Icon className="h-7 w-7 text-cyan-200 mb-6" aria-hidden="true" />
-              <p className="text-sm font-semibold text-cyan-200 mb-2">{tool.title}</p>
+              <Icon className="h-7 w-7 c360-aqua-text mb-6" aria-hidden="true" />
+              <p className="text-sm font-semibold c360-aqua-text mb-2">{tool.title}</p>
               <h3 className="text-2xl font-bold mb-4">{tool.name}</h3>
               <p className="text-sm leading-relaxed text-slate-200 mb-6 flex-1">{tool.description}</p>
               <p className="text-2xl font-bold">{formatCourse360Dollars(COURSE360_PRICES[tool.key][interval])}<span className="text-sm font-normal text-slate-200"> / {interval === "annual" ? "year" : "month"}</span></p>
               <p className="text-sm text-slate-200 mt-2 mb-6">{interval === "annual" ? "Billed upfront annually — the full yearly amount is charged at once." : "Billed monthly."}</p>
-              <a href={tool.href} className="inline-flex justify-between items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-900 hover:bg-cyan-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-cyan-200">{tool.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
+              <a href={tool.href} className="inline-flex justify-between items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-slate-900 c360-hover-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 c360-focus-aqua-outline">{tool.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></a>
             </article>;
           })}
         </div>

@@ -231,63 +231,63 @@ const FEATURES = [
     title: "Powerful Course Builder",
     description:
       "Build multi-section courses with video lessons, quizzes, downloadable resources, and drip scheduling.",
-    color: "#10b981",
+    color: TEAL,
   },
   {
     icon: Video,
     title: "Course360 Studio™",
     description:
       "Create Content with browser-based screen, camera, and audio capture. Edit your recordings into lesson media, then choose how to use them in your learning workflow.",
-    color: "#6366f1",
+    color: TEAL,
   },
   {
     icon: Users,
     title: "Member Management",
     description:
       "Invite students, manage group enrollments, assign roles, track progress, and issue certificates — all from a single, intuitive dashboard.",
-    color: "#f59e0b",
+    color: TEAL,
   },
   {
     icon: BarChart3,
     title: "Deep Analytics",
     description:
       "Run Your School with learning and sales reporting. Review learner progress, completions, and quiz results; analytics and export options depend on your school plan.",
-    color: "#10b981",
+    color: TEAL,
   },
   {
     icon: Globe,
     title: "Branded School Page",
     description:
       "Launch a fully branded public school page where students can browse your catalog, enroll, and access their courses — all under your name.",
-    color: AQUA,
+    color: TEAL,
   },
   {
     icon: Zap,
     title: "Marketing & Sales Tools",
     description:
       "Connect your school catalog to sales pages and checkout. Use coupons, campaigns, funnels, and affiliate tools where included in your plan, with your team in control.",
-    color: "#ef4444",
+    color: TEAL,
   },
   {
     icon: Upload,
     title: "SCORM & HTML5 Support",
     description:
       "Bring SCORM 1.2, SCORM 2004, and HTML5 learning content into your organization-owned library. Deliver supported packages through your school's learning workflow.",
-    color: "#8b5cf6",
+    color: TEAL,
   },
   {
     icon: Shield,
     title: "Enterprise-Grade Security",
     description:
       "Manage organization roles, content access, and learner sessions. Keep school administration and your organization-owned content separate from public platform marketing.",
-    color: "#0ea5e9",
+    color: TEAL,
   },
   {
     icon: Layers,
     title: "Bundles & Memberships",
     description:
       "Package your school courses into bundles and offer membership access. Choose the course and membership limits that fit your organization and delivery model.",
-    color: "#f97316",
+    color: TEAL,
   },
 ];
 
