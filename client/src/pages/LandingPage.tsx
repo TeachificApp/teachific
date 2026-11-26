@@ -950,11 +950,11 @@ export default function LandingPage({ crossToolOffers }: { params?: Record<strin
       <LandingNav user={user} />
       <HeroSection />
       <Course360SchoolTrack />
+      <PricingSection />
       <Course360ContentTrack />
       <FeaturesSection />
       <HowItWorksSection />
       <TestimonialsSection />
-      <PricingSection />
       {crossToolOffers !== undefined ? <Course360CrossToolOffers {...crossToolOffers} /> : <Course360CrossToolCheckout />}
       <CtaSection />
       <LandingFooter />
