@@ -6,6 +6,7 @@ import React, { lazy, Suspense } from "react";
 import superjson from "superjson";
 import { getLoginUrl } from "./const";
 import { isCourse360PlatformRoot } from "./lib/platformRoot";
+import { isCourse360AccountSetupEntry } from "./lib/course360AccountSetupEntry";
 
 function AppLoadFallback() {
   return (
@@ -41,6 +42,9 @@ function AppLoadFailure() {
 
 const DeferredApp = lazy(async () => {
   try {
+    if (isCourse360AccountSetupEntry(window.location)) {
+      return await import("./pages/auth/AccountSetupPage");
+    }
     return isCourse360PlatformRoot(window.location)
       ? await import("./pages/LandingPage")
       : await import("./App");

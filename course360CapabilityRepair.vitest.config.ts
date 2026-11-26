@@ -38,6 +38,7 @@ export default defineConfig({
       "server/course360CrossTool*.test.ts", "server/course360CrossTool*.test.tsx",
       "server/lib/course360PaymentLedger.test.ts", "server/lib/course360PaymentIngress.test.ts",
       "server/course360LandingRendering.test.ts",
+      "server/course360AccountSetupEntry.test.tsx",
     ],
   },
 });

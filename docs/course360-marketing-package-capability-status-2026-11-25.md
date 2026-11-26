@@ -1,9 +1,13 @@
 # Course360™ — marketing, package checkout and capability status
 
-**IN PROGRESS — DO NOT PUBLISH**  
-**Date:** November 25, 2026 (final verification completed November 26 UTC)  
-**Workspace:** `/home/ubuntu/scorm-host`  
-**Baseline checkpoint:** `94bab3e8`  
+**IN PROGRESS — DO NOT PUBLISH**
+
+**Date:** November 25, 2026 (final verification completed November 26 UTC)
+
+**Workspace:** `/home/ubuntu/scorm-host`
+
+**Baseline checkpoint:** `94bab3e8`
+
 **Managed project:** `fJXMsdmk8vcb8V4GDt37f6`
 
 This is an implementation and verification checkpoint, **not production-release certification**. It preserves the earlier `course360-capability-repair-status-2026-11-25.md` report. The current document supersedes that report's specific gaps for manual Quiz review, explicit Creator image generation and direct school publishing, but does not erase its other limitations. Original implementation handoffs and receipts are retained outside the project.
@@ -133,3 +137,30 @@ env -i PATH="$PATH" HOME=/home/ubuntu LANG=C.UTF-8 NODE_ENV=test \
 ```
 
 **Checkpoint must remain IN PROGRESS — DO NOT PUBLISH.** No live charge/refund/cancellation, destructive data operation, existing catalog replacement or Ultrasound-App write was performed for this tranche.
+
+## Post-checkpoint additive setup-loader and final verification addendum
+
+**November 26, 2026, 00:40 UTC. This addendum supersedes the earlier account-setup preview failure and earlier final test/build figures above; the original observations and evidence remain preserved.**
+
+A development-only restart yielded one successful qualified setup-page load but did not reliably repair ordinary navigation. A subsequent narrowly additive fix now selects a lightweight entry for exact `/account-setup` on the existing Course360 platform/local/managed-preview host classifier. School subdomains, custom/unknown hosts and other paths retain the original full-App path. The existing root classifier was not changed.
+
+`client/src/AppBootstrap.tsx` has exactly **four added lines and zero removed or replaced lines**: a helper import and a preceding conditional import of the existing setup page. Every original ternary, catch/fallback, provider, tRPC client, credential and API error-handling line is retained. The original file is archived outside the project; removing only those four additions restores its exact original bytes. `App.tsx`, `main.tsx`, `BootstrapShell.tsx`, the setup page and claim panel were not changed by this loader repair. Entry selection is not identity, payment, school, membership or entitlement proof. The original full-App import-failure cause is not claimed established, and other heavy-App routes are not certified by this repair.
+
+The new actual-source loader suite contains **49 tests** for exact hosts/paths, query independence, actual guest setup/claims rendering, synthetic authenticated consent, unchanged root marketing/providers and the retained heavy-App/fallback path. Its separate adjacent run passed 155/155 across seven files; that overlapping count is **not added** to the final integrated total.
+
+**Normal browser navigation and reload now pass for the guest setup page.** The actual page rendered its neutral payment disclaimer and separate-school sign-in recovery controls. Read-only resource checks confirmed `heavyAppRequested:false`, `protectedClaimsRequested:false`, `checkoutRequested:false` and `failureVisible:false`. No login, claim, Checkout, email or learner publishing action was performed. This is successful guest preview verification, not authenticated or deployed lifecycle certification. Screenshots/HTML and the read-only check are retained under the sandbox evidence paths, including `/home/ubuntu/console_outputs/exec_result_2026-11-26_00-38-25_686.txt`.
+
+The **final stable suite passed 1,236/1,236 occurrences across 68 files**, with no failed or pending tests, after all production source edits. The final production frontend/server build passed. Large bundle warnings remain. A fresh full TypeScript run still reports **2,860 global diagnostics**, with **zero diagnostics in all newly added modules, exact narrow corrected paths, the bootstrap addition and new loader tests**. Global type cleanliness is not claimed.
+
+Authoritative final evidence under `/home/ubuntu/course360-repairs/`:
+
+- `cross-tool-capabilities-final-attempt3-test-results.json` and `cross-tool-capabilities-final-attempt3-tests.log`.
+- `cross-tool-capabilities-final-attempt3-build.log`.
+- `cross-tool-capabilities-final-attempt3-tsc.log` and `cross-tool-capabilities-final-attempt3-tsc-precise-summary.json`.
+- `final-parent-preservation-attempt3.json` and its read-only verifier `verify-final-course360-checkpoint.py`.
+- `implementation-account-setup-light-entry.md`, `account-setup-light-entry-preservation.json` and the exclusive original archive.
+- `post-checkpoint-account-setup-recovery-limits.md` clarifies why the earlier restart-only success was insufficient.
+
+The remaining release gates are authenticated/deployed setup and exact-school claims, deployed Checkout/SCA/signature-verified webhook/trial/lifecycle recovery and email delivery, approved branded sender configuration, school ingress/historical/expiry entitlement consumers, reviewed existing-plan migrations, broad type drift and previously documented runtime/advanced/native capability gaps. Existing `hello@teachific.net` sender and all provider credentials remain unchanged. A later hosting notification still did not identify a certified deployed revision. No publish operation, live charge/refund/cancellation, customer subscription mutation, destructive data operation or Ultrasound write was performed.
+
+**Updated checkpoint remains IN PROGRESS — DO NOT PUBLISH.**
