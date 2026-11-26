@@ -245,3 +245,34 @@ describe("existing identity verified owner claim", () => {
     expect(db.rows().users[0]).toMatchObject({ role: "user", resetToken: "original" }); expect(db.rows().user_active_org).toBeUndefined();
   });
 });
+
+
+describe("paid-school claim one-time and exact-owner guard", () => {
+  it("a replay cannot regrant removed school membership or switch the active school", async () => {
+    await persistCourse360PaymentOwnerClaim(db, { orgId: 7, userId: 10, email: "owner@example.test", sessionId: "cs_paid", subscriptionId: "sub_paid" });
+    db.seed(users, [{ id: 10, email: "owner@example.test", emailVerified: true, role: "user", resetToken: "original" }]);
+    const claimId = db.rows().course360_payment_owner_claims[0].id;
+    await claimCourse360PaymentSchoolOwner({ claimId, authenticatedUserId: 10 });
+    db.seed(orgMembers, []);
+    await expect(claimCourse360PaymentSchoolOwner({ claimId, authenticatedUserId: 10 })).rejects.toThrow("no longer pending");
+    expect(db.rows().org_members).toEqual([]);
+    expect(db.rows().user_active_org).toBeUndefined();
+    expect(db.rows().users[0]).toMatchObject({ role: "user", resetToken: "original" });
+  });
+  it("rejects a pending claim after school ownership changed", async () => {
+    await persistCourse360PaymentOwnerClaim(db, { orgId: 7, userId: 10, email: "owner@example.test", sessionId: "cs_paid", subscriptionId: "sub_paid" });
+    db.seed(users, [{ id: 10, email: "owner@example.test", emailVerified: true }]);
+    db.seed(organizations, [{ id: 7, isActive: true, ownerId: 11 }]);
+    const claimId = db.rows().course360_payment_owner_claims[0].id;
+    await expect(claimCourse360PaymentSchoolOwner({ claimId, authenticatedUserId: 10 })).rejects.toThrow("school ownership mismatch");
+    expect(db.rows().course360_payment_owner_claims[0].state).toBe("pending");
+    expect(db.rows().user_active_org).toBeUndefined();
+  });
+  it("rejects a verified account whose email no longer matches the claim", async () => {
+    await persistCourse360PaymentOwnerClaim(db, { orgId: 7, userId: 10, email: "owner@example.test", sessionId: "cs_paid", subscriptionId: "sub_paid" });
+    db.seed(users, [{ id: 10, email: "different@example.test", emailVerified: true }]);
+    const claimId = db.rows().course360_payment_owner_claims[0].id;
+    await expect(claimCourse360PaymentSchoolOwner({ claimId, authenticatedUserId: 10 })).rejects.toThrow("verified account");
+    expect(db.rows().course360_payment_owner_claims[0].state).toBe("pending");
+  });
+});

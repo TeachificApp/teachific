@@ -50,6 +50,7 @@ import { formatDistanceToNow } from "date-fns";
 import { COURSE360_PRICES, course360AnnualSavings } from "@shared/course360Pricing";
 import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import { CreatorAiPptxControls } from "@/components/creator/CreatorAiPptxControls";
+import { CreatorOwnedImageControls } from "@/components/creator/CreatorOwnedImageControls";
 
 // ─── Template options ─────────────────────────────────────────────────────────
 const TEMPLATES = [
@@ -198,6 +199,7 @@ export default function CreatorDashboardPage() {
             )}
             <ProductSwitcher current="studio" variant="topbar" />
             <CreatorAiPptxControls orgId={orgId} onApplied={id => { void utils.authoring.listProjects.invalidate(); navigate(`/creator/${id}`); }} />
+            <CreatorOwnedImageControls key={`library-image-${orgId}`} orgId={orgId} />
             <Button
               size="sm"
               className="bg-[#24abbc] hover:bg-[#4ad9e0] text-white font-semibold"

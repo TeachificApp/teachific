@@ -8,6 +8,7 @@ import * as tables from "./course360PaymentTables";
 import { configureCourse360AppSubscriptionProjector, stripeObjectId, type Course360AppProjection, type Course360AppProduct } from "./course360WebhookLifecycle";
 import { course360AppSubscriptionTier, type Course360AppTier } from "./course360WebhookAppEntitlement";
 import { getOrgSubscriptionPeriodDates, getOrgSubscriptionTrialDates } from "./orgSubscriptionTrialDates";
+import { guardCourse360CrossToolOverlap } from "./course360CrossToolOverlap";
 
 export type Course360PaymentDb = MySql2Database<any>;
 type Scope = { db: Course360PaymentDb; transactional: boolean };
@@ -67,11 +68,13 @@ function checkoutSlot(input: Course360PaymentCheckoutInput): string {
   return hash(input.product === "platform" ? `school:${input.orgId}` : `app:${input.orgId}:${input.userId}:${input.product}`);
 }
 function identity() { const config = configured(); return { accountId: config.accountId, livemode: config.livemode }; }
+export function getCourse360PaymentVerifiedIdentity() { return identity(); }
 export async function reserveCourse360PaymentCheckout(input: Course360PaymentCheckoutInput): Promise<Checkout> {
   const slotId = hash(`${configured().accountId}:${configured().livemode}:${checkoutSlot(input)}`);
   const fingerprint = hash(JSON.stringify({ orgId: input.orgId, userId: input.userId, product: input.product, selection: input.selection, interval: input.interval, previous: input.previousSubscriptionId ?? null, customer: input.customerId ?? null, params: input.params }));
   return transaction(async db => {
     if (input.orgId && input.userId) await membership(db, input.orgId, input.userId);
+    await guardCourse360CrossToolOverlap(db, input, identity());
     await db.insert(tables.course360PaymentSlots).values({ id: slotId }).onDuplicateKeyUpdate({ set: { id: slotId } });
     await db.update(tables.course360PaymentSlots).set({ revision: sql`${tables.course360PaymentSlots.revision} + 1` }).where(eq(tables.course360PaymentSlots.id, slotId));
     const [slot] = await db.select().from(tables.course360PaymentSlots).where(eq(tables.course360PaymentSlots.id, slotId)).limit(1);
@@ -289,6 +292,7 @@ export async function claimCourse360PaymentSchoolOwner(input: { claimId: string;
     const [claim] = await db.select().from(tables.course360PaymentOwnerClaims).where(and(eq(tables.course360PaymentOwnerClaims.id, input.claimId), eq(tables.course360PaymentOwnerClaims.userId, input.authenticatedUserId))).limit(1);
     const [user] = await db.select().from(users).where(eq(users.id, input.authenticatedUserId)).limit(1);
     if (!claim || !user?.emailVerified || user.email?.trim().toLowerCase() !== claim.email) throw new Error("Normal authenticated, verified account ownership required");
+    if (claim.state !== "pending") throw new Error("Paid-school ownership claim is no longer pending");
     const [school] = await db.select().from(organizations).where(and(eq(organizations.id, claim.orgId), eq(organizations.ownerId, user.id))).limit(1);
     if (!school) throw new Error("Pending claim school ownership mismatch");
     await db.insert(orgMembers).values({ orgId: claim.orgId, userId: user.id, role: "org_super_admin", memberSubRole: "basic_member" }).onDuplicateKeyUpdate({ set: { role: "org_super_admin" } });

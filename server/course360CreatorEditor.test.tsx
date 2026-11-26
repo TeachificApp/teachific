@@ -11,6 +11,8 @@ vi.mock("@/lib/trpc",()=>{
 vi.mock("@/hooks/useOrgScope",()=>({useOrgScope:()=>({orgId:11})}));
 vi.mock("@/hooks/useAuth",()=>({useAuth:()=>({user:{id:3,role:"org_admin"}})}));
 vi.mock("@/components/ProductSwitcher",()=>({ProductSwitcher:()=>null}));
+vi.mock("@/components/creator/CreatorOwnedImageControls",()=>({CreatorOwnedImageControls:()=>null}));
+vi.mock("@/components/creator/CreatorSchoolPublishControls",()=>({CreatorSchoolPublishControls:()=>null}));
 vi.mock("wouter",()=>({Link:({href,children,onClick}:any)=><a href={href} onClick={onClick}>{children}</a>,useParams:()=>({projectId:"7"}),useLocation:()=>["/creator/7",vi.fn()]}));
 vi.mock("sonner",()=>({toast:{success:state.success,error:vi.fn()}}));
 import CreatorEditorPage from "../client/src/pages/CreatorEditorPage";

@@ -33,6 +33,7 @@ import {
 import { and, eq, inArray, sql, desc, asc, isNull } from "drizzle-orm";
 import { buildStandaloneLearnerOptions } from "../lib/questionOptionOrder";
 import { course360NativeCourseQuizProcedures, resolveCourse360QuizLessonAccess, isCourse360NativeQuiz, nativeCourseInfo, nativeCourseAttemptHistory, nativeCourseSnapshot, rejectNativeCourseLegacyAccess } from "../lib/course360NativeCourseQuizRuntime";
+import { course360NativeQuizReviewProcedures } from "../course360NativeQuizReviewProcedures";
 
 // ─── Quiz settings schema ─────────────────────────────────────────────────────
 const quizSettingsSchema = z.object({
@@ -139,6 +140,7 @@ async function requireQuizBankInOrg(bankId: number, orgId: number) {
 
 export const quizRouter = router({
   ...course360NativeCourseQuizProcedures,
+  ...course360NativeQuizReviewProcedures,
   // ─── Embedded Course Learner Playback ──────────────────────────────────────
   getLearnerQuizInfo: protectedProcedure
     .input(embeddedLearnerQuizInput)

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useSubscriptions } from "@/hooks/useSubscriptions";
 import LoadingScreen from "@/components/LoadingScreen";
+import { Course360SchoolTrack, Course360ContentTrack } from "@/components/Course360MarketingTracks";
+import { Course360CrossToolOffers, type Course360CrossToolOffersProps } from "@/components/Course360CrossToolOffers";
+import { Course360CrossToolCheckout } from "@/components/Course360CrossToolCheckout";
 import { COURSE360_PRICES } from "@shared/course360Pricing";
 import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
 import {
@@ -55,11 +56,11 @@ function LandingNav({ user }: { user?: { name?: string | null; email?: string | 
 
         {/* Nav links */}
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            Features
+          <a href="#run-your-school" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+            Run Your School
           </a>
-          <a href="#how-it-works" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-            How It Works
+          <a href="#create-content" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+            Create Content
           </a>
           <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
             Pricing
@@ -168,30 +169,34 @@ function HeroSection() {
           className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-gray-900 leading-tight tracking-tight mb-6"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
-          Build Your Knowledge
+          Run Your School.
           <br />
-          <span style={{ color: TEAL }}>Into an Online School</span>
+          <span style={{ color: TEAL }}>Create Content.</span>
         </h1>
 
+        <p className="text-lg font-semibold text-gray-700 mb-4">Build Your Knowledge Into an Online School — or create the content that powers one.</p>
         <p className="max-w-2xl mx-auto text-xl text-gray-500 leading-relaxed mb-10">
-          Course360™ provides educators, trainers, and creators with tools to build, sell, and
-          deliver online courses.
+          Run Your School with the LMS Learning Delivery Platform: deliver, manage, enroll, sell, and report.
+          Create Content with the Content Creator Platform: interactive authoring, capture and editing, and assessments.
+          Two focused approaches. One Course360™ family.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
           <a
-            href="/register"
+            href="#run-your-school"
             className="inline-flex items-center gap-2 text-base font-bold px-8 py-4 rounded-xl text-white shadow-lg transition-all hover:shadow-xl hover:scale-105"
             style={{ background: `linear-gradient(135deg, ${TEAL}, ${AQUA})` }}
            >
-            Start 14-Day Trial <ArrowRight className="w-4 h-4" />         </a>
+            Run Your School <ArrowRight className="w-4 h-4" />
+          </a>
           <a
-            href="#how-it-works"
+            href="#create-content"
             className="inline-flex items-center gap-2 text-base font-semibold text-gray-700 px-8 py-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-all"
           >
-            <Play className="w-4 h-4" style={{ color: TEAL }} /> See How It Works
+            <Layers className="w-4 h-4" style={{ color: TEAL }} /> Create Content
           </a>
         </div>
+        <p className="text-sm text-gray-600 mb-12">School plans start with a 14-day trial. A card is required at secure checkout first; your subscription renews afterward unless cancelled.</p>
 
         {/* Trust bar */}
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
@@ -218,7 +223,7 @@ const FEATURES = [
     icon: Wand2,
     title: "AI Course & Page Builder",
     description:
-      "Go from idea to income in minutes. Describe your topic and let Course360™ AI generate a complete course outline, lesson content, and a polished sales landing page — ready to publish instantly.",
+      "Use AI-assisted drafts as a starting point for course outlines, lesson content, and school pages. Review and refine the draft before you publish it for your learners.",
     color: TEAL,
   },
   {
@@ -232,7 +237,7 @@ const FEATURES = [
     icon: Video,
     title: "Course360 Studio™",
     description:
-      "Record, edit, and publish video content directly in your browser. Add captions, trim clips, generate highlights, and produce polished lessons without leaving the platform.",
+      "Create Content with browser-based screen, camera, and audio capture. Edit your recordings into lesson media, then choose how to use them in your learning workflow.",
     color: "#6366f1",
   },
   {
@@ -246,7 +251,7 @@ const FEATURES = [
     icon: BarChart3,
     title: "Deep Analytics",
     description:
-      "Understand exactly how learners engage with your content. Track plays, completions, quiz scores, and revenue with beautiful, exportable reports.",
+      "Run Your School with learning and sales reporting. Review learner progress, completions, and quiz results; analytics and export options depend on your school plan.",
     color: "#10b981",
   },
   {
@@ -260,28 +265,28 @@ const FEATURES = [
     icon: Zap,
     title: "Marketing & Sales Tools",
     description:
-      "Create discount coupons, run email campaigns, build sales funnels, and manage affiliate partners to grow your audience and revenue on autopilot.",
+      "Connect your school catalog to sales pages and checkout. Use coupons, campaigns, funnels, and affiliate tools where included in your plan, with your team in control.",
     color: "#ef4444",
   },
   {
     icon: Upload,
     title: "SCORM & HTML5 Support",
     description:
-      "Import any SCORM 1.2 or 2004 package, or raw HTML5 content. Course360 serves it securely with full LMS tracking, completion detection, and learner data persistence.",
+      "Bring SCORM 1.2, SCORM 2004, and HTML5 learning content into your organization-owned library. Deliver supported packages through your school's learning workflow.",
     color: "#8b5cf6",
   },
   {
     icon: Shield,
     title: "Enterprise-Grade Security",
     description:
-      "Role-based access control, secure content delivery, per-file permissions, and session tracking ensure your content is always protected.",
+      "Manage organization roles, content access, and learner sessions. Keep school administration and your organization-owned content separate from public platform marketing.",
     color: "#0ea5e9",
   },
   {
     icon: Layers,
     title: "Bundles & Memberships",
     description:
-      "Package courses into bundles, offer subscription memberships, and create recurring revenue streams that grow while you sleep.",
+      "Package your school courses into bundles and offer membership access. Choose the course and membership limits that fit your organization and delivery model.",
     color: "#f97316",
   },
 ];
@@ -301,11 +306,11 @@ function FeaturesSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            One platform. Infinite possibilities.
+            Your school. Your content. A connected workflow.
           </h2>
           <p className="max-w-2xl mx-auto text-lg text-gray-500">
-            Stop juggling five different tools. Course360™ brings your entire online education
-            business under one roof — from content creation to revenue collection.
+            Run Your School with delivery and management tools. Create Content with focused authoring,
+            media, and assessment workflows. Choose the plans you need without replacing your organization's content.
           </p>
         </div>
 
@@ -341,28 +346,28 @@ function HowItWorksSection() {
       number: "01",
       title: "Create Your School",
       description:
-        "Choose any paid plan, start your card-backed 14-day trial, and let Course360™ AI generate your branded school page in seconds — logo, colors, tagline, and public URL. Go from blank canvas to live school without touching a design tool.",
+        "Choose your LMS plan and complete secure checkout first for the card-backed 14-day trial. Set up your organization's school, branding, and public catalog.",
       icon: Sparkles,
     },
     {
       number: "02",
       title: "Build Your Courses",
       description:
-        "Describe your topic and let Course360™ AI draft a full course outline, lesson content, and a sales landing page. Upload videos, add quizzes, import SCORM, and publish — all in one place.",
+        "Create Content with interactive authoring, browser capture and editing, or assessment tools. Bring existing course files and resources into your school library, then review before publishing.",
       icon: BookOpen,
     },
     {
       number: "03",
       title: "Enroll Your Students",
       description:
-        "Invite learners directly, share your public school page, or sell access through our built-in checkout. Group enrollments and memberships make scaling effortless.",
+        "Run Your School by inviting learners, managing groups, and sharing your public catalog. Sell course or membership access with the tools included in your plan.",
       icon: Users,
     },
     {
       number: "04",
       title: "Track & Grow",
       description:
-        "Monitor engagement, completion rates, quiz performance, and revenue in real time. Export reports, run campaigns, and use the data to continuously improve.",
+        "Review learner progress, completions, quiz performance, and school reporting. Use those results to improve your content and delivery; advanced reporting and campaigns depend on your plan.",
       icon: TrendingUp,
     },
   ];
@@ -381,11 +386,11 @@ function HowItWorksSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            From idea to income — in no time
+            Create the content. Run the school.
           </h2>
           <p className="max-w-xl mx-auto text-lg text-gray-500">
-            Course360™ is designed to get you live fast — and keep growing with you as your school
-            scales.
+            Start with the workflow you need today. Connect content creation with school delivery
+            when you're ready — with your catalog and learners still in your organization's control.
           </p>
         </div>
 
@@ -610,7 +615,7 @@ function PricingSection() {
             className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight"
             style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
           >
-            Plans for every stage
+            Run Your School: LMS plans
           </h2>
           <p className="text-xl text-gray-500 max-w-2xl mx-auto">
             Every paid plan begins with a 14-day card-backed trial, then continues as a paid subscription unless cancelled before renewal.
@@ -770,13 +775,13 @@ function CtaSection() {
           className="text-4xl sm:text-5xl font-extrabold text-white mb-6 tracking-tight"
           style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
         >
-          Your school is waiting.
+          Run Your School.
           <br />
-          Start building today.
+          Create Content. Grow what’s next.
         </h2>
         <p className="text-xl text-white/80 mb-10 max-w-xl mx-auto">
-          Use Course360™ to share your expertise, grow an audience, and deliver learning experiences
-          from your own branded school.
+          Give your learners a school you control and content built for the way they learn.
+          Choose school delivery, content creation, or a school + Creator Web package.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
@@ -922,7 +927,7 @@ function LandingFooter() {
 
         <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs">© {new Date().getFullYear()} Course360™. All rights reserved. <a href="https://soundmedianow.com/" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80 transition-opacity">a SoundMedia, Inc. brand</a></p>
-          <p className="text-xs">Built for educators, by educators.</p>
+          <p className="text-xs">Built for educators, by educators. <a href="https://www.soundmedianow.com" target="_blank" rel="noreferrer" className="underline text-gray-300 hover:text-white">Designed by SoundMedia, Inc.</a></p>
         </div>
       </div>
     </footer>
@@ -930,11 +935,11 @@ function LandingFooter() {
 }
 
 // ─── Main Export ──────────────────────────────────────────────────────────────
-export default function LandingPage() {
+export default function LandingPage({ crossToolOffers }: { params?: Record<string, string | undefined>; crossToolOffers?: Course360CrossToolOffersProps } = {}) {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    document.title = "Course360™ — Build & Sell Online Courses";
+    document.title = "Course360™ — Run Your School. Create Content.";
   }, []);
 
   // Show branded loading screen only while we're waiting for the server
@@ -944,10 +949,13 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
       <LandingNav user={user} />
       <HeroSection />
+      <Course360SchoolTrack />
+      <Course360ContentTrack />
       <FeaturesSection />
       <HowItWorksSection />
       <TestimonialsSection />
       <PricingSection />
+      {crossToolOffers !== undefined ? <Course360CrossToolOffers {...crossToolOffers} /> : <Course360CrossToolCheckout />}
       <CtaSection />
       <LandingFooter />
     </div>

@@ -41,6 +41,7 @@ vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ user: null, loading:
 vi.mock("@/hooks/useOrgScope", () => ({ useOrgScope: () => ({ orgId: 1 }) }));
 vi.mock("@/hooks/useSubscriptions", () => ({ useSubscriptions: () => ({ subs: null, isLoading: false }) }));
 vi.mock("@/components/ProductSwitcher", () => ({ ProductSwitcher: () => null }));
+vi.mock("@/components/creator/CreatorOwnedImageControls", () => ({ CreatorOwnedImageControls: () => null }));
 vi.mock("sonner", () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
 vi.mock("@/components/ui/dialog", () => {
   const passthrough = ({ children }: any) => React.createElement("div", null, children);
@@ -140,3 +141,11 @@ describe("Approved Course360 price UI repair", () => {
     expect(state.checkout).not.toHaveBeenCalled();
   });
 });
+
+
+// Isolated additive boundary for the new package form; actual package UI is
+// exercised in course360CrossToolCheckoutUi.test.tsx, not standalone-price tests.
+vi.mock("@/components/Course360CrossToolCheckout", () => ({
+  Course360CrossToolCheckout: () => null,
+  default: () => null,
+}));

@@ -30,6 +30,7 @@ import { getOrgSubscriptionTrialDates, getOrgSubscriptionPeriodDates, isOrgPlatf
 import { normalizeCourse360StripeStatus, invoiceSubscriptionId, stripeObjectId, isCourse360StripeEvent, assertCourse360PlatformEventBinding, currentCourse360EnrollmentStatus, projectCourse360AppSubscription } from "./lib/course360WebhookLifecycle";
 
 import { currentCourse360PaymentTransaction, getCourse360PaymentDb, processCourse360PaymentVerifiedEvent, completeCourse360PaymentSchoolCheckout, withCourse360PaymentAppCheckout, withCourse360PaymentSignupCompletion, persistCourse360PaymentOwnerClaim, upsertCourse360PaymentPlatformState, dispatchCourse360PaymentHostedPlatformEvent } from "./lib/course360PaymentLedger";
+import { dispatchCourse360CrossToolVerifiedEvent, deliverCourse360CrossToolOnboarding } from "./lib/course360CrossToolFulfillment";
 async function getDb() { return currentCourse360PaymentTransaction() ?? getBaseDb(); }
 
 export function getOrgAdminPurchaseDashboardUrl(org: {
@@ -563,6 +564,7 @@ router.post(
       // Optional parent-configured hook receives only the already verified platform account.
       // School own-account/Connect deliveries belong to the separate authenticated endpoint.
       if (await dispatchCourse360PaymentHostedPlatformEvent(event)) return;
+      if (await dispatchCourse360CrossToolVerifiedEvent(event, getStripe())) return;
       switch (event.type) {
         case "checkout.session.async_payment_succeeded":
         case "checkout.session.completed": {
@@ -1394,6 +1396,7 @@ router.post(
       // Platform-wide InnoDB lock also serializes historical school/app races across processes.
       // The old process-local promise lock is not a durability boundary.
       await processCourse360PaymentVerifiedEvent(event, "platform-account", processEvent);
+      await deliverCourse360CrossToolOnboarding(event);
     } catch (err: any) {
       console.error("[Stripe Webhook] Processing error:", err.message);
       return res.status(500).json({ error: "Webhook processing failed" });

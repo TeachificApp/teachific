@@ -44,6 +44,8 @@ vi.mock("@/lib/trpc", () => {
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { id: 3, name: "Org author", role: "user" }, loading: false }) }));
 vi.mock("@/hooks/useOrgScope", () => ({ useOrgScope: () => ({ orgId: 11 }) }));
 vi.mock("@/components/ProductSwitcher", () => ({ ProductSwitcher: () => null }));
+vi.mock("@/components/creator/CreatorOwnedImageControls", () => ({ CreatorOwnedImageControls: () => null }));
+vi.mock("@/components/creator/CreatorSchoolPublishControls", () => ({ CreatorSchoolPublishControls: () => null }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: any) => React.createElement("a", { href }, children),
   useParams: () => ({ projectId: "7" }), useLocation: () => ["/creator/7", vi.fn()],

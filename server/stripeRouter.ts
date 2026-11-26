@@ -32,6 +32,10 @@ import {
 import type Stripe from "stripe";
 import { requireCourse360AppOrganization, requireCourse360AppCapability, getCourse360AppCapabilityStatus, getCourse360AppBillingRecords, course360DesktopArtifactUrl } from "./lib/course360AppCapabilities";
 import { createCourse360PaymentCheckout, getCourse360PaymentAppAccess, claimCourse360PaymentSchoolOwner, listCourse360PaymentOwnerClaims, course360PaymentLedgerReady, setCourse360PaymentManualRole, course360PaymentAppTrialEligible } from "./lib/course360PaymentLedger";
+import { course360CrossToolProcedures } from "./course360CrossToolProcedures";
+import { COURSE360_CROSS_TOOL_FAMILY } from "./lib/course360CrossToolCatalog";
+import { assertCourse360CrossToolRecovery } from "./lib/course360CrossToolFulfillment";
+import { getCourse360PaymentDb } from "./lib/course360PaymentLedger";
 
 async function getDb() {
   const { getDb: _getDb } = await import("./db");
@@ -277,6 +281,7 @@ export async function getOrCreateOrgPaymentSettings(orgId: number) {
 }
 
 export const stripeRouter = router({
+  ...course360CrossToolProcedures({ signup: parseApprovedPlatformSignupOrigin, existing: resolveAppCapabilityCheckoutOrigin }),
   getPaymentConfiguration: publicProcedure.query(() => {
     const readiness = getPlatformPaymentReadiness();
     return {
@@ -602,6 +607,7 @@ export const stripeRouter = router({
         orgCtx.orgId,
         sub.stripeSubscriptionId
       );
+      if (stripeSub.metadata?.type === COURSE360_CROSS_TOOL_FAMILY) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Package plan changes require a reviewed package change flow; use billing recovery for payment or cancellation." });
       if (!["active", "trialing"].includes(stripeSub.status)) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -1571,7 +1577,8 @@ export const stripeRouter = router({
     const stripe = getStripe();
     const live = await stripe.subscriptions.retrieve(row.subscriptionId);
     const customer = typeof live.customer === "string" ? live.customer : live.customer.id;
-    if (customer !== row.customerId || live.id !== row.subscriptionId || live.livemode !== row.livemode || live.metadata?.product_type !== input.product || live.metadata?.org_id !== String(row.orgId) || live.metadata?.user_id !== String(ctx.user.id)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "App billing identity needs support reconciliation." });
+    const packageRecovery = live.metadata?.type === COURSE360_CROSS_TOOL_FAMILY && input.product === "creator" && await assertCourse360CrossToolRecovery(await getCourse360PaymentDb(), row, live);
+    if (customer !== row.customerId || live.id !== row.subscriptionId || live.livemode !== row.livemode || (!packageRecovery && (live.metadata?.product_type !== input.product || live.metadata?.org_id !== String(row.orgId) || live.metadata?.user_id !== String(ctx.user.id)))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "App billing identity needs support reconciliation." });
     const session = await stripe.billingPortal.sessions.create({ customer: row.customerId, return_url: `${origin}${input.product === "quiz_creator" ? "/quiz-creator-app/billing" : `/${input.product}/billing`}` });
     return { url: session.url };
   }),

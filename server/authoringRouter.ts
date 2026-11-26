@@ -18,6 +18,8 @@ import JSZip from "jszip";
 import { getCourse360PaymentAppAccess, setCourse360PaymentManualRole } from "./lib/course360PaymentLedger";
 
 import { creatorExchangeProcedures } from "./course360CreatorExchangeProcedures";
+import { creatorImageProcedures } from "./course360CreatorImageProcedures";
+import { creatorSchoolPublishProcedures } from "./course360CreatorSchoolPublishProcedures";
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function randomSuffix() {
@@ -415,6 +417,8 @@ ${showWatermark ? `<div id="teachific-watermark" style="position:fixed;bottom:0;
 // ─── Router ───────────────────────────────────────────────────────────────────
 export const authoringRouter = router({
   ...creatorExchangeProcedures,
+  ...creatorImageProcedures,
+  ...creatorSchoolPublishProcedures,
   // ── Projects ──────────────────────────────────────────────────────────────
 
   listProjects: protectedProcedure

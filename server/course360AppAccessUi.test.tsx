@@ -14,6 +14,7 @@ vi.mock("@/lib/trpc", () => {
 });
 vi.mock("../client/src/pages/QuizCreatorPage", () => ({ default: () => <div>Actual gate accepted quiz editor</div> }));
 vi.mock("../client/src/pages/RecordEditPage", () => ({ default: () => <div>Recorder child</div> }));
+vi.mock("@/components/quiz-creator/Course360NativeQuizReviewPanel", () => ({ Course360NativeQuizReviewPanel: () => null }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 import QuizCreatorGate from "../client/src/pages/QuizCreatorGate";
 import QuizCreatorDashboard from "../client/src/pages/QuizCreatorDashboard";

@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff, Loader2, CheckCircle2, Sparkles, Shield, Zap, Globe, Layers } from "lucide-react";
 import { useOrgAuthBranding } from "@/hooks/useOrgAuthBranding";
 import { COURSE360_PLATFORM_LOGO_ALT, COURSE360_PLATFORM_LOGO_URL } from "@/config/platformBrand";
+import { COURSE360_PRICES } from "@shared/course360Pricing";
 
 const NAVY = "#0b1d35";
 const NAVY_MID = "#0f2847";
@@ -226,7 +227,7 @@ export default function RegisterPage() {
                 Start today.
               </h1>
               <p className="text-white/60 text-base leading-relaxed max-w-sm">
-                Every paid plan starts with a 14-day trial. Enter checkout first to securely save your card, then we will create your account.
+                Every paid plan starts with a 14-day trial. Complete secure checkout first with a required card; account and school setup happens only after checkout is verified.
               </p>
             </div>
           )}
@@ -248,7 +249,7 @@ export default function RegisterPage() {
           {!hasBlueprintInstall && (
             <div className="rounded-xl p-4" style={{ background: `${TEAL}15`, border: `1px solid ${TEAL}30` }}>
               <p className="text-white/70 text-sm leading-relaxed">
-                Create your account to set up a school, add content, and invite learners when you are ready.
+                Schools purchased with the same email remain separate. Checkout does not automatically merge schools, sign you in, or switch your active school.
               </p>
             </div>
           )}
@@ -277,10 +278,10 @@ export default function RegisterPage() {
         <div className="w-full max-w-sm">
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-1" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              {isOrgSubdomain ? `Join ${displayName}` : "Create your account"}
+              {isOrgSubdomain ? `Join ${displayName}` : "Start your school checkout"}
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Create your student account` : "Choose a paid plan, complete secure checkout, then set your password from our email."}
+              {isOrgSubdomain ? `Create your student account` : "Choose a paid plan and complete secure checkout first. New accounts receive a password-setup email; existing accounts sign in normally and verify the new-school claim separately."}
             </p>
           </div>
 
@@ -365,9 +366,9 @@ export default function RegisterPage() {
                   onChange={(event) => setPlan(event.target.value as "starter" | "builder" | "pro")}
                   className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-800 focus:border-[#24abbc] focus:outline-none focus:ring-2 focus:ring-[#24abbc]/20"
                 >
-                  <option value="starter">Starter — $39/month</option>
-                  <option value="builder">Builder — $99/month</option>
-                  <option value="pro">Pro — $199/month</option>
+                  <option value="starter">Starter — ${COURSE360_PRICES.starter[interval].toFixed(2)}/{interval === "annual" ? "year" : "month"}</option>
+                  <option value="builder">Builder — ${COURSE360_PRICES.builder[interval].toFixed(2)}/{interval === "annual" ? "year" : "month"}</option>
+                  <option value="pro">Pro — ${COURSE360_PRICES.pro[interval].toFixed(2)}/{interval === "annual" ? "year" : "month"}</option>
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -382,6 +383,7 @@ export default function RegisterPage() {
                   <option value="annual">Annual billing</option>
                 </select>
                 <p className="text-xs text-slate-500">A card is required now. Your plan begins charging automatically after the 14-day trial unless cancelled.</p>
+                <p className="text-xs text-slate-500">{interval === "annual" ? "Annual billing charges the full yearly amount at once, not monthly." : "Monthly billing charges the selected monthly amount."}</p>
               </div>
             </>}
             <Button

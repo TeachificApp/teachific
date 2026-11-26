@@ -165,3 +165,29 @@ describe("billing recovery and artifact readiness", () => {
   it.each([null, "", "javascript:alert(1)", "http://example.test/app.zip", "https://user:pass@example.test/app.zip"])("does not mark %s as download URL", value => expect(course360DesktopArtifactUrl(value)).toBeNull());
   it("retains https release URL without asserting signing or installation", () => expect(course360DesktopArtifactUrl("https://example.test/app.zip")).toBe("https://example.test/app.zip"));
 });
+
+
+describe("Creator package preserves existing school-plan benefits", () => {
+  it.each(["builder", "pro"])("retains %s Studio Web inclusion alongside only the bound Creator Web source", async plan => {
+    mocks.db.seed(orgSubscriptions, [{ orgId: 7, plan, status: "active", rawStripeStatus: "active", stripeSubscriptionId: "sub_package", currentPeriodEnd: future(), trialEndsAt: null }]);
+    mocks.db.seed(course360PaymentAppSubscriptions, [paid({ product: "creator", subscriptionId: "sub_package", reservationId: "reserved_package", tier: "web" })]);
+    const { course360PaymentCheckouts } = await import("./course360PaymentTables");
+    mocks.db.seed(course360PaymentCheckouts, [{ id: "reserved_package", spec: JSON.stringify({ metadata: { type: "course360_cross_tool_v1" } }) }]);
+    expect(await requireCourse360AppCapability(10, "studio", "web")).toMatchObject({ orgId: 7, schoolIncluded: true, isPaid: true });
+    expect(await requireCourse360AppCapability(10, "creator", "web")).toMatchObject({ orgId: 7, schoolIncluded: false, isPaid: true });
+    for (const [app, mode] of [["studio", "desktop"], ["creator", "desktop"], ["quiz_creator", "web"]] as const) {
+      expect((await getCourse360AppCapabilityStatus(10, app, mode)).access.isActive).toBe(false);
+    }
+    expect(mocks.db.rows[getTableName(course360PaymentAppSubscriptions)]).toHaveLength(1);
+    expect(mocks.db.inserts).toEqual([]);
+  });
+  it.each(["past_due", "canceled", "unpaid", "paused"])("denies both package-sourced tools and school inclusion at %s without changing independent source history", async rawStatus => {
+    mocks.db.seed(orgSubscriptions, [{ orgId: 7, plan: "pro", status: rawStatus === "past_due" ? "past_due" : "unpaid", rawStripeStatus: rawStatus, stripeSubscriptionId: "sub_package", currentPeriodEnd: future(), trialEndsAt: null }]);
+    const source = paid({ product: "creator", subscriptionId: "sub_package", reservationId: "reserved_package", rawStatus });
+    mocks.db.seed(course360PaymentAppSubscriptions, [source]);
+    expect((await getCourse360AppCapabilityStatus(10, "studio", "web")).access.isActive).toBe(false);
+    expect((await getCourse360AppCapabilityStatus(10, "creator", "web")).access.isActive).toBe(false);
+    expect(source.rawStatus).toBe(rawStatus);
+    expect(mocks.db.inserts).toEqual([]);
+  });
+});

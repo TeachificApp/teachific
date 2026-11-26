@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import QuizCreatorPage from "./QuizCreatorPage";
 import { ProductSwitcher } from "@/components/ProductSwitcher";
+import { Course360NativeQuizReviewPanel } from "@/components/quiz-creator/Course360NativeQuizReviewPanel";
 
 /**
  * QuizCreatorDashboard
@@ -131,6 +132,9 @@ export default function QuizCreatorDashboard() {
 
         <div className="flex items-center gap-4">
           <ProductSwitcher current="quizCreator" variant="topbar" />
+          {Number.isSafeInteger(roleData.orgId) && roleData.orgId > 0 && (
+            <Course360NativeQuizReviewPanel key={`review-${roleData.orgId}`} orgId={roleData.orgId} />
+          )}
           <a href="/quiz-creator-app/billing" className="text-sm text-teal-300 underline">App billing</a>
           <span className="text-white/50 text-sm hidden sm:block">{user?.name ?? user?.email}</span>
           <Button

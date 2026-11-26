@@ -66,6 +66,9 @@ import { CreatorBlockView } from "@/components/creator/CreatorBlockView";
 import { CreatorInspector } from "@/components/creator/CreatorInspector";
 import { CreatorProjectSettings } from "@/components/creator/CreatorProjectSettings";
 import { CreatorAiPptxControls } from "@/components/creator/CreatorAiPptxControls";
+import { CreatorOwnedImageControls } from "@/components/creator/CreatorOwnedImageControls";
+import { CreatorSchoolPublishControls } from "@/components/creator/CreatorSchoolPublishControls";
+import { appendCreatorOwnedImage } from "@/lib/course360CreatorOwnedImageInsertion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Block = CreatorBlock;
@@ -158,6 +161,9 @@ export default function CreatorEditorPage() {
   const titleInitialized = useRef(false);
   const exportLock = useRef(false);
   const previewQuery = trpc.authoring.previewPackage.useQuery({ projectId }, { enabled: false });
+  const imageInsertionScope = { orgId, projectId, slideId: activeSlideId, loadedProjectOrgId: project?.orgId == null ? null : Number(project.orgId) };
+  const latestImageInsertionScope = useRef(imageInsertionScope);
+  latestImageInsertionScope.current = imageInsertionScope;
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
@@ -484,6 +490,18 @@ export default function CreatorEditorPage() {
           {/* Actions */}
           <a href={getCourse360MediaLibraryHref()} target="_blank" rel="noopener noreferrer" className="text-xs text-[#4ad9e0] hover:underline">Media Library</a>
           <CreatorAiPptxControls orgId={orgId} projectId={projectId} title={projectTitle} description={project.description} beforeExport={async () => { if (activeSlideId) await saveCurrentSlide(activeSlideId, false); }} onApplied={id => { void utils.authoring.listSlides.invalidate({ projectId }); if (id !== projectId) navigate(`/creator/${id}`); }} />
+          <CreatorOwnedImageControls key={`image-${orgId}-${projectId}-${activeSlideId}`} orgId={orgId} projectId={projectId} scopeKey={activeSlideId ?? undefined} onGenerated={image => {
+            const block = newBlock("image");
+            const factory = () => block;
+            appendCreatorOwnedImage(slideContent, image, imageInsertionScope, latestImageInsertionScope.current, factory, { width: CANVAS_W, height: CANVAS_H });
+            setSlideContent(previous => JSON.stringify(imageInsertionScope) !== JSON.stringify(latestImageInsertionScope.current) ? previous : appendCreatorOwnedImage(previous, image, imageInsertionScope, latestImageInsertionScope.current, factory, { width: CANVAS_W, height: CANVAS_H }));
+            dirtyRef.current = true;
+          }} />
+          <CreatorSchoolPublishControls projectId={projectId} expectedOrgId={orgId} beforePublish={async () => {
+            const current = latestImageInsertionScope.current;
+            if (!activeSlideId || current.orgId !== orgId || current.projectId !== projectId || current.slideId !== activeSlideId || current.loadedProjectOrgId !== orgId) throw new Error("School, project or slide changed. Reopen publishing; existing content is retained.");
+            await saveCurrentSlide(activeSlideId, false);
+          }} />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
