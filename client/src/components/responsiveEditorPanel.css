@@ -1,0 +1,86 @@
+/* Opt-in editor presentation only. Organization colors and editor content
+   remain owned by the existing settings controls. */
+.c360-responsive-editor-panel {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  background: white;
+  overflow-y: auto;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.c360-responsive-editor-panel[hidden] { display: none; }
+.c360-responsive-editor-panel[data-compact="true"] {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  max-height: min(100%, var(--editor-visible-height, 100%));
+  border-left: 0;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+  box-shadow: 0 4px 24px #0b1d3520;
+}
+.c360-editor-panel-mobile-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #d5e7eb;
+  background: #f3fbfc;
+  color: #0b1d35;
+  font-size: 12px;
+  font-weight: 600;
+}
+.c360-editor-panel-toggle, .c360-editor-panel-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--org-button, #24abbc);
+  background: var(--org-button, #24abbc);
+  color: var(--org-button-text, #0b1d35);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.c360-editor-panel-toggle {
+  position: absolute;
+  top: 8px;
+  right: max(8px, env(safe-area-inset-right));
+  z-index: 15;
+  box-shadow: 0 2px 8px #0b1d3520;
+}
+.c360-editor-panel-back { background: white; color: #0b1d35; }
+.c360-editor-panel-toggle:hover, .c360-editor-panel-back:hover { background: var(--org-button, #4ad9e0); color: var(--org-button-text, #0b1d35); }
+.c360-editor-panel-toggle:focus-visible, .c360-editor-panel-back:focus-visible {
+  outline: 2px solid #0b1d35;
+  outline-offset: 2px;
+}
+.c360-responsive-editor-panel[data-compact="true"] .rich-text-editor { max-width: 100%; }
+.c360-responsive-editor-panel[data-compact="true"] input,
+.c360-responsive-editor-panel[data-compact="true"] textarea,
+.c360-responsive-editor-panel[data-compact="true"] select { min-width: 0; max-width: 100%; }
+
+.c360-responsive-editor-panel[data-compact="true"][data-expanded-viewport="true"] {
+  position: fixed;
+  inset: auto 0 auto 0;
+  top: var(--editor-viewport-top, 0px);
+  height: var(--editor-viewport-height, 100dvh);
+  max-height: var(--editor-viewport-height, 100dvh);
+  z-index: 70;
+}

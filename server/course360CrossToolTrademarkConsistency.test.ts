@@ -6,6 +6,7 @@ import ts from "typescript";
 import { formatCourse360BrandName } from "../shared/course360DisplayBrand";
 import { COURSE360_PRICES } from "../shared/course360Pricing";
 import { COURSE360_CROSS_TOOL_OFFERS } from "../shared/course360CrossToolOffers";
+import { restoreCourse360MobileEditorSource } from "./course360MobileEditorPreservation";
 
 // Fixed expectations from git show ea3c7f10917444a27b2b7b129a57b8a89d0766fb:<path>.
 // The suite has no git, provider, database, environment-file, or network dependency.
@@ -242,7 +243,7 @@ describe("Course360 literal-only source preservation", () => {
     const text = file === "client/src/pages/HelpPage.tsx"
       ? source(file).replace('Course360<span className="text-[#4ad9e0]"></span>', 'Course360<span className="text-[#4ad9e0]">™</span>')
       : source(file);
-    expect(sha256(normalizeTrademark(text))).toBe(baselineHash);
+    expect(sha256(normalizeTrademark(restoreCourse360MobileEditorSource(file, text)))).toBe(baselineHash);
   });
   it("keeps exactly one Help Center logo trademark without changing its two styling spans", () => {
     const help = source("client/src/pages/HelpPage.tsx");

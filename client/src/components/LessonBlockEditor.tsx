@@ -33,6 +33,7 @@ import { BlockTemplateLibraryProvider, OpenTemplateLibraryButton, SaveAsTemplate
 import { cn } from "@/lib/utils";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { builderRowsForOrg, cloneLessonBuilderBlocks } from "./lessonBuilderState";
+import ResponsiveEditorPanel, { isCompactEditorViewport, useCompactEditor } from "./ResponsiveEditorPanel";
 
 export interface LessonBlockEditorHandle {
   save: (andClose?: boolean) => Promise<void>;
@@ -109,19 +110,18 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
   // Resizable settings panel
   const [settingsPanelWidth, setSettingsPanelWidth] = useState(320);
   const isResizingPanel = useRef(false);
-  const [narrowViewport, setNarrowViewport] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const compactEditor = useCompactEditor();
   const resizeCleanupRef = useRef<(() => void) | null>(null);
   const savingRef = useRef(false);
 
   useEffect(() => {
     const onResize = () => {
-      setNarrowViewport(window.innerWidth < 768);
-      setSettingsPanelWidth(width => Math.min(width, Math.max(260, window.innerWidth - 280)));
+      if (!isCompactEditorViewport()) setSettingsPanelWidth(width => Math.min(width, Math.max(260, window.innerWidth - 280)));
     };
     onResize();
     window.addEventListener("resize", onResize);
     return () => { window.removeEventListener("resize", onResize); resizeCleanupRef.current?.(); };
-  }, []);
+  }, [compactEditor]);
 
   // Refs for scroll-to-new-block
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -679,9 +679,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
       scrollToBlock(newBlock.id);
     }}>
     <>
-    <div className={embedded ? "lesson-block-editor-org-theme lms-org-theme flex flex-col flex-1 overflow-hidden" : "lesson-block-editor-org-theme lms-org-theme fixed inset-0 z-40 flex bg-black/40"}>
+    <div className={embedded ? "lesson-block-editor-org-theme lms-org-theme flex flex-col flex-1 min-h-0 overflow-hidden" : "lesson-block-editor-org-theme lms-org-theme fixed inset-0 h-dvh z-40 flex bg-black/40"}>
       {/* Main editor panel */}
-      <div className={embedded ? "flex flex-col flex-1 overflow-hidden" : "flex flex-col w-full max-w-6xl mx-auto bg-white shadow-2xl overflow-hidden"}>
+      <div className={embedded ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "flex flex-col min-h-0 w-full max-w-6xl mx-auto bg-white shadow-2xl overflow-hidden"}>
         {/* Header — hidden when embedded inside LessonEditorPage (which has its own header) */}
         {!embedded && <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 py-3 bg-white border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-3">
@@ -806,9 +806,9 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
             </div>
           )}
           {/* Canvas + Settings row */}
-          <div className="relative flex flex-1 overflow-hidden">
+          <div className="relative flex flex-1 min-h-0 overflow-hidden">
           {/* Left: Canvas */}
-          <div ref={canvasRef} className="flex-1 overflow-y-auto bg-gray-50 p-4">
+          <div ref={canvasRef} className={cn("flex-1 min-w-0 overflow-y-auto bg-gray-50 p-4", compactEditor && selectedBlock && !previewMode && "pt-16")}>
             {/* Blocks canvas */}
             {previewMode ? (
               <div className="space-y-4">
@@ -839,6 +839,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                         block={block}
                         isSelected={block.id === selectedBlockId}
                         onSelect={() => setSelectedBlockId(block.id === selectedBlockId ? null : block.id)}
+                        onSelectChildBlock={childId => setSelectedBlockId(childId)}
                         onDelete={() => deleteBlock(block.id)}
                         onDuplicate={() => duplicateBlock(block.id)}
                         onMoveUp={idx > 0 ? () => moveBlock(block.id, -1) : undefined}
@@ -929,6 +930,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
           {!previewMode && selectedBlock && (
             <>
               {/* Resize handle */}
+              {!compactEditor && (
               <div
                 className="hidden md:flex w-1.5 shrink-0 cursor-col-resize bg-gray-100 org-hover-bg-light org-active-bg transition-colors items-center justify-center group"
                 onMouseDown={(e) => {
@@ -958,7 +960,8 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
               >
                 <GripVertical className="w-3 h-3 text-gray-400 group-hover:org-text" />
               </div>
-              <div style={{ width: narrowViewport ? "100%" : settingsPanelWidth }} className="absolute inset-0 z-10 md:static shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
+              )}
+              <ResponsiveEditorPanel selectionKey={selectedBlockId} title="Block settings" desktopWidth={settingsPanelWidth} className="bg-white border-l border-gray-200">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                   <span className="text-gray-700 text-xs font-bold uppercase tracking-wide">Block Settings</span>
                   <button onClick={() => setSelectedBlockId(null)} aria-label="Close block settings" className="text-gray-400 hover:text-gray-700">
@@ -973,7 +976,7 @@ const LessonBlockEditor = React.forwardRef<LessonBlockEditorHandle, LessonBlockE
                     courseId={courseId}
                   />
                 </div>
-              </div>
+              </ResponsiveEditorPanel>
             </>
           )}
           </div>{/* end canvas+settings row */}

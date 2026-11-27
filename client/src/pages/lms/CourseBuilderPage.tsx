@@ -62,6 +62,7 @@ import OrderBumpsAdmin from "./OrderBumpsAdmin";
 import CertificateTemplatesAdmin from "./CertificateTemplatesAdmin";
 import LessonBlockEditor from "@/components/LessonBlockEditor";
 import AssignmentBlockEditor from "@/components/AssignmentBlockEditor";
+import ResponsiveEditorPanel from "@/components/ResponsiveEditorPanel";
 import { Block, BlockType, BlockPreview } from "@/components/BlockPreview";
 import { builderRowsForOrg, compareBuilderLibraryOrder, parseLessonBuilderBlocks } from "@/components/lessonBuilderState";
 import { BLOCK_CATALOG, CATALOG_CATEGORIES, BlockSettings, SortableBlock, uid } from "@/pages/admin/LandingPageBuilder";
@@ -2948,12 +2949,12 @@ function CourseOverviewEditor({
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-2 items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-200">
+        <div className="flex flex-wrap items-center gap-3">
           <span className="text-[var(--org-primary)] font-bold text-sm">Course Overview Page Builder</span>
           <span className="text-gray-400 text-xs">Shown to enrolled students at /learn/{courseSlug}/overview</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SsoLearnLinkButton slug={`${courseSlug}/overview`} />
           <Button
             size="sm"
@@ -3002,7 +3003,7 @@ function CourseOverviewEditor({
         })}
       </div>
 
-      <div className="flex overflow-hidden" style={{ minHeight: 600 }}>
+      <div className="relative flex min-h-0 overflow-hidden" style={{ minHeight: 600 }}>
         {/* Canvas — full WYSIWYG page preview */}
         <div className="flex-1 overflow-y-auto bg-gray-100">
           {/* ── Read-only page chrome: Header ── */}
@@ -3206,15 +3207,15 @@ function CourseOverviewEditor({
 
         {/* Right: Block settings */}
         {!previewMode && selectedBlock && (
-          <div className="w-72 shrink-0 bg-white border-l border-gray-200 overflow-y-auto">
+          <ResponsiveEditorPanel selectionKey={selectedBlockId} title="Block settings" desktopWidth={288} className="bg-white border-l border-gray-200">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <span className="text-gray-700 text-xs font-bold uppercase tracking-wide">Block Settings</span>
-              <button onClick={() => setSelectedBlockId(null)} className="text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button>
+              <button onClick={() => setSelectedBlockId(null)} aria-label="Close block settings" className="text-gray-400 hover:text-gray-700"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-3">
               <BlockSettings block={selectedBlock} onChange={data => updateBlock(selectedBlock.id, data)} courseId={courseId} />
             </div>
-          </div>
+          </ResponsiveEditorPanel>
         )}
       </div>
 

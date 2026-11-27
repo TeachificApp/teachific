@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import ResponsiveEditorPanel, { useCompactEditor } from "@/components/ResponsiveEditorPanel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DebouncedInput, DebouncedTextarea } from "@/components/DebouncedInput";
 import { cn } from "@/lib/utils";
@@ -4996,7 +4997,7 @@ export function BlockSettings({ block, onChange, lessonId, courseId }: { block: 
 // ─── Sortable Block Card ──────────────────────────────────────────────────────
 
 // ─── Column Drop Zone ─────────────────────────────────────────────────────────
-function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMoveToOther, onDeleteChild, onAddBlock, onReorderChild }: {
+function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMoveToOther, onDeleteChild, onAddBlock, onReorderChild, onSelectChild }: {
   id: string; blocks: Block[]; activeDragId: UniqueIdentifier | null;
   isTargeted?: boolean;
   onMoveOut: (childBlockId: string) => void;
@@ -5004,6 +5005,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
   onDeleteChild?: (childBlockId: string) => void;
   onAddBlock: (block: Block) => void;
   onReorderChild?: (childBlockId: string, direction: "up" | "down") => void;
+  onSelectChild?: (childId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -5031,6 +5033,7 @@ function ColumnDropZone({ id, blocks, activeDragId, isTargeted, onMoveOut, onMov
                 <ColumnChildBlock
                   key={b.id}
                   block={b}
+                  onSelect={onSelectChild ? () => onSelectChild(b.id) : undefined}
                   onMoveOut={() => onMoveOut(b.id)}
                   onMoveToOther={onMoveToOther ? () => onMoveToOther(b.id) : undefined}
                   onDelete={onDeleteChild ? () => onDeleteChild(b.id) : undefined}
@@ -5153,8 +5156,9 @@ function ColumnBlockPickerDialog({ open, onOpenChange, onAddBlock }: {
 }
 
 // ─── Column Child Block (sortable within a column) ────────────────────────────
-function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp, onMoveDown, colZoneId }: {
+function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp, onMoveDown, colZoneId, onSelect }: {
   block: Block;
+  onSelect?: () => void;
   onMoveOut: () => void;
   onMoveToOther?: () => void;
   onDelete?: () => void;
@@ -5165,10 +5169,10 @@ function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp,
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, pointerEvents: isDragging ? "none" as const : undefined };
   return (
-    <div ref={setNodeRef} style={style} data-col-zone={colZoneId} className="relative group border border-gray-200 rounded bg-white overflow-hidden">
+    <div ref={setNodeRef} style={style} data-col-zone={colZoneId} onClick={onSelect ? e => { if ((e.target as HTMLElement).closest('[data-drag-handle]')) return; e.stopPropagation(); onSelect(); } : undefined} className="relative group border border-gray-200 rounded bg-white overflow-hidden">
       {/* Top-left action toolbar */}
       <div className="absolute top-1 left-1 z-10 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <div {...attributes} {...listeners} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={11} /></div>
+        <div {...attributes} {...listeners} data-drag-handle="true" className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-gray-600 flex items-center justify-center cursor-grab active:cursor-grabbing" title="Drag to reorder"><GripVertical size={11} /></div>
         {onMoveToOther && (
           <button onClick={e => { e.stopPropagation(); onMoveToOther(); }} className="w-6 h-6 bg-white border border-gray-200 rounded shadow text-gray-400 hover:text-teal-600 flex items-center justify-center" title="Move to other column"><ArrowLeftRight size={11} /></button>
         )}
@@ -5192,12 +5196,19 @@ function ColumnChildBlock({ block, onMoveOut, onMoveToOther, onDelete, onMoveUp,
       <div className="pointer-events-none" data-col-zone={colZoneId}>
         <BlockPreview block={block} />
       </div>
+      {onSelect && (
+        <button type="button" aria-label={`Edit block settings ${block.id}`} onClick={e => { e.stopPropagation(); onSelect(); }}
+          className="min-h-[44px] w-full px-2 py-2 text-xs font-medium text-teal-700 bg-teal-50 border-t border-gray-200 hover:bg-teal-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-500">
+          Edit block settings
+        </button>
+      )}
     </div>
   );
 }
 
-export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplicate, onMoveUp, onMoveDown, onSaveAsTemplate, coursePrice, courseTitle, activeDragId, activeColumnTarget, onMoveBlockOutOfColumn, onAddBlockToColumn, onMoveChildToOtherColumn, onDeleteChildFromColumn, onReorderChildInColumn }: {
+export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplicate, onMoveUp, onMoveDown, onSaveAsTemplate, coursePrice, courseTitle, activeDragId, activeColumnTarget, onMoveBlockOutOfColumn, onAddBlockToColumn, onMoveChildToOtherColumn, onDeleteChildFromColumn, onReorderChildInColumn, onSelectChildBlock }: {
   block: Block; isSelected: boolean; onSelect: () => void; onDelete: () => void; onDuplicate: () => void; onMoveUp?: () => void; onMoveDown?: () => void; onSaveAsTemplate?: (block: Block) => void; coursePrice?: number; courseTitle?: string;
+  onSelectChildBlock?: (childId: string) => void;
   activeDragId?: UniqueIdentifier | null;
   activeColumnTarget?: { blockId: string; side: "left" | "right" } | null;
   onMoveBlockOutOfColumn?: (colBlockId: string, side: "left" | "right", childBlockId: string) => void;
@@ -5258,6 +5269,7 @@ export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplica
                 <ColumnDropZone
                   id={`col:${block.id}:left`}
                   blocks={leftBlocks}
+                  onSelectChild={onSelectChildBlock}
                   activeDragId={activeDragId ?? null}
                   isTargeted={!!(activeDragId && activeColumnTarget?.blockId === block.id && activeColumnTarget?.side === "left")}
                   onMoveOut={childId => onMoveBlockOutOfColumn?.(block.id, "left", childId)}
@@ -5272,6 +5284,7 @@ export function SortableBlock({ block, isSelected, onSelect, onDelete, onDuplica
                 <ColumnDropZone
                   id={`col:${block.id}:right`}
                   blocks={rightBlocks}
+                  onSelectChild={onSelectChildBlock}
                   activeDragId={activeDragId ?? null}
                   isTargeted={!!(activeDragId && activeColumnTarget?.blockId === block.id && activeColumnTarget?.side === "right")}
                   onMoveOut={childId => onMoveBlockOutOfColumn?.(block.id, "right", childId)}
@@ -5392,6 +5405,7 @@ export function TemplateLibrary({ blocks, onInsert, onClose, initialTab }: {
 export default function LandingPageBuilder() {
   const { courseId } = useParams<{ courseId: string }>();
   const [, navigate] = useLocation();
+  const compact = useCompactEditor();
   const { orgId } = useOrgScope();
   const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericCourseId = Number(courseId);
@@ -5877,42 +5891,42 @@ export default function LandingPageBuilder() {
   return (
     <>
     <BlockTemplateLibraryProvider onInsert={(block) => { setBlocks(prev => [...prev, block]); setSelectedId(block.id); }}>
-    <div className="fixed inset-0 z-40 flex flex-col bg-gray-50" style={{ fontFamily: "Inter, sans-serif" }}>
+    <div className="fixed inset-0 z-40 flex h-dvh min-h-0 flex-col overflow-hidden bg-gray-50" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <button onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
+        <div className={cn("flex min-w-0 items-center gap-2 sm:gap-3", compact && "flex-wrap")}>
+          <button aria-label="Back to Course" onClick={() => navigate(`/lms/courses/${courseId}`)} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors">
             <ArrowLeft size={16} /> <span className="hidden sm:inline">Back to Course</span>
           </button>
           <div className="hidden sm:block w-px h-5 bg-gray-200" />
           <span className="text-sm font-semibold text-gray-800 truncate max-w-[9rem] sm:max-w-xs">{courseInfo?.title ?? "Landing Page Builder"}</span>
           <span className="hidden md:inline text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">Page Editor</span>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2">
-          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
+        <div className={cn("flex min-w-0 items-center gap-1 sm:gap-2", compact && "w-full flex-wrap")}>
+          <button aria-label="Page Templates" onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
             <FolderOpen size={14} /> <span className="hidden md:inline">Page Templates</span>
           </button>
           <OpenTemplateLibraryButton />
-          <button onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="hidden sm:flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors" title="Save current page as a reusable template">
+          <button aria-label="Save as Template" onClick={() => { setTemplatesInitialTab("page"); setShowTemplates(true); }} className="flex items-center gap-1.5 text-sm text-amber-600 hover:text-amber-700 border border-amber-200 bg-amber-50 hover:bg-amber-100 rounded-lg px-3 py-1.5 transition-colors" title="Save current page as a reusable template">
             <Bookmark size={14} /> <span className="hidden lg:inline">Save as Template</span>
           </button>
           {courseInfo?.slug && (
-            <a href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
+            <a aria-label="Preview page" href={courseInfo.orgSlug ? `${getOrgBaseUrl(courseInfo.orgSlug, courseInfo.orgCustomDomain, courseInfo.orgDomainVerificationStatus)}/courses/${courseInfo.slug}?preview=admin` : `/courses/${courseInfo.slug}?preview=admin`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 border border-gray-200 rounded-lg px-2 sm:px-3 py-1.5 transition-colors">
               <Eye size={14} /> <span className="hidden sm:inline">Preview</span>
             </a>
           )}
-          <div className="hidden sm:block"><AutoSaveIndicator status={autoSave.status} /></div>
-          <Button onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8">
+          <div><AutoSaveIndicator status={autoSave.status} /></div>
+          <Button aria-label={isSaving ? "Saving page" : "Save Page"} onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8">
             <Save size={14} /> <span className="hidden sm:inline">{isSaving ? "Saving…" : "Save Page"}</span>
           </Button>
         </div>
       </div>
 
       {/* Main Editor Area */}
-      <div className="flex flex-1 min-h-0 flex-col lg:flex-row overflow-hidden">
+      <div className={cn("flex flex-1 min-h-0 min-w-0 overflow-hidden", compact && "flex-col")}>
         {/* Left Panel: Add Block button */}
-        <div className="w-full lg:w-52 max-h-20 lg:max-h-none flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-gray-200 flex flex-col overflow-hidden">
-          <div className="p-2 lg:p-3">
+        <div className={cn("flex-shrink-0 bg-white border-gray-200 flex flex-col overflow-hidden", compact ? "w-full border-b" : "w-52 border-r")}>
+          <div className={compact ? "p-2" : "p-3"}>
             <button
               onClick={() => { setPickerTab("catalog"); setAddMenuOpen(true); }}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors"
@@ -5920,13 +5934,15 @@ export default function LandingPageBuilder() {
               <Plus size={14} /> Add Block
             </button>
           </div>
-          <div className="hidden lg:block flex-1 overflow-y-auto p-2">
-            <p className="text-xs text-gray-400 text-center mt-4 px-2">Click "Add Block" to open the block picker with all block types, copy blocks from other pages, or insert saved templates.</p>
+          <div className={compact ? "shrink-0 px-2 pb-2" : "flex-1 overflow-y-auto p-2"}>
+            <p className={cn("text-xs text-gray-400 text-center px-2", compact ? "mt-0" : "mt-4")}>Click "Add Block" to open the block picker with all block types, copy blocks from other pages, or insert saved templates.</p>
           </div>
         </div>
 
+        {/* Settings overlay is contained to the canvas area, below the toolbar and Add Block strip. */}
+        <div className={cn("relative flex flex-1 min-h-0 min-w-0 overflow-hidden", compact && "flex-col")}>
         {/* Center: Canvas */}
-        <div ref={canvasRef} className="flex-1 min-h-0 overflow-y-auto bg-gray-100">
+        <div ref={canvasRef} className={cn("flex-1 min-h-0 min-w-0 overflow-y-auto bg-gray-100", compact && "pt-16")}>
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-gray-400">Loading…</div>
           ) : blocks.length === 0 ? (
@@ -5961,6 +5977,7 @@ export default function LandingPageBuilder() {
                   {blocks.map((block, idx) => (
                     <SortableBlock key={block.id} block={block} isSelected={selectedId === block.id}
                       onSelect={() => setSelectedId(block.id)} onDelete={() => deleteBlock(block.id)}
+                      onSelectChildBlock={childId => setSelectedId(childId)}
                       onDuplicate={() => duplicateBlock(block.id)} coursePrice={courseInfo?.price} courseTitle={courseInfo?.title}
                       onSaveAsTemplate={handleSaveBlockAsTemplate}
                       activeDragId={activeDragId}
@@ -6060,13 +6077,20 @@ export default function LandingPageBuilder() {
         </div>
 
         {/* Right Panel: Block Settings / Page SEO */}
-        <div className="w-full lg:w-[var(--right-panel-width)] max-h-[48vh] lg:max-h-none flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 overflow-y-auto relative" style={{ "--right-panel-width": `${rightPanelWidth}px` } as React.CSSProperties}>
+        <ResponsiveEditorPanel
+          selectionKey={selectedId}
+          title={selectedBlock ? "Block settings" : "Page settings"}
+          desktopWidth={rightPanelWidth}
+          className="bg-white border-l border-gray-200"
+        >
           {/* Drag handle */}
+          {!compact && (
           <div
             onMouseDown={handleRightPanelMouseDown}
-            className="hidden lg:block absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#1db5bd] active:bg-[#189aa1] z-10 transition-colors"
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#1db5bd] active:bg-[#189aa1] z-10 transition-colors"
             title="Drag to resize panel"
           />
+          )}
           {selectedBlock ? (
             <>
               <div className="flex items-center justify-between pl-4 pr-3 py-3 border-b border-gray-100">
@@ -6143,6 +6167,7 @@ export default function LandingPageBuilder() {
               </div>
             </div>
           )}
+        </ResponsiveEditorPanel>
         </div>
       </div>
 
