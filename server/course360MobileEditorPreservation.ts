@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { restoreCourse360MobileSyncSource } from "./course360MobileSyncPreservation";
 
 export interface MobileEditorInversePair { readonly before: string; readonly after: string }
 export interface MobileEditorInverseFile {
@@ -49,6 +50,13 @@ function occurrenceCount(text: string, fragment: string): number {
 /** Restore only the enumerated, exact approved mobile repair, retaining every old hash assertion. */
 export function restoreCourse360MobileEditorSource(path: string, text: string): string {
   const file = manifest.files.find(entry => entry.path === path);
+  if (file && sha256(text) === file.baselineSha256) return text;
+  try { text = restoreCourse360MobileSyncSource(path, text); }
+  catch (error) {
+    if (!file) throw error;
+    // The original inverse independently requires its complete approved source
+    // hash AND restored baseline hash; malformed bytes cannot bypass either layer.
+  }
   if (!file) return text;
   // Already-original source stays original; no incomplete or mixed repair is accepted.
   if (sha256(text) === file.baselineSha256) return text;

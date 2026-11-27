@@ -5953,7 +5953,7 @@ export default function LandingPageBuilder() {
             </a>
           )}
           <Button aria-label={isSaving ? "Saving page" : "Save Page"} onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-4 py-1.5 h-8">
-            <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
+            <Save size={14} /> {isSaving ? "Saving…" : compact ? "Save" : "Save Page"}
           </Button>
         </div>
       </div>

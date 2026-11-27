@@ -15,6 +15,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
+import ResponsiveEditorPanel, { useCompactEditor } from "@/components/ResponsiveEditorPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,7 @@ export default function SitePageBuilder() {
   const { pageId } = useParams<{ pageId: string }>();
   const [, navigate] = useLocation();
   const numericId = Number(pageId);
+  const compact = useCompactEditor();
 
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -141,9 +143,9 @@ export default function SitePageBuilder() {
   const previewUrl = `/${page.slug}`;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
-      <header className="h-14 border-b bg-white flex items-center justify-between px-4 shrink-0">
-        <div className="flex items-center gap-3">
+    <div className="h-screen flex flex-col bg-gray-100" style={compact ? { height: "100dvh", minHeight: 0, overflow: "hidden" } : undefined}>
+      <header className={cn("h-14 border-b bg-white flex items-center justify-between px-4 shrink-0", compact && "h-auto min-h-14 flex-wrap gap-2 py-2")}>
+        <div className={cn("flex items-center gap-3", compact && "min-w-0 flex-wrap")}>
           <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Pages
           </Button>
@@ -152,7 +154,7 @@ export default function SitePageBuilder() {
             <p className="text-xs text-gray-500">/{page.slug} · {page.domain}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", compact && "flex-wrap")}>
           <Button variant="outline" size="sm" asChild>
             <a href={previewUrl} target="_blank" rel="noreferrer">
               <Eye className="w-4 h-4 mr-1" /> Preview
@@ -167,9 +169,9 @@ export default function SitePageBuilder() {
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0">
+      <div className={cn("relative flex-1 flex min-h-0 min-w-0 overflow-hidden", compact && "flex-col")}>
         {/* Block catalog */}
-        <aside className="w-52 border-r bg-white overflow-y-auto shrink-0 p-2">
+        <aside className="w-52 border-r bg-white overflow-y-auto shrink-0 p-2" style={compact ? { width: "100%", maxHeight: "30%" } : undefined}>
           {CATALOG_CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -198,7 +200,7 @@ export default function SitePageBuilder() {
         </aside>
 
         {/* Canvas */}
-        <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto p-6 bg-gray-50">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToFirstScrollableAncestor]}>
             <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
               <div className="max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden min-h-[400px]">
@@ -232,7 +234,9 @@ export default function SitePageBuilder() {
         </main>
 
         {/* Settings */}
-        <aside className="border-l bg-white overflow-y-auto shrink-0 p-4 space-y-4" style={{ width: rightPanelWidth }}>
+        <ResponsiveEditorPanel selectionKey={selectedId} title={selectedBlock ? "Block settings" : "Page settings"} desktopWidth={rightPanelWidth} className="border-l bg-white">
+          <div className={cn("p-4 space-y-4", compact && "flex flex-col")}>
+          <div className={cn("space-y-4", compact && "order-2")}>
           <h3 className="font-semibold text-sm">Page settings</h3>
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
@@ -262,19 +266,22 @@ export default function SitePageBuilder() {
             <Label className="text-xs">Image URL</Label>
             <Input value={seoImage} onChange={(e) => setSeoImage(e.target.value)} className="h-8 text-sm" />
           </div>
+          </div>
           {selectedBlock && (
-            <>
+            <div className={cn("space-y-4", compact && "order-1")}>
               <hr />
               <h3 className="font-semibold text-sm">Block settings</h3>
+              <button type="button" aria-label="Close block settings" onClick={() => setSelectedId(null)} className="c360-editor-panel-back">Page settings</button>
               <BlockSettings
                 block={selectedBlock}
                 onChange={(data) =>
                   setBlocks((prev) => prev.map((b) => (b.id === selectedBlock.id ? { ...b, data } : b)))
                 }
               />
-            </>
+            </div>
           )}
-        </aside>
+          </div>
+        </ResponsiveEditorPanel>
       </div>
     </div>
   );

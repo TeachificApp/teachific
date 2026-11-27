@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { COURSE360_MOBILE_EDITOR_INVERSES, restoreCourse360MobileEditorSource } from "./course360MobileEditorPreservation";
+import { restoreCourse360MobileSyncSource } from "./course360MobileSyncPreservation";
 
 // Independently fixed raw-byte originals from 8dd13f463bfa269cd848ea48a2efdf0b35955af7.
 // No git execution, retained backup access, environment files, provider, DB or network is needed.
@@ -14,7 +15,7 @@ const ORIGINAL_HASHES: Readonly<Record<string, string>> = {
   "client/src/pages/lms/LandingPageBuilder.tsx": "561f1e9751b2c0f83dc7a657d156e0b5d61b5750a3fcffd2f2ee6c8defc2ec32",
 };
 const sha256 = (value: string): string => createHash("sha256").update(value).digest("hex");
-const source = (path: string): string => readFileSync(resolve(process.cwd(), path), "utf8");
+const source = (path: string): string => restoreCourse360MobileSyncSource(path, readFileSync(resolve(process.cwd(), path), "utf8"));
 const count = (text: string, fragment: string): number => text.split(fragment).length - 1;
 
 function evidence(path: string, text: string) {

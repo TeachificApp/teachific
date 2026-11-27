@@ -5917,7 +5917,7 @@ export default function LandingPageBuilder() {
           )}
           <div><AutoSaveIndicator status={autoSave.status} /></div>
           <Button aria-label={isSaving ? "Saving page" : "Save Page"} onClick={handleSave} disabled={isSaving} className="flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8">
-            <Save size={14} /> <span className="hidden sm:inline">{isSaving ? "Saving…" : "Save Page"}</span>
+            <Save size={14} /> {isSaving ? "Saving…" : compact ? "Save" : "Save Page"}
           </Button>
         </div>
       </div>

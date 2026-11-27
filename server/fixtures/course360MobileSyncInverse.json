@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "baselineCommit": "1485060fac9c1a847fe967eb5b8b2fe2e3116308",
+  "sourceMobileCommit": "82ffa97c",
+  "sourceLabelCommit": "3e734601",
+  "files": [
+    {
+      "path": "client/src/pages/admin/FunnelPageEditor.tsx",
+      "baselineSha256": "11f3c747cfa17df3aa12128b215489603d80a9d5706a163684d4c5b0367438a8",
+      "approvedSha256": "63e9005cdcae84b9ebbe8dbfaaec1eb20c7dfb52ef82c3c3e85de27454c9a5f1",
+      "pairs": [
+        {
+          "before": "import { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport { useOrgScope } from \"@/hooks/useOrgScope\";\nimport { Button } from \"@/components/ui/button\";\nimport { toast } from \"sonner\";\nimport { useAutoSave } from \"@/hooks/useAutoSave\";\n",
+          "after": "import { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport { useOrgScope } from \"@/hooks/useOrgScope\";\nimport ResponsiveEditorPanel, { useCompactEditor } from \"@/components/ResponsiveEditorPanel\";\nimport { Button } from \"@/components/ui/button\";\nimport { toast } from \"sonner\";\nimport { useAutoSave } from \"@/hooks/useAutoSave\";\n"
+        },
+        {
+          "before": "  const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();\n  const [, navigate] = useLocation();\n  const { orgId } = useOrgScope();\n  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);\n  const numericPageId = Number(pageId);\n  const numericFunnelId = Number(funnelId);\n",
+          "after": "  const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();\n  const [, navigate] = useLocation();\n  const { orgId } = useOrgScope();\n  const compact = useCompactEditor();\n  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);\n  const numericPageId = Number(pageId);\n  const numericFunnelId = Number(funnelId);\n"
+        },
+        {
+          "before": "    <>\n    <div className=\"fixed inset-0 z-40 flex flex-col bg-gray-50\" style={{ fontFamily: \"Inter, sans-serif\" }}>\n      {/* Top Bar */}\n      <div className=\"flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0\">\n        <div className=\"flex items-center gap-3\">\n          <button\n            onClick={() => navigate(`/admin/funnels/${funnelId}`)}\n            className=\"flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors\"\n",
+          "after": "    <>\n    <div className=\"fixed inset-0 z-40 flex flex-col bg-gray-50\" style={{ fontFamily: \"Inter, sans-serif\" }}>\n      {/* Top Bar */}\n      <div className={cn(\"flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0\", compact && \"flex-wrap gap-2\")}>\n        <div className={cn(\"flex items-center gap-3\", compact && \"flex-wrap min-w-0\")}>\n          <button\n            onClick={() => navigate(`/admin/funnels/${funnelId}`)}\n            className=\"flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors\"\n"
+        },
+        {
+          "before": "            </span>\n          )}\n        </div>\n        <div className=\"flex items-center gap-2\">\n          {pageData?.funnel?.slug && (currentPage?.slug || numericPageId) && (\n            <a\n              href={currentPage?.slug ? `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}/${currentPage.slug}` : `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}?preview=${numericPageId}`}\n",
+          "after": "            </span>\n          )}\n        </div>\n        <div className={cn(\"flex items-center gap-2\", compact && \"flex-wrap min-w-0\")}>\n          {pageData?.funnel?.slug && (currentPage?.slug || numericPageId) && (\n            <a\n              href={currentPage?.slug ? `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}/${currentPage.slug}` : `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}?preview=${numericPageId}`}\n"
+        },
+        {
+          "before": "            disabled={isSaving}\n            className=\"flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8\"\n          >\n            <Save size={14} /> {isSaving ? \"Saving…\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n",
+          "after": "            disabled={isSaving}\n            className=\"flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8\"\n          >\n            <Save size={14} /> {isSaving ? \"Saving…\" : compact ? \"Save\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n"
+        },
+        {
+          "before": "      )}\n\n      {/* Main Editor Area */}\n      <div className=\"flex flex-1 overflow-hidden\">\n        {/* Left Panel: Block Catalog + Page Nav */}\n        <div className=\"w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto\">\n          {/* Page navigation */}\n          {allPages.length > 1 && (\n            <div className=\"p-2 border-b border-gray-100\">\n",
+          "after": "      )}\n\n      {/* Main Editor Area */}\n      <div className={cn(\"relative flex flex-1 min-h-0 min-w-0 overflow-hidden\", compact && \"flex-col\")}>\n        {/* Left Panel: Block Catalog + Page Nav */}\n        <div className=\"w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto\" style={compact ? { width: \"100%\", maxHeight: \"30%\" } : undefined}>\n          {/* Page navigation */}\n          {allPages.length > 1 && (\n            <div className=\"p-2 border-b border-gray-100\">\n"
+        },
+        {
+          "before": "        </div>\n\n        {/* Center: Canvas */}\n        <div className=\"flex-1 overflow-y-auto bg-gray-100\">\n          {isLoading ? (\n            <div className=\"flex items-center justify-center h-full text-gray-400\">Loading…</div>\n          ) : blocks.length === 0 ? (\n",
+          "after": "        </div>\n\n        {/* Center: Canvas */}\n        <div className=\"flex-1 min-h-0 min-w-0 overflow-y-auto bg-gray-100\">\n          {isLoading ? (\n            <div className=\"flex items-center justify-center h-full text-gray-400\">Loading…</div>\n          ) : blocks.length === 0 ? (\n"
+        },
+        {
+          "before": "                      block={block}\n                      isSelected={selectedId === block.id}\n                      onSelect={() => setSelectedId(block.id)}\n                      onDelete={() => deleteBlock(block.id)}\n                      onDuplicate={() => duplicateBlock(block.id)}\n                      onSaveAsTemplate={handleSaveBlockAsTemplate}\n",
+          "after": "                      block={block}\n                      isSelected={selectedId === block.id}\n                      onSelect={() => setSelectedId(block.id)}\n                      onSelectChildBlock={childId => setSelectedId(childId)}\n                      onDelete={() => deleteBlock(block.id)}\n                      onDuplicate={() => duplicateBlock(block.id)}\n                      onSaveAsTemplate={handleSaveBlockAsTemplate}\n"
+        },
+        {
+          "before": "        </div>\n\n        {/* Right Panel: Block Settings */}\n        <div className=\"flex-shrink-0 flex flex-row\" style={{ width: rightPanelWidth }}>\n          {/* Drag handle — outside overflow container so it's never clipped */}\n          <div\n            onMouseDown={handleRightPanelMouseDown}\n            className=\"w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200\"\n            title=\"Drag to resize panel\"\n",
+          "after": "        </div>\n\n        {/* Right Panel: Block Settings */}\n        <ResponsiveEditorPanel selectionKey={selectedId} title=\"Block settings\" desktopWidth={rightPanelWidth}>\n          <div className={cn(\"flex min-h-0 min-w-0\", !compact && \"h-full\")}>\n          {/* Drag handle — outside overflow container so it's never clipped */}\n          {!compact && <div\n            onMouseDown={handleRightPanelMouseDown}\n            className=\"w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200\"\n            title=\"Drag to resize panel\"\n"
+        },
+        {
+          "before": "              <div className=\"w-0.5 h-3 bg-gray-500 rounded\" />\n              <div className=\"w-0.5 h-3 bg-gray-500 rounded\" />\n            </div>\n          </div>\n          <div className=\"flex-1 bg-white overflow-y-auto min-w-0\">\n          {selectedBlock ? (\n            <>\n              <div className=\"flex items-center justify-between p-3 border-b border-gray-100\">\n                <p className=\"text-xs font-semibold text-gray-500 uppercase tracking-wider\">\n                  {BLOCK_CATALOG.find(c => c.type === selectedBlock.type)?.label ?? \"Block\"} Settings\n                </p>\n                <button onClick={() => setSelectedId(null)} className=\"text-gray-400 hover:text-gray-600\">\n                  <X size={14} />\n                </button>\n              </div>\n",
+          "after": "              <div className=\"w-0.5 h-3 bg-gray-500 rounded\" />\n              <div className=\"w-0.5 h-3 bg-gray-500 rounded\" />\n            </div>\n          </div>}\n          <div className=\"flex-1 bg-white min-w-0\">\n          {selectedBlock ? (\n            <>\n              <div className=\"flex items-center justify-between p-3 border-b border-gray-100\">\n                <p className=\"text-xs font-semibold text-gray-500 uppercase tracking-wider\">\n                  {BLOCK_CATALOG.find(c => c.type === selectedBlock.type)?.label ?? \"Block\"} Settings\n                </p>\n                <button aria-label=\"Close block settings\" onClick={() => setSelectedId(null)} className=\"text-gray-400 hover:text-gray-600\">\n                  <X size={14} />\n                </button>\n              </div>\n"
+        },
+        {
+          "before": "            </div>\n          )}\n          </div>\n        </div>\n      </div>\n    </div>\n\n",
+          "after": "            </div>\n          )}\n          </div>\n          </div>\n        </ResponsiveEditorPanel>\n      </div>\n    </div>\n\n"
+        }
+      ]
+    },
+    {
+      "path": "client/src/pages/admin/SitePageBuilder.tsx",
+      "baselineSha256": "4174ce699682ffb83969ac5392c4e542818e1c02a53aeebdcd4b6c672ed06cea",
+      "approvedSha256": "34c83f3838dfbfda560e5ef477f1c9efb42779861ece57894960d4690b7543bc",
+      "pairs": [
+        {
+          "before": "import { SortableContext, verticalListSortingStrategy, arrayMove } from \"@dnd-kit/sortable\";\nimport { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport { Button } from \"@/components/ui/button\";\nimport { Input } from \"@/components/ui/input\";\nimport { Label } from \"@/components/ui/label\";\n",
+          "after": "import { SortableContext, verticalListSortingStrategy, arrayMove } from \"@dnd-kit/sortable\";\nimport { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport ResponsiveEditorPanel, { useCompactEditor } from \"@/components/ResponsiveEditorPanel\";\nimport { Button } from \"@/components/ui/button\";\nimport { Input } from \"@/components/ui/input\";\nimport { Label } from \"@/components/ui/label\";\n"
+        },
+        {
+          "before": "  const { pageId } = useParams<{ pageId: string }>();\n  const [, navigate] = useLocation();\n  const numericId = Number(pageId);\n\n  const [blocks, setBlocks] = useState<Block[]>([]);\n  const [selectedId, setSelectedId] = useState<string | null>(null);\n",
+          "after": "  const { pageId } = useParams<{ pageId: string }>();\n  const [, navigate] = useLocation();\n  const numericId = Number(pageId);\n  const compact = useCompactEditor();\n\n  const [blocks, setBlocks] = useState<Block[]>([]);\n  const [selectedId, setSelectedId] = useState<string | null>(null);\n"
+        },
+        {
+          "before": "  const previewUrl = `/${page.slug}`;\n\n  return (\n    <div className=\"h-screen flex flex-col bg-gray-100\">\n      <header className=\"h-14 border-b bg-white flex items-center justify-between px-4 shrink-0\">\n        <div className=\"flex items-center gap-3\">\n          <Button variant=\"ghost\" size=\"sm\" onClick={() => navigate(backUrl)}>\n            <ArrowLeft className=\"w-4 h-4 mr-1\" /> Pages\n          </Button>\n",
+          "after": "  const previewUrl = `/${page.slug}`;\n\n  return (\n    <div className=\"h-screen flex flex-col bg-gray-100\" style={compact ? { height: \"100dvh\", minHeight: 0, overflow: \"hidden\" } : undefined}>\n      <header className={cn(\"h-14 border-b bg-white flex items-center justify-between px-4 shrink-0\", compact && \"h-auto min-h-14 flex-wrap gap-2 py-2\")}>\n        <div className={cn(\"flex items-center gap-3\", compact && \"min-w-0 flex-wrap\")}>\n          <Button variant=\"ghost\" size=\"sm\" onClick={() => navigate(backUrl)}>\n            <ArrowLeft className=\"w-4 h-4 mr-1\" /> Pages\n          </Button>\n"
+        },
+        {
+          "before": "            <p className=\"text-xs text-gray-500\">/{page.slug} · {page.domain}</p>\n          </div>\n        </div>\n        <div className=\"flex items-center gap-2\">\n          <Button variant=\"outline\" size=\"sm\" asChild>\n            <a href={previewUrl} target=\"_blank\" rel=\"noreferrer\">\n              <Eye className=\"w-4 h-4 mr-1\" /> Preview\n",
+          "after": "            <p className=\"text-xs text-gray-500\">/{page.slug} · {page.domain}</p>\n          </div>\n        </div>\n        <div className={cn(\"flex items-center gap-2\", compact && \"flex-wrap\")}>\n          <Button variant=\"outline\" size=\"sm\" asChild>\n            <a href={previewUrl} target=\"_blank\" rel=\"noreferrer\">\n              <Eye className=\"w-4 h-4 mr-1\" /> Preview\n"
+        },
+        {
+          "before": "        </div>\n      </header>\n\n      <div className=\"flex-1 flex min-h-0\">\n        {/* Block catalog */}\n        <aside className=\"w-52 border-r bg-white overflow-y-auto shrink-0 p-2\">\n          {CATALOG_CATEGORIES.map((cat) => (\n            <button\n              key={cat}\n",
+          "after": "        </div>\n      </header>\n\n      <div className={cn(\"relative flex-1 flex min-h-0 min-w-0 overflow-hidden\", compact && \"flex-col\")}>\n        {/* Block catalog */}\n        <aside className=\"w-52 border-r bg-white overflow-y-auto shrink-0 p-2\" style={compact ? { width: \"100%\", maxHeight: \"30%\" } : undefined}>\n          {CATALOG_CATEGORIES.map((cat) => (\n            <button\n              key={cat}\n"
+        },
+        {
+          "before": "        </aside>\n\n        {/* Canvas */}\n        <main className=\"flex-1 overflow-y-auto p-6 bg-gray-50\">\n          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToFirstScrollableAncestor]}>\n            <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>\n              <div className=\"max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden min-h-[400px]\">\n",
+          "after": "        </aside>\n\n        {/* Canvas */}\n        <main className=\"flex-1 min-h-0 min-w-0 overflow-y-auto p-6 bg-gray-50\">\n          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToFirstScrollableAncestor]}>\n            <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>\n              <div className=\"max-w-4xl mx-auto bg-white shadow-sm rounded-lg overflow-hidden min-h-[400px]\">\n"
+        },
+        {
+          "before": "        </main>\n\n        {/* Settings */}\n        <aside className=\"border-l bg-white overflow-y-auto shrink-0 p-4 space-y-4\" style={{ width: rightPanelWidth }}>\n          <h3 className=\"font-semibold text-sm\">Page settings</h3>\n          <div className=\"space-y-2 text-sm\">\n            <div className=\"flex items-center justify-between\">\n",
+          "after": "        </main>\n\n        {/* Settings */}\n        <ResponsiveEditorPanel selectionKey={selectedId} title={selectedBlock ? \"Block settings\" : \"Page settings\"} desktopWidth={rightPanelWidth} className=\"border-l bg-white\">\n          <div className={cn(\"p-4 space-y-4\", compact && \"flex flex-col\")}>\n          <div className={cn(\"space-y-4\", compact && \"order-2\")}>\n          <h3 className=\"font-semibold text-sm\">Page settings</h3>\n          <div className=\"space-y-2 text-sm\">\n            <div className=\"flex items-center justify-between\">\n"
+        },
+        {
+          "before": "            <Label className=\"text-xs\">Image URL</Label>\n            <Input value={seoImage} onChange={(e) => setSeoImage(e.target.value)} className=\"h-8 text-sm\" />\n          </div>\n          {selectedBlock && (\n            <>\n              <hr />\n              <h3 className=\"font-semibold text-sm\">Block settings</h3>\n              <BlockSettings\n                block={selectedBlock}\n                onChange={(data) =>\n                  setBlocks((prev) => prev.map((b) => (b.id === selectedBlock.id ? { ...b, data } : b)))\n                }\n              />\n            </>\n          )}\n        </aside>\n      </div>\n    </div>\n  );\n",
+          "after": "            <Label className=\"text-xs\">Image URL</Label>\n            <Input value={seoImage} onChange={(e) => setSeoImage(e.target.value)} className=\"h-8 text-sm\" />\n          </div>\n          </div>\n          {selectedBlock && (\n            <div className={cn(\"space-y-4\", compact && \"order-1\")}>\n              <hr />\n              <h3 className=\"font-semibold text-sm\">Block settings</h3>\n              <button type=\"button\" aria-label=\"Close block settings\" onClick={() => setSelectedId(null)} className=\"c360-editor-panel-back\">Page settings</button>\n              <BlockSettings\n                block={selectedBlock}\n                onChange={(data) =>\n                  setBlocks((prev) => prev.map((b) => (b.id === selectedBlock.id ? { ...b, data } : b)))\n                }\n              />\n            </div>\n          )}\n          </div>\n        </ResponsiveEditorPanel>\n      </div>\n    </div>\n  );\n"
+        }
+      ]
+    },
+    {
+      "path": "client/src/pages/admin/LandingPageBuilder.tsx",
+      "baselineSha256": "3f5e77c0e49d263bc943be3cd844e0511141debebd2e5e969020273c0619d295",
+      "approvedSha256": "ab1bab223d837ef7986ddebe320835b918c9fdba515da6e09c6b0f606b6cd092",
+      "pairs": [
+        {
+          "before": "          )}\n          <div><AutoSaveIndicator status={autoSave.status} /></div>\n          <Button aria-label={isSaving ? \"Saving page\" : \"Save Page\"} onClick={handleSave} disabled={isSaving} className=\"flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8\">\n            <Save size={14} /> <span className=\"hidden sm:inline\">{isSaving ? \"Saving…\" : \"Save Page\"}</span>\n          </Button>\n        </div>\n      </div>\n",
+          "after": "          )}\n          <div><AutoSaveIndicator status={autoSave.status} /></div>\n          <Button aria-label={isSaving ? \"Saving page\" : \"Save Page\"} onClick={handleSave} disabled={isSaving} className=\"flex items-center gap-1.5 hover: text-sm px-2 sm:px-4 py-1.5 h-8\">\n            <Save size={14} /> {isSaving ? \"Saving…\" : compact ? \"Save\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n"
+        }
+      ]
+    },
+    {
+      "path": "client/src/pages/lms/LandingPageBuilder.tsx",
+      "baselineSha256": "059d77a951859ac626c83b3e3ae6ee0fb92ee118e06e0afce0e405d13033b5f0",
+      "approvedSha256": "8c80dbf2bea99dcadc7ff6519b91384b76b7adfe78e1b21de9aba061163ba639",
+      "pairs": [
+        {
+          "before": "            </a>\n          )}\n          <Button aria-label={isSaving ? \"Saving page\" : \"Save Page\"} onClick={handleSave} disabled={isSaving} className=\"flex items-center gap-1.5 hover: text-sm px-4 py-1.5 h-8\">\n            <Save size={14} /> {isSaving ? \"Saving…\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n",
+          "after": "            </a>\n          )}\n          <Button aria-label={isSaving ? \"Saving page\" : \"Save Page\"} onClick={handleSave} disabled={isSaving} className=\"flex items-center gap-1.5 hover: text-sm px-4 py-1.5 h-8\">\n            <Save size={14} /> {isSaving ? \"Saving…\" : compact ? \"Save\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n"
+        }
+      ]
+    },
+    {
+      "path": "client/src/pages/marketing/FunnelPageEditor.tsx",
+      "baselineSha256": "05f23f7c823b04c342cac61a795d37131bca932be77fb72c686f0925d530af9b",
+      "approvedSha256": "f7e7672c16a83512d903744bc068f8e21faac60db022a024a67f25652781616c",
+      "pairs": [
+        {
+          "before": "import { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport { useOrgScope } from \"@/hooks/useOrgScope\";\nimport { Button } from \"@/components/ui/button\";\nimport { toast } from \"sonner\";\nimport { type Block, type BlockType, BlockPreview } from \"@/components/BlockPreview\";\n",
+          "after": "import { restrictToFirstScrollableAncestor } from \"@dnd-kit/modifiers\";\nimport { trpc } from \"@/lib/trpc\";\nimport { useOrgScope } from \"@/hooks/useOrgScope\";\nimport ResponsiveEditorPanel, { useCompactEditor } from \"@/components/ResponsiveEditorPanel\";\nimport { Button } from \"@/components/ui/button\";\nimport { toast } from \"sonner\";\nimport { type Block, type BlockType, BlockPreview } from \"@/components/BlockPreview\";\n"
+        },
+        {
+          "before": "  const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();\n  const [, navigate] = useLocation();\n  const { orgId } = useOrgScope();\n  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);\n  const numericPageId = Number(pageId);\n  const numericFunnelId = Number(funnelId);\n",
+          "after": "  const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();\n  const [, navigate] = useLocation();\n  const { orgId } = useOrgScope();\n  const compact = useCompactEditor();\n  const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);\n  const numericPageId = Number(pageId);\n  const numericFunnelId = Number(funnelId);\n"
+        },
+        {
+          "before": "    <>\n    <div className=\"fixed inset-0 z-40 flex flex-col bg-gray-50\" style={{ fontFamily: \"Inter, sans-serif\" }}>\n      {/* Top Bar */}\n      <div className=\"flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0\">\n        <div className=\"flex items-center gap-3\">\n          <button\n            onClick={() => navigate(`/admin/funnels/${funnelId}`)}\n            className=\"flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors\"\n",
+          "after": "    <>\n    <div className=\"fixed inset-0 z-40 flex flex-col bg-gray-50\" style={{ fontFamily: \"Inter, sans-serif\" }}>\n      {/* Top Bar */}\n      <div className={cn(\"flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0\", compact && \"flex-wrap gap-2\")}>\n        <div className={cn(\"flex items-center gap-3\", compact && \"flex-wrap min-w-0\")}>\n          <button\n            onClick={() => navigate(`/admin/funnels/${funnelId}`)}\n            className=\"flex items-center gap-1.5 text-sm text-gray-600 hover:text-teal-700 font-medium transition-colors\"\n"
+        },
+        {
+          "before": "            </span>\n          )}\n        </div>\n        <div className=\"flex items-center gap-2\">\n          {pageData?.funnel?.slug && (currentPage?.slug || numericPageId) && (\n            <a\n              href={currentPage?.slug ? `/${pageData.funnel.slug}/${currentPage.slug}` : `/${pageData.funnel.slug}?preview=${numericPageId}`}\n",
+          "after": "            </span>\n          )}\n        </div>\n        <div className={cn(\"flex items-center gap-2\", compact && \"flex-wrap min-w-0\")}>\n          {pageData?.funnel?.slug && (currentPage?.slug || numericPageId) && (\n            <a\n              href={currentPage?.slug ? `/${pageData.funnel.slug}/${currentPage.slug}` : `/${pageData.funnel.slug}?preview=${numericPageId}`}\n"
+        },
+        {
+          "before": "            disabled={isSaving}\n            className=\"flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-1.5 h-8\"\n          >\n            <Save size={14} /> {isSaving ? \"Saving…\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n",
+          "after": "            disabled={isSaving}\n            className=\"flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-white text-sm px-4 py-1.5 h-8\"\n          >\n            <Save size={14} /> {isSaving ? \"Saving…\" : compact ? \"Save\" : \"Save Page\"}\n          </Button>\n        </div>\n      </div>\n"
+        },
+        {
+          "before": "      )}\n\n      {/* Main Editor Area */}\n      <div className=\"flex flex-1 overflow-hidden\">\n        {/* Left Panel: Block Catalog + Page Nav */}\n        <div className=\"w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto\">\n          {/* Page navigation */}\n          {allPages.length > 1 && (\n            <div className=\"p-2 border-b border-gray-100\">\n",
+          "after": "      )}\n\n      {/* Main Editor Area */}\n      <div className={cn(\"relative flex flex-1 min-h-0 min-w-0 overflow-hidden\", compact && \"flex-col\")}>\n        {/* Left Panel: Block Catalog + Page Nav */}\n        <div className=\"w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto\" style={compact ? { width: \"100%\", maxHeight: \"30%\" } : undefined}>\n          {/* Page navigation */}\n          {allPages.length > 1 && (\n            <div className=\"p-2 border-b border-gray-100\">\n"
+        },
+        {
+          "before": "        </div>\n\n        {/* Center: Canvas */}\n        <div className=\"flex-1 overflow-y-auto bg-gray-100\">\n          {isLoading ? (\n            <div className=\"flex items-center justify-center h-full text-gray-400\">Loading…</div>\n          ) : blocks.length === 0 ? (\n",
+          "after": "        </div>\n\n        {/* Center: Canvas */}\n        <div className=\"flex-1 min-h-0 min-w-0 overflow-y-auto bg-gray-100\">\n          {isLoading ? (\n            <div className=\"flex items-center justify-center h-full text-gray-400\">Loading…</div>\n          ) : blocks.length === 0 ? (\n"
+        },
+        {
+          "before": "                      block={block}\n                      isSelected={selectedId === block.id}\n                      onSelect={() => setSelectedId(block.id)}\n                      onDelete={() => deleteBlock(block.id)}\n                      onDuplicate={() => duplicateBlock(block.id)}\n                      onSaveAsTemplate={handleSaveBlockAsTemplate}\n",
+          "after": "                      block={block}\n                      isSelected={selectedId === block.id}\n                      onSelect={() => setSelectedId(block.id)}\n                      onSelectChildBlock={childId => setSelectedId(childId)}\n                      onDelete={() => deleteBlock(block.id)}\n                      onDuplicate={() => duplicateBlock(block.id)}\n                      onSaveAsTemplate={handleSaveBlockAsTemplate}\n"
+        },
+        {
+          "before": "        </div>\n\n        {/* Right Panel: Block Settings */}\n        <div className=\"flex-shrink-0 bg-white border-l border-gray-200 overflow-y-auto relative\" style={{ width: rightPanelWidth }}>\n          {/* Drag handle */}\n          <div onMouseDown={handleRightPanelMouseDown} className=\"absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-teal-400 active:bg-teal-500 z-10 transition-colors\" title=\"Drag to resize panel\" />\n          {selectedBlock ? (\n            <>\n              <div className=\"flex items-center justify-between p-3 border-b border-gray-100\">\n                <p className=\"text-xs font-semibold text-gray-500 uppercase tracking-wider\">\n                  {BLOCK_CATALOG.find(c => c.type === selectedBlock.type)?.label ?? \"Block\"} Settings\n                </p>\n                <button onClick={() => setSelectedId(null)} className=\"text-gray-400 hover:text-gray-600\">\n                  <X size={14} />\n                </button>\n              </div>\n",
+          "after": "        </div>\n\n        {/* Right Panel: Block Settings */}\n        <ResponsiveEditorPanel selectionKey={selectedId} title=\"Block settings\" desktopWidth={rightPanelWidth} className=\"bg-white border-l border-gray-200\">\n          {/* Drag handle */}\n          {!compact && <div onMouseDown={handleRightPanelMouseDown} className=\"absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-teal-400 active:bg-teal-500 z-10 transition-colors\" title=\"Drag to resize panel\" />}\n          {selectedBlock ? (\n            <>\n              <div className=\"flex items-center justify-between p-3 border-b border-gray-100\">\n                <p className=\"text-xs font-semibold text-gray-500 uppercase tracking-wider\">\n                  {BLOCK_CATALOG.find(c => c.type === selectedBlock.type)?.label ?? \"Block\"} Settings\n                </p>\n                <button aria-label=\"Close block settings\" onClick={() => setSelectedId(null)} className=\"text-gray-400 hover:text-gray-600\">\n                  <X size={14} />\n                </button>\n              </div>\n"
+        },
+        {
+          "before": "              <p className=\"text-sm\">Click any block on the canvas to edit its settings</p>\n            </div>\n          )}\n        </div>\n      </div>\n    </div>\n\n",
+          "after": "              <p className=\"text-sm\">Click any block on the canvas to edit its settings</p>\n            </div>\n          )}\n        </ResponsiveEditorPanel>\n      </div>\n    </div>\n\n"
+        }
+      ]
+    }
+  ]
+}

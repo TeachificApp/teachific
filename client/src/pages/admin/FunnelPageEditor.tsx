@@ -24,6 +24,7 @@ import {
 import { restrictToFirstScrollableAncestor } from "@dnd-kit/modifiers";
 import { trpc } from "@/lib/trpc";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import ResponsiveEditorPanel, { useCompactEditor } from "@/components/ResponsiveEditorPanel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -43,6 +44,7 @@ export default function FunnelPageEditor() {
   const { funnelId, pageId } = useParams<{ funnelId: string; pageId: string }>();
   const [, navigate] = useLocation();
   const { orgId } = useOrgScope();
+  const compact = useCompactEditor();
   const landingBlockOrgInput = useMemo(() => orgId ? { orgId } : undefined, [orgId]);
   const numericPageId = Number(pageId);
   const numericFunnelId = Number(funnelId);
@@ -598,8 +600,8 @@ export default function FunnelPageEditor() {
     <>
     <div className="fixed inset-0 z-40 flex flex-col bg-gray-50" style={{ fontFamily: "Inter, sans-serif" }}>
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <div className={cn("flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm flex-shrink-0", compact && "flex-wrap gap-2")}>
+        <div className={cn("flex items-center gap-3", compact && "flex-wrap min-w-0")}>
           <button
             onClick={() => navigate(`/admin/funnels/${funnelId}`)}
             className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-[var(--org-primary)] font-medium transition-colors"
@@ -619,7 +621,7 @@ export default function FunnelPageEditor() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", compact && "flex-wrap min-w-0")}>
           {pageData?.funnel?.slug && (currentPage?.slug || numericPageId) && (
             <a
               href={currentPage?.slug ? `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}/${currentPage.slug}` : `${funnelBase(pageData.funnel?.customDomain)}/${pageData.funnel.slug}?preview=${numericPageId}`}
@@ -650,7 +652,7 @@ export default function FunnelPageEditor() {
             disabled={isSaving}
             className="flex items-center gap-1.5 org-primary-button text-sm px-4 py-1.5 h-8"
           >
-            <Save size={14} /> {isSaving ? "Saving…" : "Save Page"}
+            <Save size={14} /> {isSaving ? "Saving…" : compact ? "Save" : "Save Page"}
           </Button>
         </div>
       </div>
@@ -711,9 +713,9 @@ export default function FunnelPageEditor() {
       )}
 
       {/* Main Editor Area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className={cn("relative flex flex-1 min-h-0 min-w-0 overflow-hidden", compact && "flex-col")}>
         {/* Left Panel: Block Catalog + Page Nav */}
-        <div className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
+        <div className="w-52 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col overflow-y-auto" style={compact ? { width: "100%", maxHeight: "30%" } : undefined}>
           {/* Page navigation */}
           {allPages.length > 1 && (
             <div className="p-2 border-b border-gray-100">
@@ -1052,7 +1054,7 @@ export default function FunnelPageEditor() {
         </div>
 
         {/* Center: Canvas */}
-        <div className="flex-1 overflow-y-auto bg-gray-100">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto bg-gray-100">
           {isLoading ? (
             <div className="flex items-center justify-center h-full text-gray-400">Loading…</div>
           ) : blocks.length === 0 ? (
@@ -1084,6 +1086,7 @@ export default function FunnelPageEditor() {
                       block={block}
                       isSelected={selectedId === block.id}
                       onSelect={() => setSelectedId(block.id)}
+                      onSelectChildBlock={childId => setSelectedId(childId)}
                       onDelete={() => deleteBlock(block.id)}
                       onDuplicate={() => duplicateBlock(block.id)}
                       onSaveAsTemplate={handleSaveBlockAsTemplate}
@@ -1154,9 +1157,10 @@ export default function FunnelPageEditor() {
         </div>
 
         {/* Right Panel: Block Settings */}
-        <div className="flex-shrink-0 flex flex-row" style={{ width: rightPanelWidth }}>
+        <ResponsiveEditorPanel selectionKey={selectedId} title="Block settings" desktopWidth={rightPanelWidth}>
+          <div className={cn("flex min-h-0 min-w-0", !compact && "h-full")}>
           {/* Drag handle — outside overflow container so it's never clipped */}
-          <div
+          {!compact && <div
             onMouseDown={handleRightPanelMouseDown}
             className="w-2 flex-shrink-0 cursor-col-resize bg-gray-100 hover:bg-[color-mix(in_srgb,var(--org-primary)_45%,transparent)] active:bg-[var(--org-primary)] transition-colors flex items-center justify-center group border-l border-gray-200"
             title="Drag to resize panel"
@@ -1166,15 +1170,15 @@ export default function FunnelPageEditor() {
               <div className="w-0.5 h-3 bg-gray-500 rounded" />
               <div className="w-0.5 h-3 bg-gray-500 rounded" />
             </div>
-          </div>
-          <div className="flex-1 bg-white overflow-y-auto min-w-0">
+          </div>}
+          <div className="flex-1 bg-white min-w-0">
           {selectedBlock ? (
             <>
               <div className="flex items-center justify-between p-3 border-b border-gray-100">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {BLOCK_CATALOG.find(c => c.type === selectedBlock.type)?.label ?? "Block"} Settings
                 </p>
-                <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-600">
+                <button aria-label="Close block settings" onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-600">
                   <X size={14} />
                 </button>
               </div>
@@ -1189,7 +1193,8 @@ export default function FunnelPageEditor() {
             </div>
           )}
           </div>
-        </div>
+          </div>
+        </ResponsiveEditorPanel>
       </div>
     </div>
 
