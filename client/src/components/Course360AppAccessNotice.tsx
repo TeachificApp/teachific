@@ -7,6 +7,6 @@ export function Course360AppAccessNotice({ app, message, retry }: { app: Course3
     {message && <p role="status">{message}</p>}
     {retry && <button className="underline underline-offset-2" onClick={retry}>Retry access check</button>}
     <Course360AppBillingRecovery app={app} />
-    <a href={getCourse360MediaLibraryHref()} className="block underline underline-offset-2">Open your main Course360 Media Library</a>
+    <a href={getCourse360MediaLibraryHref()} className="block underline underline-offset-2">Open your main Course360™ Media Library</a>
   </div>;
 }

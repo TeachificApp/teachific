@@ -143,7 +143,7 @@ export default function SchoolProfilePage() {
         <p className="text-xs text-muted-foreground text-center">
           Need help? Contact your school administrator or{" "}
           <a href="mailto:support@course360.app" className="text-primary hover:underline">
-            Course360 support
+            Course360™ support
           </a>.
         </p>
       </div>

@@ -271,7 +271,7 @@ export function FunnelAiCreateDialog({ onClose, onCreated }: {
                   {draft.mode === "funnel" && <p className="text-xs text-gray-500">Final-page destination only; earlier pages link to their next step after creation. Inert previews show the copy and layout, not live saved-page links.</p>}
                 </fieldset>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-                  <p>New draft only: unpublished, Education Library default off, publishing URLs use the owning school’s verified domain or Course360 subdomain. Existing pages remain untouched.</p>
+                  <p>New draft only: unpublished, Education Library default off, publishing URLs use the owning school’s verified domain or Course360™ subdomain. Existing pages remain untouched.</p>
                   <p className="mt-1">Review AI claims and all links before publishing. Attach products to checkout pages and configure checkout / CTA destinations using the existing editor. Preview is inert: links, forms, and checkout cannot run.</p>
                   <p className="mt-1 break-all">CTA destination: {draft.ctaUrl || "Empty final CTA: configure a destination in the editor before publishing. No automatic checkout."}</p>
                   {draft.pages.length > 1 && <p className="mt-1">Page flow: {draft.pages.map((page, i) => `${i + 1}. ${page.title}`).join(" → ")}. Pages will be linked in this order.</p>}

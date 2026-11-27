@@ -68,7 +68,7 @@ export function getBrandDisplayConfig(_mode?: BrandMode): BrandDisplayConfig {
   return {
     brandMode: "teachific",
     displayName: "Course360™",
-    shortName: "Course360",
+    shortName: "Course360™",
     tagline: "Online Learning & Coaching Platform",
     senderEmail: platformEmail.senderEmail,
     senderName: platformEmail.senderName,

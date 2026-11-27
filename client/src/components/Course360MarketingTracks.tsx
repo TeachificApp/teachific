@@ -17,7 +17,7 @@ export function Course360SchoolTrack() {
           </p>
           <p className="text-base leading-relaxed text-slate-600 mb-8">
             Deliver the content you already own, manage who can learn, and follow their progress.
-            Your school's identity stays separate from Course360's public platform branding.
+            Your school's identity stays separate from Course360™'s public platform branding.
           </p>
           <a href="#pricing" className="inline-flex items-center gap-2 rounded-xl c360-action px-6 py-3 font-semibold text-white c360-hover-action focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 c360-focus-outline">
             Compare school plans <ArrowRight className="h-4 w-4" aria-hidden="true" />

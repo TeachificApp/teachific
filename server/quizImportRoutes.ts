@@ -1073,7 +1073,7 @@ router.post("/bank-import/extract-from-package", async (req: Request, res: Respo
       for (const xmlBuf of xmlBuffers) allQuestions.push(...parseSCORMQTIToBank(xmlBuf.toString("utf-8"), mediaUrlMap));
       return res.json({ source: "scorm", questions: allQuestions, totalRows: allQuestions.length, validCount: allQuestions.length, errorCount: 0, warnings: [], mediaUploaded: mediaUrlMap.size });
     }
-    return res.status(400).json({ error: "No supported quiz content was found in this package. Expected iSpring or Course360 quiz data, XLSX, or QTI XML." });
+    return res.status(400).json({ error: "No supported quiz content was found in this package. Expected iSpring or Course360™ quiz data, XLSX, or QTI XML." });
   } catch (err: unknown) {
     console.error("[ExtractFromPackage] Error:", err);
     return res.status(500).json({ error: "Failed to extract questions", detail: String(err) });

@@ -114,10 +114,10 @@ describe("Main Course360 account owns the library", () => {
   it("renders the existing organization library without querying Studio entitlement", () => {
     state.studioActive = false;
     const view = render(React.createElement(MediaLibraryPage));
-    expect(view.container.textContent).toContain("Included with your main Course360 account");
+    expect(view.container.textContent).toContain("Included with your main Course360™ account");
     expect(view.container.textContent).toContain("Existing org files");
     expect(state.studioQueries).toBe(0);
-    for (const label of ["Content Library", "Course360 Studio™", "Quizzes", "Flashcards"]) expect(view.getByRole("button", { name: label })).toBeTruthy();
+    for (const label of ["Content Library", "Course360™ Studio™", "Quizzes", "Flashcards"]) expect(view.getByRole("button", { name: label })).toBeTruthy();
   });
   it("preserves all retained tabs and old upload hash compatibility", () => {
     window.history.replaceState({}, "", "/media-library#upload");
@@ -125,12 +125,12 @@ describe("Main Course360 account owns the library", () => {
     expect(view.container.textContent).toContain("Existing org files");
     fireEvent.click(view.getByRole("button", { name: "Flashcards" }));
     expect(view.container.textContent).toContain("Existing flashcards");
-    fireEvent.click(view.getByRole("button", { name: "Course360 Studio™" }));
+    fireEvent.click(view.getByRole("button", { name: "Course360™ Studio™" }));
     expect(view.container.textContent).toContain("Existing Studio recorder");
   });
   it("Studio no longer advertises independent library storage allowances", () => {
     const view = render(React.createElement(StudioDashboard));
-    expect(view.container.textContent).toContain("main Course360 account");
+    expect(view.container.textContent).toContain("main Course360™ account");
     expect(view.container.textContent).not.toMatch(/50 GB storage|5 GB storage|Unlimited storage/);
     expect(view.container.textContent).toContain("Desktop app access");
   });

@@ -202,7 +202,7 @@ export function QuestionList() {
   const handleFindAndReplace = () => {
     const quizId = Number((quiz.meta as { cloudId?: number }).cloudId);
     if (!quizId) {
-      window.alert("Save this quiz to Course360 before using find and replace.");
+      window.alert("Save this quiz to Course360™ before using find and replace.");
       return;
     }
     if (!findText.trim()) {
@@ -216,7 +216,7 @@ export function QuestionList() {
   const handleSourceGeneration = () => {
     const quizId = Number((quiz.meta as { cloudId?: number }).cloudId);
     if (!quizId) {
-      window.alert("Save this quiz to Course360 before generating questions from a public source.");
+      window.alert("Save this quiz to Course360™ before generating questions from a public source.");
       return;
     }
     if (!sourceTopic.trim() || !sourceUrl.trim()) {

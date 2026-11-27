@@ -363,7 +363,7 @@ export const embeddedCheckoutRouter = router({
                 to: { name: customerName || firstName, email: input.email },
                 subject: `Your account is ready — set your password to access ${input.productName || "your purchase"}`,
                 htmlBody: emailContent.htmlBody,
-                previewText: `Set your password to access your ${input.productName || "purchase"} on Course360`,
+                previewText: `Set your password to access your ${input.productName || "purchase"} on Course360™`,
               }, orgId);
               console.log(`[FreeOrder] Sent set-password email to ${input.email} (new user ${userId})`);
             } catch (emailErr) {

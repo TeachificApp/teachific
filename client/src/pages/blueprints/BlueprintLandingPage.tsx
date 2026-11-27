@@ -122,7 +122,7 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
         <h1 className="text-2xl font-bold mb-2">Blueprint Not Found</h1>
         <p className="text-muted-foreground mb-6">This blueprint link may have expired or been removed.</p>
         <Button onClick={() => window.location.href = "https://course360.app"}>
-          Go to Course360
+          Go to Course360™
         </Button>
       </div>
     );
@@ -297,7 +297,7 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
         <div className="max-w-2xl mx-auto px-4 text-center text-white">
           <h2 className="text-3xl font-bold mb-3">Ready to launch your school?</h2>
           <p className="text-white/80 mb-8 text-lg">
-            Create your free Course360 account and this blueprint will be installed automatically.
+            Create your free Course360™ account and this blueprint will be installed automatically.
           </p>
           <Button
             size="lg"
@@ -315,7 +315,7 @@ export default function BlueprintLandingPage({ slug }: BlueprintLandingPageProps
             )}
           </Button>
           <p className="text-white/60 text-sm mt-3">
-            {isPaid ? "One-time purchase · Includes Course360 account" : "No credit card required · Cancel anytime"}
+            {isPaid ? "One-time purchase · Includes Course360™ account" : "No credit card required · Cancel anytime"}
           </p>
         </div>
       </div>

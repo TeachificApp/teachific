@@ -77,6 +77,6 @@ export function useOrgAuthBranding(): UseOrgAuthBrandingResult {
     primary: branding?.primaryColor ?? DEFAULT_PRIMARY,
     buttonText: branding?.buttonTextColor ?? DEFAULT_BUTTON_TEXT,
     pageBg: branding?.pageBgColor ?? DEFAULT_PAGE_BG,
-    displayName: branding?.orgName ?? "Teachific",
+    displayName: branding?.orgName ?? "Course360™",
   };
 }

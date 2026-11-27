@@ -29,7 +29,7 @@ vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => { React.useState(null);
 const catalog = (overrides = {}) => ({ offers: COURSE360_CROSS_TOOL_OFFERS, ready: true, catalogReady: true, provisioningReady: true, reason: null, ...overrides });
 const readyQuery = () => ({ data: catalog(), isLoading: false, isFetching: false, error: null });
 const stripeUrl = "https://checkout.stripe.com/c/pay/cs_test_offline_adapter";
-const packageButton = (key: "builder" | "pro" = "builder") => screen.getByRole("button", { name: `Continue with Course360 ${key === "pro" ? "Pro" : "Builder"} + Creator Web` }) as HTMLButtonElement;
+const packageButton = (key: "builder" | "pro" = "builder") => screen.getByRole("button", { name: `Continue with Course360™ ${key === "pro" ? "Pro" : "Builder"} + Creator Web` }) as HTMLButtonElement;
 const dialog = () => screen.getByRole("dialog", { name: "Review your new-school package" });
 const submitButton = () => within(dialog()).getByRole("button", { name: /Continue to secure Stripe Checkout|Retry secure checkout|Opening secure checkout/ }) as HTMLButtonElement;
 async function select(key: "builder" | "pro" = "builder", interval: "monthly" | "annual" = "monthly") {
@@ -157,7 +157,7 @@ describe("Course360 actual new-school identity and trial consent", () => {
   it("opens an accessible focus-managed review dialog with explicit identity and no account creation", async () => {
     render(<Course360CrossToolCheckout />); await select("pro", "annual");
     expect(document.activeElement).toBe(within(dialog()).getByRole("textbox", { name: "Your name" }));
-    expect(dialog().textContent).toContain("Course360 Pro + Creator Web · Annual billing");
+    expect(dialog().textContent).toContain("Course360™ Pro + Creator Web · Annual billing");
     expect(dialog().textContent).toContain("separate new school and its own subscription");
     expect(dialog().textContent).toContain("does not change or upgrade an existing school");
     expect(dialog().textContent).toContain("A card is required at Stripe Checkout for the 14-day trial");
@@ -309,7 +309,7 @@ describe("Course360 actual Landing mount and existing-school boundary", () => {
     expect(container.textContent).not.toMatch(/payment successful|trial activated|access granted/i);
     expect(packageButton().disabled).toBe(false);
     fireEvent.click(packageButton()); await waitFor(() => expect(dialog()).toBeTruthy());
-    expect(dialog().textContent).toContain("Course360 Builder + Creator Web · Monthly billing");
+    expect(dialog().textContent).toContain("Course360™ Builder + Creator Web · Monthly billing");
     expect((within(dialog()).getByRole("textbox", { name: "Your name" }) as HTMLInputElement).value).toBe("");
     expect((within(dialog()).getByRole("textbox", { name: "Email address" }) as HTMLInputElement).value).toBe("");
     identity(); consent(); fireEvent.click(submitButton());

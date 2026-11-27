@@ -7106,7 +7106,7 @@ export function VideoBlockSettings({ d, set, uploading, setUploading, uploadMedi
       <div className="border border-gray-100 rounded p-2 space-y-2">
         <p className="text-xs font-semibold text-gray-600 mb-1">Player Theme</p>
         <BSColorField data={d} onSet={set} label="Accent Color (play button &amp; progress bar)" field="accentColor" />
-        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Course360 teal (#189aa1).</p>
+        <p className="text-[10px] text-gray-400">Applies to the play button overlay and progress bar on direct video files. Defaults to Course360™ teal (#189aa1).</p>
       </div>
     </div>
   );

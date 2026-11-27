@@ -677,8 +677,8 @@ export async function deliverCourse360CrossToolOnboarding(
   const sent = await sendEmail({
     to: user.email,
     subject: setupToken
-      ? "Set up your Course360 account"
-      : "Your Course360 school is ready",
+      ? "Set up your Course360™ account"
+      : "Your Course360™ school is ready",
     html: setupToken
       ? accountSetupHtml(user.name ?? "", url, record.selection)
       : trialActivatedHtml(user.name ?? "", url, record.selection),

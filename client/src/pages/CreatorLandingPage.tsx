@@ -50,7 +50,7 @@ const PLAN_FEATURES = [
   "PowerPoint import & export",
   "Custom themes & brand kit",
   "White-label player",
-  "Save to your main Course360 account's org-scoped Media Library",
+  "Save to your main Course360™ account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
@@ -62,7 +62,7 @@ const PLAN = {
   cta: "Start Free Trial",
   // kept for legacy shape compatibility
   id: "pro",
-  name: "Course360 Creator™",
+  name: "Course360™ Creator™",
   badge: null,
   highlight: true,
   features: PLAN_FEATURES,
@@ -72,7 +72,7 @@ const PLAN = {
 const TIERS = [
   {
     id: "pro",
-    name: "Course360 Creator™",
+    name: "Course360™ Creator™",
     badge: null,
     monthlyPrice: COURSE360_PRICES.creator_desktop.monthly,
     annualPrice: COURSE360_PRICES.creator_desktop.annual,
@@ -89,12 +89,12 @@ const TIERS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Course360 Creator™",
+      "Everything in Course360™ Creator™",
       "Unlimited seats",
       "SSO / SAML integration",
       "On-premise deployment option",
       "Service-level planning",
-      "Media storage follows your organization's Course360 plan",
+      "Media storage follows your organization's Course360™ plan",
       "Dedicated onboarding & training",
     ],
     cta: "Contact Sales",
@@ -151,7 +151,7 @@ const FEATURES = [
   {
     icon: Image,
     title: "Media Library",
-    desc: "Use your organization's main Course360 Media Library for shared learning assets. Its ownership and storage allowance come from your Course360 account, not Creator or Studio.",
+    desc: "Use your organization's main Course360™ Media Library for shared learning assets. Its ownership and storage allowance come from your Course360™ account, not Creator or Studio.",
   },
   {
     icon: PenTool,
@@ -200,7 +200,7 @@ export default function CreatorLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-bold tracking-tight">
-                <span className="text-white">Course360</span>
+                <span className="text-white">Course360™</span>
                 <span className="text-[#4ad9e0]">Creator</span>
                 <sup className="text-[10px] text-[#4ad9e0] ml-0.5">™</sup>
               </span>
@@ -265,7 +265,7 @@ export default function CreatorLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Course360 Creator™ is a powerful, web-based eLearning authoring tool. Build interactive
+            Course360™ Creator™ is a powerful, web-based eLearning authoring tool. Build interactive
             slides, quizzes, branching scenarios, and publish to SCORM 1.2, SCORM 2004, or HTML5 —
             all from your browser.
           </p>
@@ -301,7 +301,7 @@ export default function CreatorLandingPage() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-green-500/60" />
               <div className="ml-4 flex-1 h-5 bg-white/5 rounded text-xs text-white/30 flex items-center px-3">
-                Course360 Creator™ — Module 1: Introduction to eLearning
+                Course360™ Creator™ — Module 1: Introduction to eLearning
               </div>
             </div>
             {/* Editor layout */}
@@ -400,14 +400,14 @@ export default function CreatorLandingPage() {
       <section className="py-16 px-6 bg-white/5 border-y border-white/10">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-extrabold text-center mb-10">
-            Course360 Creator™ vs. Traditional Authoring Tools
+            Course360™ Creator™ vs. Traditional Authoring Tools
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
                   <th className="text-left py-3 px-4 text-white/60 font-medium">Feature</th>
-                  <th className="py-3 px-4 text-[#4ad9e0] font-bold">Course360 Creator™</th>
+                  <th className="py-3 px-4 text-[#4ad9e0] font-bold">Course360™ Creator™</th>
                   <th className="py-3 px-4 text-white/40 font-medium">iSpring Suite</th>
                   <th className="py-3 px-4 text-white/40 font-medium">Articulate 360</th>
                 </tr>
@@ -585,7 +585,7 @@ export default function CreatorLandingPage() {
                 Start Authoring Today
               </h2>
               <p className="text-lg text-white/60 mb-8">
-                Join instructional designers building with Course360 Creator™.
+                Join instructional designers building with Course360™ Creator™.
                 No installs. No plugins. Just pure web-based eLearning authoring power.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -625,14 +625,14 @@ export default function CreatorLandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">
-              Course360<span className="text-[#4ad9e0]"> Creator</span>
+              Course360™<span className="text-[#4ad9e0]"> Creator</span>
               <sup className="text-[10px] text-[#4ad9e0]">™</sup>
             </span>
             <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
-            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360 Studio™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360™ Home</Link>
+            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360™ Studio™</Link>
             <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">Quiz Creator™</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>

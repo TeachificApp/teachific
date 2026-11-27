@@ -330,7 +330,7 @@ export default function BillingPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Billing & Plans</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Manage your Course360 subscription and payment methods.
+              Manage your Course360™ subscription and payment methods.
             </p>
           </div>
         </div>

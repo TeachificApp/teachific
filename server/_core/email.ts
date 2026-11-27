@@ -22,7 +22,7 @@ export interface OrgEmailSender {
 }
 
 export const COURSE360_PLATFORM_EMAIL_IDENTITY = {
-  fromName: "Course360",
+  fromName: "Course360™",
   fromEmail: "hello@course360.app",
 } as const;
 
@@ -453,7 +453,7 @@ export function buildPlatformFreeWelcomeEmail(opts: {
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
   const subject = "Welcome to Course360™ — Your Account Is Ready";
-  const previewText = "Your Course360 account is ready. Sign in to get started.";
+  const previewText = "Your Course360™ account is ready. Sign in to get started.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
       Welcome to Course360™, ${opts.firstName}!
@@ -466,7 +466,7 @@ export function buildPlatformFreeWelcomeEmail(opts: {
       <ul style="margin:0;padding-left:20px;font-size:14px;color:#475569;">
         <li style="margin:4px 0;">Learning content made available by your organization</li>
         <li style="margin:4px 0;">Available community and collaboration features</li>
-        <li style="margin:4px 0;">Your Course360 learning dashboard</li>
+        <li style="margin:4px 0;">Your Course360™ learning dashboard</li>
       </ul>
     </div>
     <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;">
@@ -492,7 +492,7 @@ export function buildPlatformPremiumWelcomeEmail(opts: {
   loginUrl: string;
 }): { subject: string; htmlBody: string; previewText: string } {
   const subject = "Welcome to Course360™ — Expanded Access Is Ready";
-  const previewText = "Your Course360 account now has access to the capabilities in your plan.";
+  const previewText = "Your Course360™ account now has access to the capabilities in your plan.";
   const htmlBody = emailWrapper(`
     <h2 style="margin:0 0 8px;font-size:20px;color:${brandDark};font-family:Georgia,serif;">
       Welcome to Course360™, ${opts.firstName}!

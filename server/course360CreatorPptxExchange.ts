@@ -41,7 +41,7 @@ export async function exportCreatorEditablePptx(project: Record<string, any>, or
   if (!originalSlides.length || originalSlides.length > 100) throw new Error("Export between 1 and 100 slides.");
   const settings = JSON.parse(project.settingsJson || "{}"); const width = Number(settings.width) || 1000, height = Number(settings.height) || 563;
   if (width < 1 || height < 1 || width > 4000 || height > 4000) throw new Error("Unsupported slide canvas size.");
-  const zip = new JSZip(), warnings: string[] = ["Editable text, raster images and basic shapes are supported. Assessments, interactions, audio/video and navigation have honest visible fallbacks; native configuration is retained in Course360 custom XML, not live PowerPoint interactivity."];
+  const zip = new JSZip(), warnings: string[] = ["Editable text, raster images and basic shapes are supported. Assessments, interactions, audio/video and navigation have honest visible fallbacks; native configuration is retained in Course360™ custom XML, not live PowerPoint interactivity."];
   const contentTypes: { part: string; type: string }[] = [], hashes: string[] = [], bindings: Record<string, string> = {};
   const media = new Map<string, string>(); let mediaBytes = 0;
   for (let i = 0; i < resolvedSlides.length; i++) {

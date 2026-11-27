@@ -103,7 +103,7 @@ export default function SocialContentGeneratorPage() {
             <Card className="h-fit">
               <CardHeader>
                 <CardTitle className="text-lg">Create drafts</CardTitle>
-                <CardDescription>Content is generated for the organization currently selected in Course360.</CardDescription>
+                <CardDescription>Content is generated for the organization currently selected in Course360™.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form className="space-y-5" onSubmit={submit}>

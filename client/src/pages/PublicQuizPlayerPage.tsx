@@ -690,7 +690,7 @@ export default function PublicQuizPlayerPage() {
           </button>
 
           <p className="text-xs text-gray-400 mt-4">
-            Powered by <span className="font-semibold">Course360 Quiz Creator</span>
+            Powered by <span className="font-semibold">Course360™ Quiz Creator</span>
           </p>
         </div>
       </div>
@@ -753,7 +753,7 @@ export default function PublicQuizPlayerPage() {
           </div>
 
           <p className="text-xs text-gray-400 mt-6">
-            Powered by <span className="font-semibold">Course360 Quiz Creator</span>
+            Powered by <span className="font-semibold">Course360™ Quiz Creator</span>
           </p>
         </div>
       </div>

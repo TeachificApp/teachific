@@ -32,7 +32,7 @@ export default function PlatformPoliciesPage() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Course360
+            Back to Course360™
           </button>
           <span className="text-muted-foreground">/</span>
           <span className="font-medium text-sm">Legal Policies</span>
@@ -49,7 +49,7 @@ export default function PlatformPoliciesPage() {
             <h1 className="text-3xl font-bold text-foreground">Legal Policies</h1>
           </div>
           <p className="text-muted-foreground">
-            Course360™ Platform — these policies govern your use of the Course360 platform and services.
+            Course360™ Platform — these policies govern your use of the Course360™ platform and services.
           </p>
         </div>
 

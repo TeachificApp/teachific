@@ -130,7 +130,7 @@ export default function StudioDashboard() {
         <div className="max-w-lg w-full text-center">
           <div className="mb-8">
             <span className="text-3xl font-black tracking-tight">
-              <span className="text-white">Course360</span>
+              <span className="text-white">Course360™</span>
               <span className="text-[#24abbc]"> Studio</span>
             </span>
           </div>
@@ -140,7 +140,7 @@ export default function StudioDashboard() {
           <h1 className="text-2xl font-bold text-white mb-3">Activate Your Studio</h1>
           <Course360AppAccessNotice app="studio" message={studioSub?.reason} retry={() => { void refetchAccess(); }} />
           <p className="text-white/50 mb-8 leading-relaxed">
-            You need an active Course360 Studio subscription to access the course authoring tools.
+            You need an active Course360™ Studio subscription to access the course authoring tools.
             Choose a paid Studio plan to continue.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -419,7 +419,7 @@ export default function StudioDashboard() {
                       {!isPrivileged && tier === "desktop" && "Desktop app access"}
                       {!isPrivileged && tier === "bundle" && "Web + Desktop app access · 5 seats"}
                     </p>
-                    <p className="text-xs text-white/40 mt-1">Media storage belongs to your organization's main Course360 account and follows its Course360 plan.</p>
+                    <p className="text-xs text-white/40 mt-1">Media storage belongs to your organization's main Course360™ account and follows its Course360™ plan.</p>
                   </div>
                   {!isPrivileged && tier !== "desktop" && tier !== "bundle" && (
                     <Button
@@ -434,7 +434,7 @@ export default function StudioDashboard() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   {[
                     { label: "Courses", value: courses?.length ?? 0, max: isPrivileged || tier === "desktop" || tier === "bundle" || tier === "pro" ? "∞" : tier === "web" ? 10 : 1 },
-                    { label: "Storage Used", value: "—", max: "Course360 plan" },
+                    { label: "Storage Used", value: "—", max: "Course360™ plan" },
                     { label: "Team Seats", value: tier === "bundle" ? "5" : "1", max: tier === "bundle" ? "5" : "1" },
                   ].map((stat) => (
                     <div key={stat.label} className="bg-white/5 rounded-xl p-3">

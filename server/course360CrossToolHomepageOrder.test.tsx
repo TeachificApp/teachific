@@ -84,7 +84,7 @@ function sections(container: HTMLElement) {
   };
 }
 function packageButton(packages: HTMLElement, plan: "Builder" | "Pro") {
-  return within(packages).getByRole("button", { name: `Continue with Course360 ${plan} + Creator Web` }) as HTMLButtonElement;
+  return within(packages).getByRole("button", { name: `Continue with Course360™ ${plan} + Creator Web` }) as HTMLButtonElement;
 }
 
 // Two branch cases plus six focused interaction/preservation cases: eight tests.
@@ -149,7 +149,7 @@ describe("Course360 rendered homepage composition order", () => {
     const rows = Array.from(table.querySelectorAll("tbody tr"));
     expect(rows.map(row => row.querySelector("td")?.textContent)).toEqual([
       "Courses", "Students", "Storage", "Video lessons", "Quiz builder", "Public school page", "SCORM support",
-      "Course360 Studio™", "Membership tiers", "Community", "Custom domain", "White-label branding",
+      "Course360™ Studio™", "Membership tiers", "Community", "Custom domain", "White-label branding",
       "Email campaigns", "Deep analytics", "Affiliate platform", "SSO / SAML", "Platform transaction fee",
       "Stripe payment gateway", "Group registrations", "Dedicated support",
     ]);
@@ -250,7 +250,7 @@ describe("Course360 rendered homepage composition order", () => {
     expect(within(s.content).getByRole("button", { name: "Monthly" }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(packageButton(s.packages, "Pro"));
     const review = await screen.findByRole("dialog", { name: "Review your new-school package" });
-    expect(review.textContent).toContain("Course360 Pro + Creator Web · Annual billing");
+    expect(review.textContent).toContain("Course360™ Pro + Creator Web · Annual billing");
     expect(review.textContent).toContain("$2,497.00 USD each year, billed all at once (not monthly installments)");
     expect((within(review).getByRole("textbox", { name: "Your name" }) as HTMLInputElement).value).toBe("");
     expect((within(review).getByRole("textbox", { name: "Email address" }) as HTMLInputElement).value).toBe("");

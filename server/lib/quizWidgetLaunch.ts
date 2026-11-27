@@ -18,7 +18,7 @@ export function buildQuizWidgetEmbed(input: {
   quizTitle: string;
 }): { widgetUrl: string; embedCode: string } {
   const widgetUrl = `${input.baseUrl.replace(/\/+$/, "")}/quiz/widget?token=${encodeURIComponent(input.token)}`;
-  const title = input.quizTitle.replace(/["<>]/g, "").trim() || "Course360 quiz";
+  const title = input.quizTitle.replace(/["<>]/g, "").trim() || "Course360™ quiz";
   return {
     widgetUrl,
     embedCode: `<iframe src="${widgetUrl}" width="100%" height="720" frameborder="0" style="border:0;border-radius:12px" title="${title}"></iframe>`,

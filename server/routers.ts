@@ -2377,7 +2377,7 @@ export const appRouter = router({
           await sendEmail({
             to: input.linkedOrgEmail,
             subject: `Organization link invitation from ${primaryOrg.name}`,
-            html: `<p>You have been invited to link your organization <strong>${linkedOrg.name}</strong> with <strong>${primaryOrg.name}</strong> using Course360.</p><p>This allows you to switch between both organizations from your dashboard.</p><p><a href="${invitationUrl}">Accept Link Invitation</a></p><p>This link expires in 7 days.</p>`,
+            html: `<p>You have been invited to link your organization <strong>${linkedOrg.name}</strong> with <strong>${primaryOrg.name}</strong> using Course360™.</p><p>This allows you to switch between both organizations from your dashboard.</p><p><a href="${invitationUrl}">Accept Link Invitation</a></p><p>This link expires in 7 days.</p>`,
           });
           return { ok: true, linkedOrgName: linkedOrg.name, linkedOrgId: linkedOrg.id };
         }),
@@ -4283,7 +4283,7 @@ Respond in JSON: { "questions": [{ "questionText": "...", "questionType": "multi
             <tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6;vertical-align:top">Message</td><td style="padding:8px 12px;white-space:pre-wrap">${safeMessage}</td></tr>
             ${ctx.user ? `<tr><td style="padding:8px 12px;font-weight:bold;background:#f3f4f6">User ID</td><td style="padding:8px 12px">${ctx.user.id}</td></tr>` : ""}
           </table>
-          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Course360 support form.</p>
+          <p style="color:#6b7280;font-size:12px;margin-top:16px">Submitted via the Course360™ support form.</p>
         `;
         await sendEmail({
           to: "support@course360.app",

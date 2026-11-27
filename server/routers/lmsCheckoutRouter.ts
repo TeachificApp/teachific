@@ -775,7 +775,7 @@ export const lmsCheckoutLearnerRouter = router({
         db, signedSession: session, verifiedAccountId: gateway.accountId, gateway,
         expected: { userId: ctx.user.id, orgId: activeOrgId, contentType: input.contentType, contentId: content.id, slug: content.slug },
       });
-      if (!result.handled) throw new TRPCError({ code: "BAD_REQUEST", message: "This session is not a Course360 hosted checkout." });
+      if (!result.handled) throw new TRPCError({ code: "BAD_REQUEST", message: "This session is not a Course360™ hosted checkout." });
       return { success: result.success, alreadyGranted: result.alreadyGranted ?? false, status: result.status, slug: content.slug, contentType: input.contentType };
     }),
 });

@@ -347,7 +347,7 @@ export default function QuestionBankImportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
-                <p>Upload a hosted SCORM package (.zip), iSpring or Course360 .quiz archive, or QTI XML file. Questions can be extracted while the original package remains hosted.</p>
+                <p>Upload a hosted SCORM package (.zip), iSpring or Course360™ .quiz archive, or QTI XML file. Questions can be extracted while the original package remains hosted.</p>
                 <p className="text-xs">Supports SCORM 1.2, SCORM 2004 QTI, and unencrypted .quiz files.</p>
                 <div className="rounded bg-[color:color-mix(in_srgb,var(--org-primary)_8%,transparent)] border border-[color:color-mix(in_srgb,var(--org-primary)_35%,transparent)] p-2 text-[var(--org-primary)] text-xs mt-1">
                   Tip: Export your SCORM quiz from your authoring tool (Articulate, iSpring, etc.) and upload the resulting .zip file.

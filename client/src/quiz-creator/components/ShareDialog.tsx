@@ -211,7 +211,7 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                     This quiz is served from its organization’s learner domain.
                   </p>
                 )}
-                {!hasShareUrl && <p className="text-xs text-amber-700">This quiz needs an active owning organization before Course360 can issue a learner-safe share link.</p>}
+                {!hasShareUrl && <p className="text-xs text-amber-700">This quiz needs an active owning organization before Course360™ can issue a learner-safe share link.</p>}
               </div>
 
               {/* Embed Code */}
@@ -222,7 +222,7 @@ export function ShareDialog({ open, onClose, quizId }: Props) {
                 <div className="relative">
                   <textarea
                     readOnly
-                    value={embedCode || "A learner-safe embed code will be available after Course360 resolves this quiz's owning organization."}
+                    value={embedCode || "A learner-safe embed code will be available after Course360™ resolves this quiz's owning organization."}
                     rows={3}
                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 font-mono resize-none"
                   />

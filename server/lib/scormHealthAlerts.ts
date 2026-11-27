@@ -362,7 +362,7 @@ export async function runScormHealthAlertPass(): Promise<{
       try {
         await sendEmail({
           to: { name: "Platform Admin", email: alertEmail },
-          subject: `[Course360] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
+          subject: `[Course360™] SCORM health alert — ${toEmail.length} package${toEmail.length === 1 ? "" : "s"} need attention`,
           htmlBody: buildAlertEmailHtml(toEmail),
           brandMode: "teachific",
         });

@@ -30,7 +30,7 @@ const APP_META: Record<AppKey, {
   bgGradient: string;
 }> = {
   creator: {
-    name: "Course360 Creator™",
+    name: "Course360™ Creator™",
     tagline: "Build stunning slide-based courses and export to SCORM",
     backPath: "/creator",
     backLabel: "Back to Creator Dashboard",
@@ -39,7 +39,7 @@ const APP_META: Record<AppKey, {
     bgGradient: "from-teal-50 to-white",
   },
   studio: {
-    name: "Course360 Studio™",
+    name: "Course360™ Studio™",
     tagline: "Record, edit, and publish professional video lessons",
     backPath: "/studio",
     backLabel: "Back to Studio Dashboard",
@@ -48,10 +48,10 @@ const APP_META: Record<AppKey, {
     bgGradient: "from-violet-50 to-white",
   },
   quizCreator: {
-    name: "Course360 Quiz Creator™",
+    name: "Course360™ Quiz Creator™",
     tagline: "Create interactive quizzes and assessments",
     backPath: "/quiz-creator-app",
-    backLabel: "Back to Course360 Quiz Creator Dashboard",
+    backLabel: "Back to Course360™ Quiz Creator Dashboard",
     upgradePath: "/quiz-creator-pro",
     color: "text-orange-600",
     bgGradient: "from-orange-50 to-white",
@@ -115,7 +115,7 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                 <div>
                   <p className="font-semibold text-amber-900 text-lg">{error?.data?.code === "UNAUTHORIZED" ? "Sign in required" : error?.data?.code === "FORBIDDEN" ? "Desktop or Bundle Access Required" : "Download access service unavailable"}</p>
                   <p className="text-amber-800 text-sm mt-1">
-                    The {meta.name} desktop app is available on <strong>Pro and Enterprise</strong> Course360 plans, or as a standalone purchase.
+                    The {meta.name} desktop app is available on <strong>Pro and Enterprise</strong> Course360™ plans, or as a standalone purchase.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -212,7 +212,7 @@ export default function DesktopDownloadPage({ app }: { app: AppKey }) {
                   {[
                     { step: "1", title: "Download the installer", desc: "Click the button above for your operating system." },
                     { step: "2", title: "Run the installer", desc: "Windows: extract the .zip file, then double-click the .exe installer and follow the prompts. macOS: open the .dmg, drag the app to Applications." },
-                    { step: "3", title: "Launch and sign in", desc: `Open ${meta.name} and sign in with your Course360 account to activate.` },
+                    { step: "3", title: "Launch and sign in", desc: `Open ${meta.name} and sign in with your Course360™ account to activate.` },
                     { step: "4", title: "Start creating", desc: "Your subscription is automatically verified — no extra steps needed." },
                   ].map(({ step, title, desc }) => (
                     <li key={step} className="flex items-start gap-3">

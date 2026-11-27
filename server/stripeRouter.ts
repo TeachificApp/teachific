@@ -1367,7 +1367,7 @@ export const stripeRouter = router({
       const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Creator price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360™ Creator price not found. Please try again shortly." });
       const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "creator", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "creator"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
@@ -1420,7 +1420,7 @@ export const stripeRouter = router({
       const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `studio_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Studio price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360™ Studio price not found. Please try again shortly." });
       const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "studio", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "studio"), params: {
         mode: "subscription",
         payment_method_types: ["card"],
@@ -1473,7 +1473,7 @@ export const stripeRouter = router({
       const returnOrigin = await resolveAppCapabilityCheckoutOrigin(input.origin, ctx.user.id);
       const priceKey = `quiz_creator_${input.accessTier}_${input.interval}`;
       const priceId = STRIPE_PRICE_IDS[priceKey];
-      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360 Quiz Creator price not found. Please try again shortly." });
+      if (!priceId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Course360™ Quiz Creator price not found. Please try again shortly." });
       const session = await createCourse360PaymentCheckout({ orgId: orgCtx.orgId, userId: ctx.user.id, product: "quiz_creator", selection: input.accessTier, interval: input.interval, trialEligible: await course360PaymentAppTrialEligible(ctx.user.id, "quiz_creator"), params: {
         mode: "subscription",
         payment_method_types: ["card"],

@@ -44,8 +44,8 @@ const FAQ_CATEGORIES = [
         a: "Navigate to your organization's Content Library and click 'Upload Content'. You can upload SCORM 1.2, SCORM 2004, or plain HTML5 packages as a ZIP file. Once uploaded, the system will automatically detect the SCORM version and entry point.",
       },
       {
-        q: "What file formats does Course360 support?",
-        a: "Course360 supports SCORM 1.2, SCORM 2004 (all editions), xAPI/Tin Can, HTML5 packages, Articulate Storyline exports, iSpring exports, and plain HTML/ZIP bundles. Maximum file size is determined by your subscription plan.",
+        q: "What file formats does Course360™ support?",
+        a: "Course360™ supports SCORM 1.2, SCORM 2004 (all editions), xAPI/Tin Can, HTML5 packages, Articulate Storyline exports, iSpring exports, and plain HTML/ZIP bundles. Maximum file size is determined by your subscription plan.",
       },
       {
         q: "How do I invite learners to my organization?",
@@ -68,11 +68,11 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "How does SCORM tracking work?",
-        a: "Course360 fully supports SCORM 1.2 and SCORM 2004 data models. Completion status, score, time spent, and suspend data are all captured and stored per learner. You can view detailed reports in the Analytics section.",
+        a: "Course360™ fully supports SCORM 1.2 and SCORM 2004 data models. Completion status, score, time spent, and suspend data are all captured and stored per learner. You can view detailed reports in the Analytics section.",
       },
       {
         q: "Can I set a passing score for a course?",
-        a: "Yes. In the course settings, you can define a minimum passing score. Learners who meet or exceed this score will be marked as 'Passed'. This works with both SCORM-tracked content and Course360's built-in quiz engine.",
+        a: "Yes. In the course settings, you can define a minimum passing score. Learners who meet or exceed this score will be marked as 'Passed'. This works with both SCORM-tracked content and Course360™'s built-in quiz engine.",
       },
       {
         q: "Is there a limit on how many courses I can create?",
@@ -91,7 +91,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Can I have multiple organizations?",
-        a: "Yes. A single Course360 account can be a member of multiple organizations. Use the organization switcher in the top navigation to switch between them. Each organization has its own content library, learners, and settings.",
+        a: "Yes. A single Course360™ account can be a member of multiple organizations. Use the organization switcher in the top navigation to switch between them. Each organization has its own content library, learners, and settings.",
       },
       {
         q: "How do I manage admin roles?",
@@ -110,7 +110,7 @@ const FAQ_CATEGORIES = [
     items: [
       {
         q: "What plans are available?",
-        a: "Course360 offers Starter, Builder, Pro, and Enterprise plans. Each plan includes different storage limits, learner seats, and feature access. Starter includes a 14-day trial. Visit the Pricing page or contact us for a custom Enterprise quote.",
+        a: "Course360™ offers Starter, Builder, Pro, and Enterprise plans. Each plan includes different storage limits, learner seats, and feature access. Starter includes a 14-day trial. Visit the Pricing page or contact us for a custom Enterprise quote.",
       },
       {
         q: "Can I upgrade or downgrade my plan?",

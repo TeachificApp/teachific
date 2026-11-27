@@ -13,7 +13,7 @@ function AppLoadFallback() {
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6 text-slate-900">
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="h-9 w-9 animate-spin rounded-full border-4 c360-border border-t-transparent" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-600">Loading Course360…</p>
+        <p className="text-sm font-medium text-slate-600">Loading Course360™…</p>
       </div>
     </main>
   );
@@ -26,14 +26,14 @@ function AppLoadFailure() {
         <p className="text-sm font-semibold uppercase tracking-[0.18em] c360-text">Course360™</p>
         <h1 className="mt-3 text-2xl font-semibold">We could not load this page.</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Please retry. If the issue continues, return to Course360 later or contact your organization administrator.
+          Please retry. If the issue continues, return to Course360™ later or contact your organization administrator.
         </p>
         <button
           type="button"
           className="mt-6 rounded-lg c360-action px-4 py-2 text-sm font-semibold text-white transition-colors c360-hover-action focus:outline-none focus:ring-2 c360-focus-ring focus:ring-offset-2"
           onClick={() => window.location.reload()}
         >
-          Retry loading Course360
+          Retry loading Course360™
         </button>
       </section>
     </main>
@@ -49,7 +49,7 @@ const DeferredApp = lazy(async () => {
       ? await import("./pages/LandingPage")
       : await import("./App");
   } catch (error) {
-    console.error("[Course360 App Load Error]", error);
+    console.error("[Course360™ App Load Error]", error);
     return { default: AppLoadFailure };
   }
 });

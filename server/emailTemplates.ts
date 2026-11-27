@@ -121,15 +121,15 @@ export function verifyEmailHtml(name: string, verifyUrl: string): string {
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
     <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Thanks for signing up for Course360™! Please verify your email address to activate your account and start building your online school.</p>
     ${ctaButton("Verify Email Address", verifyUrl)}
-    ${infoBox("This link expires in <strong>24 hours</strong>. If you didn't create a Course360 account, you can safely ignore this email.")}
+    ${infoBox("This link expires in <strong>24 hours</strong>. If you didn't create a Course360™ account, you can safely ignore this email.")}
     ${divider()}
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${verifyUrl}" style="color:#24abbc;word-break:break-all;">${verifyUrl}</a></p>
   `;
   return emailLayout({
-    preheader: "Verify your email to activate your Course360 account.",
+    preheader: "Verify your email to activate your Course360™ account.",
     title: "Verify your email — Course360™",
     body,
-    footerNote: "You're receiving this email because you created a Course360 account.",
+    footerNote: "You're receiving this email because you created a Course360™ account.",
   });
 }
 
@@ -139,14 +139,14 @@ export function resetPasswordHtml(name: string, resetUrl: string): string {
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Reset your password</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">We received a request to reset the password for your Course360 account. Click the button below to choose a new password.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">We received a request to reset the password for your Course360™ account. Click the button below to choose a new password.</p>
     ${ctaButton("Reset Password", resetUrl)}
     ${infoBox("This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password will not be changed.")}
     ${divider()}
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${resetUrl}" style="color:#24abbc;word-break:break-all;">${resetUrl}</a></p>
   `;
   return emailLayout({
-    preheader: "Reset your Course360 password — link expires in 1 hour.",
+    preheader: "Reset your Course360™ password — link expires in 1 hour.",
     title: "Reset your password — Course360™",
     body,
     footerNote: "You're receiving this email because a password reset was requested for your account.",
@@ -160,17 +160,17 @@ export function accountSetupHtml(name: string, setupUrl: string, plan: string): 
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Your Course360™ trial is ready</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. Set a password to finish creating your Course360 account and start building your school.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. Set a password to finish creating your Course360™ account and start building your school.</p>
     ${ctaButton("Set up your account", setupUrl)}
     ${infoBox("A payment method was securely collected at checkout. Your selected plan will automatically continue after 14 days unless you cancel before the trial ends. This setup link expires in <strong>7 days</strong>.")}
     ${divider()}
     <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">Can't click the button? Copy and paste this link into your browser:<br/><a href="${setupUrl}" style="color:#24abbc;word-break:break-all;">${setupUrl}</a></p>
   `;
   return emailLayout({
-    preheader: "Set a password to access your Course360 trial.",
-    title: "Set up your Course360 account",
+    preheader: "Set a password to access your Course360™ trial.",
+    title: "Set up your Course360™ account",
     body,
-    footerNote: "You're receiving this email because a Course360 subscription checkout was completed with this email address.",
+    footerNote: "You're receiving this email because a Course360™ subscription checkout was completed with this email address.",
   });
 }
 
@@ -181,15 +181,15 @@ export function trialActivatedHtml(name: string, signInUrl: string, plan: string
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Your new Course360™ school is ready</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. We connected the new school to your existing Course360 account—sign in to begin setting it up.</p>
-    ${ctaButton("Sign in to Course360", signInUrl)}
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your 14-day ${planName} plan trial is active. We connected the new school to your existing Course360™ account—sign in to begin setting it up.</p>
+    ${ctaButton("Sign in to Course360™", signInUrl)}
     ${infoBox("A payment method was securely collected at checkout. Your selected plan will automatically continue after 14 days unless you cancel before the trial ends.")}
   `;
   return emailLayout({
-    preheader: "Your new Course360 school is ready.",
-    title: "Your Course360 school is ready",
+    preheader: "Your new Course360™ school is ready.",
+    title: "Your Course360™ school is ready",
     body,
-    footerNote: "You're receiving this email because a Course360 subscription checkout was completed with this email address.",
+    footerNote: "You're receiving this email because a Course360™ subscription checkout was completed with this email address.",
   });
 }
 
@@ -199,7 +199,7 @@ export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_UR
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Welcome to Course360™!</h2>
     <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.7;">Hi ${escapeHtml(name) || "there"},</p>
-    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your account is verified and ready to go. Course360 helps you create, sell, and deliver online learning content.</p>
+    <p style="margin:0 0 4px;font-size:15px;color:#475569;line-height:1.7;">Your account is verified and ready to go. Course360™ helps you create, sell, and deliver online learning content.</p>
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
       <tr>
         <td style="padding:12px 16px;background:#f8fafc;border:1px solid #e8edf2;border-radius:8px;font-size:14px;color:#475569;line-height:1.6;">
@@ -213,10 +213,10 @@ export function welcomeEmailHtml(name: string, dashboardUrl: string = `${SITE_UR
     <p style="margin:0;font-size:14px;color:#64748b;line-height:1.7;">Need help getting started? Visit our <a href="${SITE_URL}/help" style="color:#24abbc;text-decoration:none;">Help Center</a> or reply to this email and we'll get back to you.</p>
   `;
   return emailLayout({
-    preheader: "Your Course360 account is ready — start building your school today.",
+    preheader: "Your Course360™ account is ready — start building your school today.",
     title: "Welcome to Course360™",
     body,
-    footerNote: "You're receiving this email because you created a Course360 account.",
+    footerNote: "You're receiving this email because you created a Course360™ account.",
   });
 }
 
@@ -281,7 +281,7 @@ export function purchaseConfirmationHtml(opts: {
     preheader: `Payment confirmed — you now have access to ${courseTitle}.`,
     title: "Purchase confirmation — Course360™",
     body,
-    footerNote: "You're receiving this email because you made a purchase through Course360.",
+    footerNote: "You're receiving this email because you made a purchase through Course360™.",
   });
 }
 
@@ -408,14 +408,14 @@ export function dripUnlockHtml(opts: {
 export function magicLinkEmailHtml(name: string, magicUrl: string, expiryMinutes = 15): string {
   return emailLayout({
     title: "Your sign-in link",
-    preheader: "Click to sign in to Course360 — link expires in " + expiryMinutes + " minutes.",
+    preheader: "Click to sign in to Course360™ — link expires in " + expiryMinutes + " minutes.",
     body: `
       <p style="margin:0 0 20px;font-size:16px;color:#374151;">Hi ${escapeHtml(name) || "there"},</p>
       <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
-        Click the button below to sign in to your Course360 account. This link expires in
+        Click the button below to sign in to your Course360™ account. This link expires in
         <strong>${expiryMinutes} minutes</strong> and can only be used once.
       </p>
-      ${ctaButton("Sign in to Course360", magicUrl)}
+      ${ctaButton("Sign in to Course360™", magicUrl)}
       <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
         If you didn't request this link, you can safely ignore this email — your account is secure.
       </p>

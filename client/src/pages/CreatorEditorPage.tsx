@@ -197,7 +197,7 @@ export default function CreatorEditorPage() {
       a.href = data.url;
       a.download = `${project?.title || "course"}-${data.format}.zip`;
       a.click();
-      toast.success(data.mediaItemId ? "Package exported and saved to your organization's Course360 Media Library." : "Package exported successfully!");
+      toast.success(data.mediaItemId ? "Package exported and saved to your organization's Course360™ Media Library." : "Package exported successfully!");
     },
     onError: (e) => {
       setIsExporting(false);
@@ -998,7 +998,7 @@ export default function CreatorEditorPage() {
               ))}
               <label className="flex items-start gap-2 text-sm text-white/80">
                 <input type="checkbox" checked={saveToMediaLibrary} onChange={(event) => setSaveToMediaLibrary(event.target.checked)} disabled={isExporting} className="mt-1 accent-[#24abbc]" />
-                <span>Also save to my organization's Course360 Media Library<span className="block text-xs text-white/40 mt-1">Uses your main Course360 account's library and storage allowance, not Studio storage.</span></span>
+                <span>Also save to my organization's Course360™ Media Library<span className="block text-xs text-white/40 mt-1">Uses your main Course360™ account's library and storage allowance, not Studio storage.</span></span>
               </label>
             </div>
 

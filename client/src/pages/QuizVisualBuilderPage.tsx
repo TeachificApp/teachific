@@ -73,7 +73,7 @@ export default function QuizVisualBuilderPage() {
       <QuizDraftRecoveryRuntime />
       <div className="flex items-center gap-2 border-b bg-background px-4 py-2">
         <Button variant="ghost" size="sm" onClick={() => navigate("/quiz-creator")}>
-          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Course360 Quiz Creator
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Course360™ Quiz Creator
         </Button>
         <div className="min-w-0 flex-1 truncate text-sm font-medium">{data?.title ?? "Quiz workspace"}</div>
         <div className="hidden items-center rounded-lg border bg-muted/40 p-0.5 sm:flex">

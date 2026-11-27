@@ -5136,7 +5136,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
             <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--org-primary)" }}><FolderOpen className="w-4 h-4" /> Manage Question Bank Folders</h3>
             <Button size="sm" variant="ghost" onClick={() => setShowFolderManager(false)}><X className="w-3.5 h-3.5" /></Button>
           </div>
-          <p className="text-xs" style={{ color: "color-mix(in_srgb, var(--org-primary) 76%, #1f2937)" }}>Toggle "Share in Course360 Quiz Creator" to make a folder's questions available as a quiz source in the Course360 Quiz Creator deployment screen.</p>
+          <p className="text-xs" style={{ color: "color-mix(in_srgb, var(--org-primary) 76%, #1f2937)" }}>Toggle "Share in Course360™ Quiz Creator" to make a folder's questions available as a quiz source in the Course360™ Quiz Creator deployment screen.</p>
           <div className="space-y-2">
             {folders.length === 0 && <p className="text-xs text-gray-400 py-2 text-center">No folders yet. Create folders when adding questions to the bank.</p>}
             {folders.map((f: any) => (
@@ -5145,7 +5145,7 @@ function QuizBuilderInline({ lesson, courseId }: { lesson: any; courseId?: numbe
                 <span className="text-sm font-medium text-gray-800 flex-1">{f.name}</span>
                 <span className="text-xs text-gray-400">{f.questionCount ?? ""}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium" style={{ color: "var(--org-primary)" }}>Course360 Quiz Creator</span>
+                  <span className="text-xs font-medium" style={{ color: "var(--org-primary)" }}>Course360™ Quiz Creator</span>
                   <Switch
                     checked={!!f.sharedInQuizCreator}
                     onCheckedChange={(v) => updateFolder.mutate({ id: f.id, sharedInQuizCreator: v })}
@@ -13002,7 +13002,7 @@ function LMSPublishDomainSettings() {
                     <span className="w-5 h-5 rounded bg-teal-100 flex items-center justify-center text-teal-600 text-xs">⚖️</span>
                     Legal &amp; Compliance URLs
                   </p>
-                  <p className="text-xs text-gray-400 mb-4">These links appear on the hosted checkout page as required agreement checkboxes. Leave blank to use the default Course360 links.</p>
+                  <p className="text-xs text-gray-400 mb-4">These links appear on the hosted checkout page as required agreement checkboxes. Leave blank to use the default Course360™ links.</p>
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label className="text-sm font-medium text-gray-700">Terms of Service URL</Label>

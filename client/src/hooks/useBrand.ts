@@ -18,7 +18,7 @@ export interface BrandConfig {
 const COURSE360_CONFIG: BrandConfig = {
   brand: "teachific",
   name: "Course360™",
-  shortName: "Course360",
+  shortName: "Course360™",
   tagline: "SCORM & LMS Hosting Platform",
   primaryColor: "#189aa1",
   accentColor: "#4ad9e0",

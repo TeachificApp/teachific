@@ -22,7 +22,7 @@ type ProductSwitcherProps = {
 };
 
 const PRODUCTS = [
-  { key: "creator" as const, label: "Course360 Creator™", shortLabel: "Creator", href: "/creator", external: false, iconUrl: PRODUCT_ICON_URLS.creator, color: "text-[#24abbc]", bg: "bg-[#24abbc]/10 hover:bg-[#24abbc]/20", border: "border-[#24abbc]/30" },
+  { key: "creator" as const, label: "Course360™ Creator™", shortLabel: "Creator", href: "/creator", external: false, iconUrl: PRODUCT_ICON_URLS.creator, color: "text-[#24abbc]", bg: "bg-[#24abbc]/10 hover:bg-[#24abbc]/20", border: "border-[#24abbc]/30" },
   {
     key: "lms" as const,
     label: "Teachific LMS",

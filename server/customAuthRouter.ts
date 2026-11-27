@@ -176,7 +176,7 @@ export const customAuthRouter = router({
       if (!publicOrgScope || !["course360_subdomain", "custom_domain"].includes(publicOrgScope.source)) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Start a new Course360 school by choosing a paid plan and completing secure checkout first.",
+          message: "Start a new Course360™ school by choosing a paid plan and completing secure checkout first.",
         });
       }
 
@@ -227,7 +227,7 @@ export const customAuthRouter = router({
         const verifyUrl = `${getSiteUrl()}/verify-email?token=${verificationToken}`;
         sendEmail({
           to: input.email,
-          subject: "Welcome to Course360 — please verify your email",
+          subject: "Welcome to Course360™ — please verify your email",
           html: verifyEmailHtml(input.name, verifyUrl),
         }).catch(() => {});
 
@@ -241,7 +241,7 @@ export const customAuthRouter = router({
         autoSignedIn: true,
         orgSlug,
         user: newUser ? { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role } : null,
-        message: "Account created! Welcome to Course360.",
+        message: "Account created! Welcome to Course360™.",
       };
     }),
 
@@ -367,7 +367,7 @@ export const customAuthRouter = router({
         input.origin ?? ctx.req.headers.origin ?? null,
       );
       const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
-      await sendEmail({ to: input.email, subject: "Verify your Course360 email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
+      await sendEmail({ to: input.email, subject: "Verify your Course360™ email address", html: verifyEmailHtml(user.name || "", verifyUrl) });
       return { success: true };
     }),
 
@@ -394,7 +394,7 @@ export const customAuthRouter = router({
         input.origin ?? ctx.req.headers.origin ?? null,
       );
       const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
-      await sendEmail({ to: input.email, subject: "Reset your Course360 password", html: resetPasswordHtml(user.name || "", resetUrl) });
+      await sendEmail({ to: input.email, subject: "Reset your Course360™ password", html: resetPasswordHtml(user.name || "", resetUrl) });
       return { success: true };
     }),
 
@@ -447,7 +447,7 @@ export const customAuthRouter = router({
       const magicUrl = `${baseUrl}/magic-link/verify?token=${token}`;
       await sendEmail({
         to: input.email,
-        subject: "Your Course360 sign-in link",
+        subject: "Your Course360™ sign-in link",
         html: magicLinkEmailHtml(user.name ?? "", magicUrl, 15),
       });
       return { success: true, message: "Check your email for a sign-in link." };

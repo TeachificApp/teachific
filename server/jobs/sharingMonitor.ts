@@ -21,7 +21,7 @@ import { sendEmail } from "../sendgrid";
 
 export const ACCOUNT_SHARING_ALERT_RECIPIENT = {
   email: "support@course360.app",
-  name: "Course360 Support",
+  name: "Course360™ Support",
 } as const;
 
 // Thresholds
@@ -265,7 +265,7 @@ async function flagAndAlert(suspiciousUsers: SuspiciousUser[]): Promise<void> {
 
   // Send consolidated alert email
   const htmlBody = buildAccountSharingAlertEmail(suspiciousUsers);
-  const subject = `Course360 Account Sharing Alert: ${suspiciousUsers.length} account${suspiciousUsers.length > 1 ? "s" : ""} flagged`;
+  const subject = `Course360™ Account Sharing Alert: ${suspiciousUsers.length} account${suspiciousUsers.length > 1 ? "s" : ""} flagged`;
 
   const sent = await sendEmail({
     to: ACCOUNT_SHARING_ALERT_RECIPIENT,

@@ -2,6 +2,7 @@ import { useId, useRef, useState, type FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
 import { COURSE360_CROSS_TOOL_OFFERS } from "@shared/course360CrossToolOffers";
 import { formatCourse360Dollars } from "@shared/course360PriceDisplay";
+import { formatCourse360BrandName } from "@shared/course360DisplayBrand";
 import { Course360CrossToolOffers, type Course360CrossToolSelection } from "./Course360CrossToolOffers";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -129,7 +130,7 @@ export function Course360CrossToolCheckout({ navigateToCheckout = url => window.
         onInteractOutside={event => { if (submissionLock.current) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-slate-900">Review your new-school package</DialogTitle>
-          <DialogDescription className="text-slate-700">{offer?.name} · {annual ? "Annual" : "Monthly"} billing</DialogDescription>
+          <DialogDescription className="text-slate-700">{offer ? formatCourse360BrandName(offer.name) : null} · {annual ? "Annual" : "Monthly"} billing</DialogDescription>
         </DialogHeader>
         <div className="rounded-xl border c360-aqua-border c360-soft p-4 text-sm text-slate-800 space-y-2">
           <p>This checkout creates a separate new school and its own subscription. It does not change or upgrade an existing school.</p>

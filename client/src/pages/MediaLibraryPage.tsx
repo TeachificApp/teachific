@@ -18,7 +18,7 @@ function getDefaultTab(): TabId {
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "library", label: "Content Library", icon: Library },
-  { id: "record-edit", label: "Course360 Studio™", icon: Video },
+  { id: "record-edit", label: "Course360™ Studio™", icon: Video },
   { id: "quizzes", label: "Quizzes", icon: BookOpen },
   { id: "flashcards", label: "Flashcards", icon: Layers },
 ];
@@ -38,14 +38,14 @@ export default function MediaLibraryPage() {
   };
 
   if (needsMainDomain) {
-    return <p className="p-6 text-sm text-muted-foreground">Opening your main Course360 account's media library. <a className="text-primary underline" href={libraryHref}>Continue to Media Library</a></p>;
+    return <p className="p-6 text-sm text-muted-foreground">Opening your main Course360™ account's media library. <a className="text-primary underline" href={libraryHref}>Continue to Media Library</a></p>;
   }
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="px-6 py-3 border-b border-border bg-primary/5 shrink-0">
-        <h1 className="text-sm font-semibold">Your organization's Course360 Media Library</h1>
-        <p className="text-xs text-muted-foreground mt-1">Included with your main Course360 account. Studio, Creator, and Quiz Creator can save here; storage follows your organization's Course360 plan, not a Studio subscription.</p>
+        <h1 className="text-sm font-semibold">Your organization's Course360™ Media Library</h1>
+        <p className="text-xs text-muted-foreground mt-1">Included with your main Course360™ account. Studio, Creator, and Quiz Creator can save here; storage follows your organization's Course360™ plan, not a Studio subscription.</p>
       </div>
       {/* Tab bar */}
       <div className="flex items-center gap-0 px-6 border-b border-border bg-background shrink-0">

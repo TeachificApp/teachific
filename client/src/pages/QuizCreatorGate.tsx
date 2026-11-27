@@ -56,7 +56,7 @@ function QuizCreatorUpgradeWall() {
           <span className="text-3xl font-black tracking-tight">
             <span className="text-white">Quiz</span>
             <span className="text-teal-400">Creator</span>
-            <span className="text-white/40 text-lg font-medium ml-1">by Course360</span>
+            <span className="text-white/40 text-lg font-medium ml-1">by Course360™</span>
           </span>
         </div>
 
@@ -68,10 +68,10 @@ function QuizCreatorUpgradeWall() {
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-3">
-          Course360 Quiz Creator Access Required
+          Course360™ Quiz Creator Access Required
         </h1>
         <p className="text-white/60 mb-8 leading-relaxed">
-          Quiz Creator is available as a standalone subscription or included with Course360 Enterprise.
+          Quiz Creator is available as a standalone subscription or included with Course360™ Enterprise.
           Upgrade to start building professional quizzes with hotspot, matching, and 5 other question types.
         </p>
 

@@ -170,7 +170,7 @@ export default function CreatorDashboardPage() {
           <div className="flex items-center gap-6">
             <Link href="/creator-pro">
               <span className="text-lg font-bold tracking-tight">
-                <span className="text-white">Course360</span>
+                <span className="text-white">Course360™</span>
                 <span className="text-[#4ad9e0]">Creator</span>
                 <sup className="text-[10px] text-[#4ad9e0] ml-0.5">™</sup>
               </span>
@@ -364,7 +364,7 @@ export default function CreatorDashboardPage() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <Crown className="w-6 h-6 text-[#4ad9e0]" />
-              Upgrade Course360 Creator™
+              Upgrade Course360™ Creator™
             </DialogTitle>
             <p className="text-white/50 text-sm mt-1">Remove watermarks, unlock AI tools, and export without limits.</p>
           </DialogHeader>
@@ -390,7 +390,7 @@ export default function CreatorDashboardPage() {
           <div className="rounded-xl border border-[#24abbc] bg-[#24abbc]/10 p-6 mt-2">
             <div className="flex items-start justify-between">
               <div>
-                <p className="font-bold text-white text-xl">Course360 Creator™</p>
+                <p className="font-bold text-white text-xl">Course360™ Creator™</p>
                 <p className="text-white/50 text-sm mt-0.5">Full access, all features</p>
               </div>
               <div className="text-right">

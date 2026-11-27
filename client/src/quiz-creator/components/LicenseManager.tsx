@@ -55,7 +55,7 @@ export function LicenseManager({ onClose }: Props) {
       label: "Pro",
       color: "text-teal-700",
       bg: "bg-teal-100",
-      description: "Unlimited quizzes and questions. AES-256 encrypted .quiz files. Course360 publish.",
+      description: "Unlimited quizzes and questions. AES-256 encrypted .quiz files. Course360™ publish.",
     },
     enterprise: {
       label: "Enterprise",
@@ -130,7 +130,7 @@ export function LicenseManager({ onClose }: Props) {
                   ["Quizzes", "5", "∞", "∞"],
                   ["Questions/quiz", "10", "∞", "∞"],
                   ["Encrypted .quiz files", "✗", "✓", "✓"],
-                  ["Publish to Course360", "✗", "✓", "✓"],
+                  ["Publish to Course360™", "✗", "✓", "✓"],
                   ["Bulk export", "✗", "✗", "✓"],
                   ["Team sharing", "✗", "✗", "✓"],
                 ].map(([feature, free, pro, ent]) => (

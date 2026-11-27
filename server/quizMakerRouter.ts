@@ -1431,7 +1431,7 @@ export const quizMakerRouter = router({
         timeLimit: nativeQuizPlayerSettings(quiz).timeLimit,
         shuffleQuestions: nativeQuizPlayerSettings(quiz).shuffleQuestions,
         nativeConfig: readNativeQuizConfig(quiz),
-        watermark: exportCapability.access.isInTrial ? "Course360 trial" : undefined,
+        watermark: exportCapability.access.isInTrial ? "Course360™ trial" : undefined,
         format: input.format,
       });
 

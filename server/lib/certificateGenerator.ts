@@ -55,7 +55,7 @@ export function resolveCertificateIdentity(template?: CertificateTemplate | null
       : `© ${organizationName} · Course360™`;
   return {
     organizationName,
-    signatureName: tmpl.signatureText || tmpl.signatureName || "Course360 Team",
+    signatureName: tmpl.signatureText || tmpl.signatureName || "Course360™ Team",
     signatureTitle: tmpl.signatureTitleText || tmpl.signatureTitle || `Certificate Administrator, ${organizationName}`,
     footerText: tmpl.footerText || defaultFooter,
   };

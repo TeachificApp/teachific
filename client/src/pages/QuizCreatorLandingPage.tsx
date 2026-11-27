@@ -72,7 +72,7 @@ const FEATURES = [
     icon: Lock,
     title: "AES-256 Encrypted .quiz Files",
     description:
-      "Every quiz exports as a portable, encrypted .quiz file you own. Share it, archive it, or import it into any Course360 LMS course with one click.",
+      "Every quiz exports as a portable, encrypted .quiz file you own. Share it, archive it, or import it into any Course360™ LMS course with one click.",
   },
   {
     icon: Sparkles,
@@ -100,9 +100,9 @@ const FEATURES = [
   },
   {
     icon: ListChecks,
-    title: "Course360 LMS™ Integration",
+    title: "Course360™ LMS™ Integration",
     description:
-      "Publish any .quiz file directly to a Course360 course lesson. Student attempts, scores, and completion data flow back to your LMS gradebook automatically.",
+      "Publish any .quiz file directly to a Course360™ course lesson. Student attempts, scores, and completion data flow back to your LMS gradebook automatically.",
   },
 ];
 
@@ -119,16 +119,16 @@ const PLAN_FEATURES = [
   "Matching drag-and-drop builder",
   "Student preview mode",
   "Detailed scoring & partial credit",
-  "Course360 LMS™ direct publish",
+  "Course360™ LMS™ direct publish",
   "White-label quiz player",
-  "Save to your main Course360 account's org-scoped Media Library",
+  "Save to your main Course360™ account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
 const PLANS = [
   {
     id: "pro",
-    name: "Course360 Quiz Creator™",
+    name: "Course360™ Quiz Creator™",
     badge: null,
     monthlyPrice: COURSE360_PRICES.quiz_creator_desktop.monthly,
     annualPrice: COURSE360_PRICES.quiz_creator_desktop.annual,
@@ -145,10 +145,10 @@ const PLANS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Course360 Quiz Creator™",
+      "Everything in Course360™ Quiz Creator™",
       "Unlimited seats",
       "SSO / SAML integration",
-      "Media storage follows your organization's Course360 plan",
+      "Media storage follows your organization's Course360™ plan",
       "Service-level planning",
       "Dedicated onboarding & training",
     ],
@@ -170,7 +170,7 @@ export default function QuizCreatorLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-black tracking-tight cursor-pointer">
-                <span className="text-white">Course360</span>
+                <span className="text-white">Course360™</span>
                 <span className="text-teal-400"> QuizMaker</span>
                 <sup className="text-[10px] text-teal-400 ml-0.5">™</sup>
               </span>
@@ -205,7 +205,7 @@ export default function QuizCreatorLandingPage() {
         <div className="relative max-w-4xl mx-auto text-center">
           <Badge className="bg-teal-500/20 text-teal-300 border-teal-500/30 mb-6 text-sm px-4 py-1">
             <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-            7 Question Types · Encrypted .quiz Files · Course360 LMS™ Integration
+            7 Question Types · Encrypted .quiz Files · Course360™ LMS™ Integration
           </Badge>
 
           <h1 className="text-5xl sm:text-6xl font-black leading-tight mb-6">
@@ -215,7 +215,7 @@ export default function QuizCreatorLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Course360 Quiz Creator™ is the standalone quiz authoring tool built for educators who demand more
+            Course360™ Quiz Creator™ is the standalone quiz authoring tool built for educators who demand more
             than a basic form builder. Create hotspot, matching, and 5 other question types — then export to a
             portable, encrypted .quiz file that belongs to you.
           </p>
@@ -271,7 +271,7 @@ export default function QuizCreatorLandingPage() {
               Every Question Type You'll Ever Need
             </h2>
             <p className="text-white/60 text-lg max-w-2xl mx-auto">
-              From simple multiple choice to complex image hotspots — Course360 Quiz Creator™ gives you the full toolkit
+              From simple multiple choice to complex image hotspots — Course360™ Quiz Creator™ gives you the full toolkit
               to build assessments that actually measure understanding.
             </p>
           </div>
@@ -302,7 +302,7 @@ export default function QuizCreatorLandingPage() {
               Built for Serious Content Creators
             </h2>
             <p className="text-white/60 text-lg max-w-2xl mx-auto">
-              Course360 Quiz Creator™ isn't a form builder with a quiz skin. It's purpose-built authoring software
+              Course360™ Quiz Creator™ isn't a form builder with a quiz skin. It's purpose-built authoring software
               for educators who create content professionally.
             </p>
           </div>
@@ -341,7 +341,7 @@ export default function QuizCreatorLandingPage() {
               </p>
               <p className="text-white/50 text-base leading-relaxed mb-10">
                 Hotspot questions are the gold standard for visual assessment in healthcare education,
-                engineering training, and technical certification programs. Course360 Quiz Creator™ provides
+                engineering training, and technical certification programs. Course360™ Quiz Creator™ provides
                 a focused workspace for building these interactions.
               </p>
               <Link href={course360AppPurchaseLoginPath({ app: "quiz_creator", tier: "desktop", interval: billing })}>
@@ -364,7 +364,7 @@ export default function QuizCreatorLandingPage() {
             {[
               { step: "01", title: "Build", detail: "Choose the question format, add text and media, then define scoring and feedback where appropriate." },
               { step: "02", title: "Review", detail: "Use preview controls to check the learner experience before publishing or exporting the assessment." },
-              { step: "03", title: "Deliver", detail: "Publish within Course360 or export a portable .quiz file for the delivery method that fits your program." },
+              { step: "03", title: "Deliver", detail: "Publish within Course360™ or export a portable .quiz file for the delivery method that fits your program." },
             ].map((item) => (
               <Card key={item.step} className="bg-white/5 border-white/10">
                 <CardContent className="p-7 flex flex-col gap-4">
@@ -486,7 +486,7 @@ export default function QuizCreatorLandingPage() {
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
                   <th className="text-left px-6 py-4 text-white/60 font-medium">Feature</th>
-                  <th className="text-center px-4 py-4 text-teal-400 font-bold">Course360 Quiz Creator™</th>
+                  <th className="text-center px-4 py-4 text-teal-400 font-bold">Course360™ Quiz Creator™</th>
                   <th className="text-center px-4 py-4 text-white/40 font-medium">Google Forms</th>
                   <th className="text-center px-4 py-4 text-white/40 font-medium">Typeform</th>
                 </tr>
@@ -498,7 +498,7 @@ export default function QuizCreatorLandingPage() {
                   ["Encrypted portable file export", true, false, false],
                   ["XLS import & export", true, false, false],
                   ["Branching & conditional logic", true, false, true],
-                  ["Course360 LMS™ integration", true, false, false],
+                  ["Course360™ LMS™ integration", true, false, false],
                   ["AI quiz generator", true, false, false],
                   ["Starting price/mo", formatCourse360Dollars(COURSE360_PRICES.quiz_creator_desktop.monthly), "Free", "$25"],
                 ].map(([feature, qc, gf, tf], i) => (
@@ -541,7 +541,7 @@ export default function QuizCreatorLandingPage() {
                 Start Building Better Assessments Today
               </h2>
               <p className="text-white/60 text-lg mb-10 leading-relaxed">
-                Join educators who have moved beyond basic quiz forms. Course360 Quiz Creator™ gives you the
+                Join educators who have moved beyond basic quiz forms. Course360™ Quiz Creator™ gives you the
                 authoring power to build assessments that are as sophisticated as the subjects you teach.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -572,16 +572,16 @@ export default function QuizCreatorLandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
               <span className="text-lg font-black">
-              <span className="text-white">Course360</span>
+              <span className="text-white">Course360™</span>
               <span className="text-teal-400"> Quiz Creator</span>
               <sup className="text-[10px] text-teal-400">™</sup>
             </span>
             <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-white/40 text-sm">
-            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360 Creator™</Link>
-            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360 Studio™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360™ Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360™ Creator™</Link>
+            <Link href="/studio-pro" className="hover:text-white transition-colors">Course360™ Studio™</Link>
             <Link href="/login" className="hover:text-white transition-colors">Sign In</Link>
             <Link href="/register" className="hover:text-white transition-colors">Register</Link>
           </div>

@@ -547,9 +547,9 @@ function SubdomainSchoolRouter({ subdomain }: { subdomain: string }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-slate-900">Course360 Learn is for organization administrators</h1>
+          <h1 className="text-xl font-bold text-slate-900">Course360™ Learn is for organization administrators</h1>
           <p className="mt-2 text-sm text-slate-500">
-            Sign in with an organization administrator account to access Course360 platform tutorials and FAQs.
+            Sign in with an organization administrator account to access Course360™ platform tutorials and FAQs.
           </p>
           <button
             className="mt-5 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700"

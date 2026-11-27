@@ -157,7 +157,7 @@ async function sendFormNotification(opts: {
     try {
       await sgMail.default.send({
         to,
-        from: { email: process.env.SENDGRID_FROM_EMAIL || "hello@course360.app", name: process.env.SENDGRID_FROM_NAME || "Course360" },
+        from: { email: process.env.SENDGRID_FROM_EMAIL || "hello@course360.app", name: process.env.SENDGRID_FROM_NAME || "Course360™" },
         subject: `New submission: ${opts.formTitle}`,
         html,
       });

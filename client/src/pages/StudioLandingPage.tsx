@@ -42,16 +42,16 @@ const PLAN_FEATURES = [
   "Export to MP4 (up to 4K)",
   "Auto-save recordings to Media Library",
   "Snap-to-corner draggable camera bubble",
-  "Publish directly to Course360 LMS™",
+  "Publish directly to Course360™ LMS™",
   "White-label player",
-  "Save to your main Course360 account's org-scoped Media Library",
+  "Save to your main Course360™ account's org-scoped Media Library",
   "Priority email & chat support",
 ];
 
 const PLANS = [
   {
     id: "pro",
-    name: "Course360 Studio™",
+    name: "Course360™ Studio™",
     badge: null,
     monthlyPrice: COURSE360_PRICES.studio_desktop.monthly,
     annualPrice: COURSE360_PRICES.studio_desktop.annual,
@@ -68,10 +68,10 @@ const PLANS = [
     annualPrice: null,
     description: "For large organizations with custom requirements.",
     features: [
-      "Everything in Course360 Studio™",
+      "Everything in Course360™ Studio™",
       "Unlimited seats",
       "SSO / SAML integration",
-      "Media storage follows your organization's Course360 plan",
+      "Media storage follows your organization's Course360™ plan",
       "Service-level planning",
       "Dedicated onboarding & training",
     ],
@@ -119,12 +119,12 @@ const FEATURES = [
   {
     icon: Video,
     title: "Media Library",
-    desc: "Recordings save to your organization's main Course360 Media Library. The library belongs to your Course360 account, not your Studio subscription.",
+    desc: "Recordings save to your organization's main Course360™ Media Library. The library belongs to your Course360™ account, not your Studio subscription.",
   },
   {
     icon: Mic,
-    title: "Publish to Course360 LMS™",
-    desc: "Publish finished video directly to your Course360 school.",
+    title: "Publish to Course360™ LMS™",
+    desc: "Publish finished video directly to your Course360™ school.",
   },
 ];
 
@@ -163,7 +163,7 @@ export default function StudioLandingPage() {
           <div className="flex items-center gap-8">
             <Link href="/">
               <span className="text-xl font-bold tracking-tight cursor-pointer">
-                <span className="text-white">Course360</span>
+                <span className="text-white">Course360™</span>
                 <span className="text-violet-400"> Studio</span>
                 <sup className="text-[10px] text-violet-400 ml-0.5">™</sup>
               </span>
@@ -225,8 +225,8 @@ export default function StudioLandingPage() {
           </h1>
 
           <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Course360 Studio™ is a screen and camera recording tool with AI transcription,
-            transcript-based editing, auto-highlight clips, and direct publishing to Course360 LMS™.
+            Course360™ Studio™ is a screen and camera recording tool with AI transcription,
+            transcript-based editing, auto-highlight clips, and direct publishing to Course360™ LMS™.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -260,7 +260,7 @@ export default function StudioLandingPage() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
               <div className="w-3 h-3 rounded-full bg-green-500/60" />
               <div className="ml-4 flex-1 h-5 bg-white/5 rounded text-xs text-white/30 flex items-center px-3">
-                Course360 Studio™ — Module 3: Product Demo Recording
+                Course360™ Studio™ — Module 3: Product Demo Recording
               </div>
             </div>
             <div className="flex h-[380px]">
@@ -383,7 +383,7 @@ export default function StudioLandingPage() {
             {[
               ["Record", "Capture a screen, browser tab, window, camera, or combined layout."],
               ["Refine", "Use the transcript, captions, and clip controls to prepare the recording."],
-              ["Publish", "Export the finished file or make it available through your Course360 school."],
+              ["Publish", "Export the finished file or make it available through your Course360™ school."],
             ].map(([title, description]) => (
               <Card key={title} className="border-white/10 bg-white/5">
                 <CardContent className="p-5">
@@ -508,7 +508,7 @@ export default function StudioLandingPage() {
             {[
               ["Capture", "Record your chosen screen and camera layout in the browser."],
               ["Edit", "Use transcript-aware editing, clips, and caption controls to prepare the video."],
-              ["Deliver", "Export the completed recording or publish it to your Course360 school."],
+              ["Deliver", "Export the completed recording or publish it to your Course360™ school."],
             ].map(([title, description]) => (
               <Card key={title} className="bg-white/5 border-white/10">
                 <CardContent className="p-6">
@@ -532,7 +532,7 @@ export default function StudioLandingPage() {
                 Start Recording Today
               </h2>
               <p className="text-lg text-white/60 mb-8">
-                Use Course360 Studio™ to record and prepare training videos in your browser.
+                Use Course360™ Studio™ to record and prepare training videos in your browser.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -551,7 +551,7 @@ export default function StudioLandingPage() {
                     className="border-white/20 text-white hover:bg-white/10 h-14 text-base px-8"
                   >
                     <Users className="mr-2 w-5 h-5" />
-                    View Course360 LMS™
+                    View Course360™ LMS™
                   </Button>
                 </Link>
               </div>
@@ -571,15 +571,15 @@ export default function StudioLandingPage() {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-bold text-white">
-              Course360<span className="text-violet-400"> Studio</span>
+              Course360™<span className="text-violet-400"> Studio</span>
               <sup className="text-[10px] text-violet-400">™</sup>
             </span>
             <span className="text-white/30 text-sm">by Course360™</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/" className="hover:text-white transition-colors">Course360 Home</Link>
-            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360 Creator™</Link>
-            <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">Course360 Quiz Creator™</Link>
+            <Link href="/" className="hover:text-white transition-colors">Course360™ Home</Link>
+            <Link href="/creator-pro" className="hover:text-white transition-colors">Course360™ Creator™</Link>
+            <Link href="/quiz-creator-pro" className="hover:text-white transition-colors">Course360™ Quiz Creator™</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
           </div>

@@ -104,7 +104,7 @@ export default function PublicPhysicalProductSalesPage() {
   const isNative = product.checkoutMode === "native";
   const beginCheckout = () => {
     if (!isNative) {
-      toast.error("This product is not currently available through Course360 checkout.");
+      toast.error("This product is not currently available through Course360™ checkout.");
       return;
     }
     checkout.mutate({

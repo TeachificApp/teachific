@@ -23,7 +23,7 @@ const PRODUCT_INFO: Record<Product, {
   features: string[];
 }> = {
   creator: {
-    name: "Course360 Creator™",
+    name: "Course360™ Creator™",
     tagline: "Professional course authoring and eLearning content creation",
     features: [
       "Drag-and-drop course builder",
@@ -35,7 +35,7 @@ const PRODUCT_INFO: Record<Product, {
     ],
   },
   studio: {
-    name: "Course360 Studio™",
+    name: "Course360™ Studio™",
     tagline: "Screen recording, transcription, and video editing for educators",
     features: [
       "Screen, camera, and audio recording",
@@ -47,7 +47,7 @@ const PRODUCT_INFO: Record<Product, {
     ],
   },
   quizcreator: {
-    name: "Course360 Quiz Creator™",
+    name: "Course360™ Quiz Creator™",
     tagline: "Professional quiz and assessment builder with analytics",
     features: [
       "Multiple question types",

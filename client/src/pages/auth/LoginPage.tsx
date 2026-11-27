@@ -18,7 +18,7 @@ const TEAL_LIGHT = "#4ad9e0";
 
 const features = [
   { icon: BookOpen, text: "Build & sell courses in minutes" },
-  { icon: Users, text: "Manage unlimited students" },
+  { icon: Users, text: "Manage students as your school grows" },
   { icon: TrendingUp, text: "Built-in analytics & revenue tracking" },
   { icon: Award, text: "Automated certificates & completions" },
 ];
@@ -114,12 +114,12 @@ export default function LoginPage() {
   // ── Desktop-app minimal login ────────────────────────────────────────────
   if (isDesktop) {
     const appName = returnTo.startsWith("/studio")
-      ? "Course360 Studio™"
+      ? "Course360™ Studio™"
       : returnTo.startsWith("/quiz-creator")
-      ? "Course360 Quiz Creator™"
+      ? "Course360™ Quiz Creator™"
       : contextParam === "desktop" && !returnTo
       ? "Course360™"
-      : "Course360 Creator™";
+      : "Course360™ Creator™";
 
     return (
       <div className="min-h-screen flex flex-col justify-center items-center bg-white px-8">
@@ -155,7 +155,7 @@ export default function LoginPage() {
             >
               Sign in
             </h2>
-            <p className="text-sm text-slate-500">Use your Course360 account credentials</p>
+            <p className="text-sm text-slate-500">Use your Course360™ account credentials</p>
           </div>
 
           {error && (
@@ -304,7 +304,7 @@ export default function LoginPage() {
               Your revenue.
             </h1>
             <p className="text-white/60 text-base leading-relaxed max-w-sm">
-              Build and deliver learning experiences with Course360 while retaining organization-specific branding.
+              Turn your knowledge into courses, connect with your learners, and grow your school with Course360™.
             </p>
           </div>
 
@@ -342,8 +342,8 @@ export default function LoginPage() {
             )
           ) : (
             <div className="lg:hidden flex items-baseline gap-0.5 justify-center">
-              <span className="text-3xl font-bold tracking-tight" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>teach</span>
-              <span className="text-3xl font-bold tracking-tight" style={{ color: TEAL, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>ific</span>
+              <span className="text-3xl font-bold tracking-tight" style={{ color: NAVY, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Course360</span>
+              <span className="text-3xl font-bold tracking-tight" style={{ color: TEAL, fontFamily: "'Plus Jakarta Sans', sans-serif" }}></span>
               <span className="text-sm font-bold ml-0.5" style={{ color: TEAL, verticalAlign: "super", fontSize: "0.55em" }}>™</span>
             </div>
           )}
@@ -358,7 +358,7 @@ export default function LoginPage() {
               Welcome back
             </h2>
             <p className="text-sm text-slate-500">
-              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Course360 account"}
+              {isOrgSubdomain ? `Sign in to ${displayName}` : "Sign in to your Course360™ account"}
             </p>
           </div>
 

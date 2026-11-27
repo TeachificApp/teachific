@@ -360,7 +360,7 @@ async function assertLegacyCertificateAttributionEntitlement(
   if (plan !== "pro" && plan !== "enterprise") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Removing Course360 platform attribution from certificates is available on Pro and Enterprise plans.",
+      message: "Removing Course360™ platform attribution from certificates is available on Pro and Enterprise plans.",
     });
   }
 }

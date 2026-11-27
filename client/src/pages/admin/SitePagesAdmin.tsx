@@ -609,7 +609,7 @@ export default function SitePagesAdmin() {
               {menuKey === "sidebar" && domain === "course360.app" && (
                 <>
                   {" "}
-                  Sidebar menus for the Course360 platform domain are saved here for planning and export;
+                  Sidebar menus for the Course360™ platform domain are saved here for planning and export;
                   the live application sidebar is managed separately.
                 </>
               )}

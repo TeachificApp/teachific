@@ -398,7 +398,7 @@ function SaveToBankDialog({ open, onClose, packageId, packageTitle, hasOriginalZ
               <Database className="h-10 w-10 text-primary/60 mx-auto" />
               <div className="space-y-1">
                 <p className="text-sm font-medium">Extract questions from this package</p>
-                <p className="text-xs text-muted-foreground">Supports iSpring, Course360 .quiz, QTI XML, and XLSX formats inside the ZIP.</p>
+                <p className="text-xs text-muted-foreground">Supports iSpring, Course360™ .quiz, QTI XML, and XLSX formats inside the ZIP.</p>
               </div>
               <Button onClick={handleExtract} className="gap-2"><Database className="h-4 w-4" />Extract Questions</Button>
             </div>

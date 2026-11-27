@@ -110,6 +110,6 @@ describe("Studio real synthetic local FFmpeg bytes (no network)", () => {
     const outputDir = join(directory, "silent-out"); await mkdir(outputDir);
     const result = await renderStudioLocal(silent, outputDir, { words: [], segments: [] }, { startSec: 0, endSec: 1, watermark: true }, AbortSignal.timeout(20_000));
     expect(result.probe.hasAudio).toBe(false); expect(result.probe.duration).toBeCloseTo(1, 1);
-    expect(await readFile(join(outputDir, "watermark.ass"), "utf8")).toContain("Course360 Studio");
+    expect(await readFile(join(outputDir, "watermark.ass"), "utf8")).toContain("Course360™ Studio™");
   }, 25_000);
 });

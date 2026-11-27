@@ -109,7 +109,7 @@ describe("Course360 rendered cross-tool offers", () => {
   it("default public root package CTAs are disabled and do not infer payment from success URL parameters", () => {
     window.history.replaceState({}, "", "/?success=true&paid=true&checkout=success&session_id=unverified");
     const checkout = vi.fn(); render(<LandingPage crossToolOffers={{ onCheckout: checkout }} />);
-    for (const name of ["Course360 Builder + Creator Web", "Course360 Pro + Creator Web"]) {
+    for (const name of ["Course360™ Builder + Creator Web", "Course360™ Pro + Creator Web"]) {
       const button = screen.getByRole("button", { name: `Continue with ${name}` }) as HTMLButtonElement;
       expect(button.disabled).toBe(true); fireEvent.click(button);
     }
@@ -121,12 +121,12 @@ describe("Course360 rendered cross-tool offers", () => {
   it("needs both actual catalog readiness and callback; checks selected interval independently", () => {
     const callback = vi.fn(async () => {});
     const view = render(<Course360CrossToolOffers catalogStatus="ready" readiness={ready} />);
-    expect((screen.getByRole("button", { name: /Continue with Course360 Builder/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Continue with Course360™ Builder/ }) as HTMLButtonElement).disabled).toBe(true);
     view.rerender(<Course360CrossToolOffers catalogStatus="ready" readiness={{ ...ready, builder_creator_web: { monthly: true, annual: false } }} onCheckout={callback} />);
-    expect((screen.getByRole("button", { name: /Continue with Course360 Builder/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: /Continue with Course360™ Builder/ }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Annual" }));
-    expect((screen.getByRole("button", { name: /Continue with Course360 Builder/ }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: /Continue with Course360 Pro/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole("button", { name: /Continue with Course360™ Builder/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Continue with Course360™ Pro/ }) as HTMLButtonElement).disabled).toBe(false);
     expect(callback).not.toHaveBeenCalled();
   });
 
@@ -136,11 +136,11 @@ describe("Course360 rendered cross-tool offers", () => {
     render(<Course360CrossToolOffers catalogStatus="ready" readiness={ready} onCheckout={checkout} />);
     fireEvent.click(screen.getByRole("button", { name: "Annual" }));
     expect(checkout).not.toHaveBeenCalled();
-    const button = screen.getByRole("button", { name: /Continue with Course360 Pro/ });
+    const button = screen.getByRole("button", { name: /Continue with Course360™ Pro/ });
     fireEvent.click(button); fireEvent.click(button);
     expect(checkout).toHaveBeenCalledTimes(1);
     expect(checkout).toHaveBeenCalledWith({ offerKey: "pro_creator_web", interval: "annual" });
-    expect(screen.getByRole("status").textContent).toContain("Opening secure checkout for Course360 Pro + Creator Web");
+    expect(screen.getByRole("status").textContent).toContain("Opening secure checkout for Course360™ Pro + Creator Web");
     expect((screen.getByRole("button", { name: "Monthly" }) as HTMLButtonElement).disabled).toBe(true);
     reject(new Error("Selected package checkout is temporarily unavailable."));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Selected package checkout is temporarily unavailable."));
@@ -152,15 +152,15 @@ describe("Course360 rendered cross-tool offers", () => {
     const checkout = vi.fn(), retry = vi.fn();
     render(<Course360CrossToolOffers catalogStatus="error" catalogError="Package availability service unavailable" readiness={ready} onCheckout={checkout} onRetryCatalog={retry} />);
     expect(screen.getByRole("alert").textContent).toContain("Package availability service unavailable");
-    expect((screen.getByRole("button", { name: /Continue with Course360 Builder/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Continue with Course360™ Builder/ }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Retry package availability" }));
     expect(retry).toHaveBeenCalledTimes(1); expect(checkout).not.toHaveBeenCalled();
   });
 
   it("keeps white-label a Pro-only entitlement and does not bundle Desktop/Studio/Quiz by implication", () => {
     render(<Course360CrossToolOffers />);
-    const builder = screen.getByRole("heading", { name: "Course360 Builder + Creator Web" }).closest("article")!;
-    const pro = screen.getByRole("heading", { name: "Course360 Pro + Creator Web" }).closest("article")!;
+    const builder = screen.getByRole("heading", { name: "Course360™ Builder + Creator Web" }).closest("article")!;
+    const pro = screen.getByRole("heading", { name: "Course360™ Pro + Creator Web" }).closest("article")!;
     expect(builder.textContent).toContain("white-label branding requires Pro");
     expect(builder.textContent).not.toContain("Pro-only white-label branding");
     expect(pro.textContent).toContain("Pro-only white-label branding");
@@ -178,7 +178,7 @@ describe("Course360 marketing source preservation", () => {
   it("keeps standalone prices, dashboard, route wiring, and supplied brand config byte-identical", () => {
     expect(sha256(source("shared/course360Pricing.ts"))).toBe("102f39c2995ee5bd5af45366e725e3df418fb8002d647809b62ed102202201dd");
     expect(sha256(source("client/src/pages/Home.tsx"))).toBe("04e090e98d0619c586121dd4891e78e1593084c185543de3bd480b732dd69337");
-    expect(sha256(source("client/src/App.tsx"))).toBe("0e97ba9df72015f8084f006c419b5baf17ee2d0741ad24d1ef0803df834c6141");
+    expect(sha256(source("client/src/App.tsx"))).toBe("fba8ddbafed9499076ab249d52935511478071b37d45a57f3ee7961a013b4b1e");
     expect(sha256(source("client/src/config/platformBrand.ts"))).toBe("521a40a69f6b278ae7f18f91ddea89037704ee1312987db68bf22686383f1eda");
     const app = source("client/src/App.tsx");
     expect(app).toContain('<Route path="/" component={LandingPage} />');

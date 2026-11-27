@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import postcss from "postcss";
+import { formatCourse360BrandName } from "../shared/course360DisplayBrand";
 import { Course360SchoolTrack, Course360ContentTrack } from "../client/src/components/Course360MarketingTracks";
 import { Course360CrossToolOffers, type Course360CrossToolOffersProps } from "../client/src/components/Course360CrossToolOffers";
 import { COURSE360_CROSS_TOOL_OFFERS } from "../shared/course360CrossToolOffers";
@@ -107,7 +108,7 @@ describe("Course360 opt-in blue-teal/aqua palette", () => {
     const articles = packages.querySelectorAll("article");
     expect(articles).toHaveLength(2);
     for (const offer of Object.values(COURSE360_CROSS_TOOL_OFFERS)) {
-      const button = packages.querySelector(`button[aria-label="Continue with ${offer.name}"]`) as HTMLButtonElement;
+      const button = packages.querySelector(`button[aria-label="Continue with ${formatCourse360BrandName(offer.name)}"]`) as HTMLButtonElement;
       expect(button.disabled).toBe(false);
       hasClasses(button, "c360-action", "c360-hover-action", "c360-focus-outline");
     }

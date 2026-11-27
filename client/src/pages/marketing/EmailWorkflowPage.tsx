@@ -250,7 +250,7 @@ function WorkflowStepEditor({
                 className="mt-1 min-h-[150px] resize-y font-mono text-xs leading-5"
               />
               <p className="mt-1.5 text-[11px] text-slate-500">
-                Available variables: <code>{"{{recipient_name}}"}</code>, <code>{"{{org_name}}"}</code>, and <code>{"{{unsubscribe_url}}"}</code>. Organization branding and unsubscribe controls are added by Course360.
+                Available variables: <code>{"{{recipient_name}}"}</code>, <code>{"{{org_name}}"}</code>, and <code>{"{{unsubscribe_url}}"}</code>. Organization branding and unsubscribe controls are added by Course360™.
               </p>
             </div>
           </CardContent>

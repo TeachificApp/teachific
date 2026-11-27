@@ -519,7 +519,7 @@ export async function fulfillPlatformTrialSignup(session: Stripe.Checkout.Sessio
       : `${getCourse360PlatformAppUrl()}/login`;
     await sendEmail({
       to: email,
-      subject: result.setupToken ? "Set up your Course360 account" : "Your Course360 school is ready",
+      subject: result.setupToken ? "Set up your Course360™ account" : "Your Course360™ school is ready",
       html: result.setupToken
         ? accountSetupHtml(result.userName ?? requestedName, accountUrl, result.plan ?? plan)
         : trialActivatedHtml(result.userName ?? requestedName, accountUrl, result.plan ?? plan),

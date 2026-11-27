@@ -235,7 +235,7 @@ const FEATURES = [
   },
   {
     icon: Video,
-    title: "Course360 Studio™",
+    title: "Course360™ Studio™",
     description:
       "Create Content with browser-based screen, camera, and audio capture. Edit your recordings into lesson media, then choose how to use them in your learning workflow.",
     color: TEAL,
@@ -585,7 +585,7 @@ const COMPARISON_FEATURES: ComparisonRow[] = [
   { feature: "Quiz builder", starter: true, builder: true, pro: true, enterprise: true },
   { feature: "Public school page", starter: true, builder: true, pro: true, enterprise: true },
   { feature: "SCORM support", starter: true, builder: true, pro: true, enterprise: true },
-  { feature: "Course360 Studio™", starter: false, builder: true, pro: true, enterprise: true },
+  { feature: "Course360™ Studio™", starter: false, builder: true, pro: true, enterprise: true },
   { feature: "Membership tiers", starter: "1", builder: "3", pro: "10", enterprise: "Unlimited" },
   { feature: "Community", starter: false, builder: true, pro: true, enterprise: true },
   { feature: "Custom domain", starter: false, builder: true, pro: true, enterprise: true },

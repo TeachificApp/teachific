@@ -4,7 +4,7 @@
 import type { Brand } from "./brands";
 
 export const SITE_PAGE_DOMAINS = [
-  { value: "course360.app", label: "Course360 — platform root", brand: "teachific" as Brand },
+  { value: "course360.app", label: "Course360™ — platform root", brand: "teachific" as Brand },
 ] as const;
 
 export type SitePageDomain = (typeof SITE_PAGE_DOMAINS)[number]["value"];

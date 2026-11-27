@@ -1000,7 +1000,7 @@ export default function OrgSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5 text-primary" /> Your Course360 Subdomain
+                <Globe className="h-5 w-5 text-primary" /> Your Course360™ Subdomain
               </CardTitle>
               <CardDescription>Your school is live at this address. Share it with your students.</CardDescription>
             </CardHeader>
@@ -1049,7 +1049,7 @@ export default function OrgSettingsPage() {
                   <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/40 bg-amber-500/10 ml-auto">Pro+ required</Badge>
                 )}
               </CardTitle>
-              <CardDescription>Point your own domain (e.g. learn.acme.com) to your Course360 school.</CardDescription>
+              <CardDescription>Point your own domain (e.g. learn.acme.com) to your Course360™ school.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {!isProPlus && (
@@ -1086,7 +1086,7 @@ export default function OrgSettingsPage() {
                     <span className="flex-shrink-0 h-6 w-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">2</span>
                     <div>
                       <p className="text-sm font-medium">Enter your custom domain below and save</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Once DNS is configured, enter your domain here so Course360 can route traffic to your school.</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Once DNS is configured, enter your domain here so Course360™ can route traffic to your school.</p>
                     </div>
                   </li>
                   <li className="flex gap-3">
@@ -3510,7 +3510,7 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
             <Code2 className="h-4 w-4" /> Platform-Wide Embed
           </CardTitle>
           <CardDescription>
-            Embed your entire Course360 school (homepage + catalog) on any external website.
+            Embed your entire Course360™ school (homepage + catalog) on any external website.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -3583,7 +3583,7 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label className={`font-medium ${!canWhiteLabel ? "text-muted-foreground" : ""}`}>Hide Course360 Branding</Label>
+              <Label className={`font-medium ${!canWhiteLabel ? "text-muted-foreground" : ""}`}>Hide Course360™ Branding</Label>
               <p className="text-xs text-muted-foreground">
                 {canWhiteLabel
                   ? 'Remove the "Powered by Course360™" footer in embeds.'
@@ -3599,7 +3599,7 @@ function EmbedSettingsPanel({ orgId, orgSlug, plan = "free" }: { orgId: number; 
               checked={canWhiteLabel ? hideBranding : false}
               onCheckedChange={canWhiteLabel ? setHideBranding : undefined}
               disabled={!canWhiteLabel}
-              title={!canWhiteLabel ? "Upgrade to Pro or Enterprise to hide Course360 branding" : undefined}
+              title={!canWhiteLabel ? "Upgrade to Pro or Enterprise to hide Course360™ branding" : undefined}
             />
           </div>
           <div className="flex items-center justify-between">

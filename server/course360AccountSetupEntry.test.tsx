@@ -170,7 +170,7 @@ afterEach(async () => {
   expect(renderErrors).toEqual([]);
   // Expected loader failures are asserted explicitly; no duplicate-React,
   // invalid-hook or unwrapped-act errors are accepted by this new suite.
-  expect(errorLog.mock.calls.filter(([message]) => message !== "[Course360 App Load Error]")).toEqual([]);
+  expect(errorLog.mock.calls.filter(([message]) => message !== "[Course360™ App Load Error]")).toEqual([]);
   host.remove();
   vi.restoreAllMocks(); vi.unstubAllGlobals();
   vi.doUnmock("../client/src/App");
@@ -242,12 +242,12 @@ describe("actual AppBootstrap with actual standalone setup, claims and providers
     await mountBootstrap(url);
     expect(boundary.heavyImports).toHaveBeenCalledTimes(1);
     expect(getByRole(host, "heading", { name: "We could not load this page." })).toBeTruthy();
-    expect(getByRole(host, "button", { name: "Retry loading Course360" })).toBeTruthy();
+    expect(getByRole(host, "button", { name: "Retry loading Course360™" })).toBeTruthy();
     expect(queryByRole(host, "region", { name: "Claim separate paid schools" })).toBeNull();
     expect(boundary.useClaimsQuery).not.toHaveBeenCalled();
     expect(boundary.useCatalogQuery).not.toHaveBeenCalled();
     // Vitest wraps factory throws; the intentional heavy-import failure is its cause.
-    expect(errorLog).toHaveBeenCalledWith("[Course360 App Load Error]", expect.objectContaining({
+    expect(errorLog).toHaveBeenCalledWith("[Course360™ App Load Error]", expect.objectContaining({
       cause: expect.objectContaining({ message: "Heavy App import forbidden by lightweight-entry regression" }),
     }));
     expect(boundary.mutate).not.toHaveBeenCalled();

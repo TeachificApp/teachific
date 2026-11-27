@@ -19,7 +19,7 @@ export async function resolveCreatorMedia(db: Db, orgId: number, slides: Creator
     let asset = resolved.get(id);
     if (!asset) {
       const [row] = await db.select().from(orgMediaLibrary).where(and(eq(orgMediaLibrary.id, id), eq(orgMediaLibrary.orgId, orgId))).limit(1);
-      if (!row) throw new TRPCError({ code: "FORBIDDEN", message: "Media does not belong to the selected main Course360 account." });
+      if (!row) throw new TRPCError({ code: "FORBIDDEN", message: "Media does not belong to the selected main Course360™ account." });
       if (!TYPES.test(row.mimeType || "")) throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported media type. SVG/HTML assets are not executable course media." });
       if (!creatorPrimitives.safeUrl(row.url, true)) throw new TRPCError({ code: "BAD_REQUEST", message: "Media URL is unsafe." });
       asset = { url: row.url, mimeType: row.mimeType };

@@ -47,7 +47,7 @@ export default function OrganizationAccountsPage() {
   const query = trpc.orgAccounts.list.useQuery({ search, status, page, pageSize: 25 }, { enabled: allowed, staleTime: 30_000, refetchInterval: 60_000 });
   const report = query.data;
   if (loading) return <div className="p-6"><Skeleton className="h-24 w-full" /></div>;
-  if (!allowed) return <div className="p-6"><h1 className="text-xl font-semibold">Platform administrator access required</h1><p className="text-muted-foreground mt-2">Organization account and trial reporting is available only to Course360 platform admins.</p></div>;
+  if (!allowed) return <div className="p-6"><h1 className="text-xl font-semibold">Platform administrator access required</h1><p className="text-muted-foreground mt-2">Organization account and trial reporting is available only to Course360™ platform admins.</p></div>;
   return <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><Link href="/members/users" className="text-sm text-primary hover:underline">Members</Link><h1 className="text-2xl font-bold mt-1">Organization Accounts</h1><p className="text-sm text-muted-foreground mt-1">Track school-owner accounts, subscription status, and progress through their free trial.</p></div>

@@ -101,7 +101,7 @@ export async function renderStudioLocal(source: string, directory: string, trans
     filters.push("[joined]ass=filename=captions.ass[captioned]"); outputVideo = "[captioned]";
   }
   if (options.watermark) {
-    const watermarkTranscript = { words: [], segments: [{ id: 0, start: 0, end: expected, text: "Course360 Studio • Trial" }],
+    const watermarkTranscript = { words: [], segments: [{ id: 0, start: 0, end: expected, text: "Course360™ Studio™ • Trial" }],
       studioEdit: { captionStyle: { fontSize: 18, bgOpacity: .5, bold: true }, showCaptions: true } };
     await writeFile(join(directory, "watermark.ass"), serializeStudioAss(watermarkTranscript, width, height).replace(",2,20,20,20,1", ",9,20,20,20,1"), { mode: 0o600 });
     filters.push(`${outputVideo}ass=filename=watermark.ass[watermarked]`); outputVideo = "[watermarked]";

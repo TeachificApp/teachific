@@ -51,7 +51,7 @@ export default function QuizCreatorPage() {
   const exportScorm = trpc.quizMaker.exportScorm.useMutation({
     onSuccess: (data) => {
       window.open(data.downloadUrl, "_blank");
-      toast.success(data.mediaItemId ? "SCORM package saved to your organization's Course360 Media Library. Download started." : "SCORM package exported! Download started.");
+      toast.success(data.mediaItemId ? "SCORM package saved to your organization's Course360™ Media Library. Download started." : "SCORM package exported! Download started.");
       setShowExportMenu(false);
     },
     onError: (err) => {
@@ -134,7 +134,7 @@ export default function QuizCreatorPage() {
                   >
                     SCORM 2004 Package
                   </button>
-                  <p className="px-3 py-1.5 mt-1 border-t border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Save to Course360 Media Library</p>
+                  <p className="px-3 py-1.5 mt-1 border-t border-gray-200 text-[10px] font-bold text-gray-400 uppercase tracking-wide">Save to Course360™ Media Library</p>
                   <button onClick={() => handleExport("scorm12", true)} disabled={exportScorm.isPending} className="w-full text-left px-3 py-2 text-xs text-teal-700 hover:bg-teal-50 disabled:opacity-50">SCORM 1.2 + Library</button>
                   <button onClick={() => handleExport("scorm2004", true)} disabled={exportScorm.isPending} className="w-full text-left px-3 py-2 text-xs text-teal-700 hover:bg-teal-50 disabled:opacity-50">SCORM 2004 + Library</button>
                   <a href={getCourse360MediaLibraryHref()} target="_blank" rel="noopener noreferrer" className="block px-3 py-2 text-xs text-teal-700 hover:bg-teal-50">Open main-account Media Library</a>
